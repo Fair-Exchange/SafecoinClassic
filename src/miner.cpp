@@ -168,7 +168,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
 
     //check if using alternate block size
     if(chainActive.Tip()->nHeight>ALT_MAX_BLOCKSZ_HEIGHT)
-        altMaxBlockSize=(unsigned int)ALT_MAX_BLOCK_SIZE;
+        altMaxBlockSize=(unsigned int)(ALT_MAX_BLOCK_SIZE-1000);
 
 
     // Largest block you're willing to create:
