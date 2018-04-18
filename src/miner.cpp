@@ -125,7 +125,7 @@ int32_t safecoin_validate_interest(const CTransaction &tx,int32_t txheight,uint3
 
 CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
 {
-    uint64_t deposits; int32_t isrealtime,SAFEheight; const CChainParams& chainparams = Params();
+    uint64_t deposits; int32_t isrealtime,SAFEheight; uint32_t altMaxBlockSize=(unsigned int)(MAX_BLOCK_SIZE-1000); const CChainParams& chainparams = Params();
     // Create new block
     std::unique_ptr<CBlockTemplate> pblocktemplate(new CBlockTemplate());
     if(!pblocktemplate.get())
@@ -166,10 +166,17 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
     pblocktemplate->vTxFees.push_back(-1); // updated at end
     pblocktemplate->vTxSigOps.push_back(-1); // updated at end
 
+    //check if using alternate block size
+    if(chainActive.Tip()->nHeight>ALT_MAX_BLOCKSZ_HEIGHT)
+        altMaxBlockSize=(unsigned int)ALT_MAX_BLOCK_SIZE;
+
+
     // Largest block you're willing to create:
     unsigned int nBlockMaxSize = GetArg("-blockmaxsize", DEFAULT_BLOCK_MAX_SIZE);
+
+
     // Limit to betweeen 1K and MAX_BLOCK_SIZE-1K for sanity:
-    nBlockMaxSize = std::max((unsigned int)1000, std::min((unsigned int)(MAX_BLOCK_SIZE-1000), nBlockMaxSize));
+    nBlockMaxSize = std::max((unsigned int)1000, std::min(std::min((unsigned int)(MAX_BLOCK_SIZE-1000), nBlockMaxSize),altMaxBlockSize));
 
     // How much of the block should be dedicated to high-priority transactions,
     // included regardless of the fees they pay

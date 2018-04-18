@@ -3244,6 +3244,12 @@ bool CheckBlock(int32_t height,CBlockIndex *pindex,const CBlock& block, CValidat
                 libzcash::ProofVerifier& verifier,
                 bool fCheckPOW, bool fCheckMerkleRoot)
 {
+	
+	//Modify max block size based on current height
+	uint32_t currentBlockSzLimit=MAX_BLOCK_SIZE;
+	if(height>ALT_MAX_BLOCKSZ_HEIGHT)
+		currentBlockSzLimit=ALT_MAX_BLOCK_SIZE;
+
     // These are checks that are independent of context.
 
     // Check that the header is valid (particularly PoW).  This is mostly
@@ -3272,7 +3278,7 @@ bool CheckBlock(int32_t height,CBlockIndex *pindex,const CBlock& block, CValidat
     // because we receive the wrong transactions for it.
 
     // Size limits
-    if (block.vtx.empty() || block.vtx.size() > MAX_BLOCK_SIZE || ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
+    if (block.vtx.empty() || block.vtx.size() > currentBlockSzLimit || ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
         return state.DoS(100, error("CheckBlock(): size limits failed"),
                          REJECT_INVALID, "bad-blk-length");
 

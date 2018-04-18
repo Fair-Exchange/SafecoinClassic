@@ -12,6 +12,10 @@ static const int32_t MIN_BLOCK_VERSION = 4;
 static const int32_t MIN_TX_VERSION = 1;
 /** The maximum allowed size for a serialized block, in bytes (network rule) */
 static const unsigned int MAX_BLOCK_SIZE = 2000000;
+/** The alternate maximum allowed size for a serialized block, in bytes (network rule) */
+static const unsigned int ALT_MAX_BLOCK_SIZE = 25000;
+/** Block height above which alternate rule kicks in */
+static const unsigned int ALT_MAX_BLOCKSZ_HEIGHT = 90000;
 /** The maximum allowed number of signature check operations in a block (network rule) */
 static const unsigned int MAX_BLOCK_SIGOPS = 20000;
 /** The maximum size of a transaction (network rule) */
