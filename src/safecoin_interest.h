@@ -20,7 +20,7 @@
 
 #define SAFECOIN_ENDOFERA 77195
 #define SAFECOIN_INTEREST ((uint64_t)5000000) //((uint64_t)(0.05 * COIN))   // 5%
-int64_t MAX_MONEY = 200000000 * 100000000LL;
+int64_t MAX_MONEY = 36000000 * 100000000LL;
 extern uint8_t NOTARY_PUBKEY33[];
 
 #ifdef notanymore
