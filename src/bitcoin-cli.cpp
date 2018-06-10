@@ -21,7 +21,7 @@
 
 using namespace std;
 
-int64_t MAX_MONEY = 200000000 * 100000000LL;
+int64_t MAX_MONEY = 36000000 * 100000000LL;
 uint64_t safecoin_maxallowed(int32_t baseid) { return(100000000LL * 1000000); } // stub
 
 static const int DEFAULT_HTTP_CLIENT_TIMEOUT=900;
