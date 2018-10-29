@@ -161,9 +161,8 @@ public:
 	vSeeds.push_back(CDNSSeedData("140.82.45.57", "140.82.45.57")); // seed node
 	vSeeds.push_back(CDNSSeedData("8.12.22.254", "8.12.22.254")); // seed node
 	vSeeds.push_back(CDNSSeedData("140.82.11.189", "140.82.11.189")); // seed node
-	vSeeds.push_back(CDNSSeedData("safecoin.org", "dnsseed.safecoin.org")); // Safecoin
 	vSeeds.push_back(CDNSSeedData("ipv6admin.com", "dnsseed.ipv6admin.com")); // Ipv6ipv6admin
-	vSeeds.push_back(CDNSSeedData("fair.exchange", "dnsseed.fair.exchange")); // Safecoin
+	vSeeds.push_back(CDNSSeedData("dnsseedua.local.support", "dnsseedua.local.support")); // OleksandrBlack
         // TODO: set up bootstrapping for mainnet
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,61);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,86);
@@ -245,30 +244,52 @@ void *chainparams_commandline(void *ptr)
     }
     else
     {
-            checkpointData = //(Checkpoints::CCheckpointData)
-            {
- 		boost::assign::map_list_of
-		//  (0,uint256S("0x01")),
-		(0, uint256S("0x09f5deffb9c816d82b8f696befa84681509274288c4529f213aeeac57999e8c9"))
-		(10000, uint256S("0x0000003fac4b19715f7c926678efa76580ec6677f00f986e6d62df24c2c33c40"))
-		(20000, uint256S("0x000001abf017b27b1ed2830915b07840a03ff692130e92ea618abf7dd199bffd"))
-		(30000, uint256S("0x0000020087dd554bee50fd4f2bdd267f1e05b8a8825eb6b147de9f5d708c0087"))
-		(40000, uint256S("0x00000071520e510befabaee27357de84f7d624b019096693845a392b28fdc017"))
-		(50000, uint256S("0x000001130278ac0759ba6edf6c046db74b5b5be14536779d9a78e67b97f7f55c"))
-		(60000, uint256S("0x00000072465c9f88a415a4543be84365b036415032cebe35d7cfd247335799cd"))
-		(70000, uint256S("0x00000031541bd6ea69b38450121d993cfb41663ab167fcfce47f598073dd534e"))
-		(75000, uint256S("0x00000012f1f0aa4ac984d46739767d503e87087f2ad022eea22e67f2e21a6805"))
-		(80000, uint256S("0x000000010f731dad693d6e60f32f504db5ffdb2e2e9793ece5f2a22dbe53ee0d"))
-		(84748, uint256S("0x00000042f72109bb83060ed5c34505740fcfa5676ccfb724c38b048456ae838a"))
-		(102864, uint256S("0x00000025561af0c339a1df438fee5ccfa7c49bfcfdcb4d070b0d96cb429bedb5"))
-                (170242, uint256S("0x00000011069f756ed14d4967b9862331ebb2f41a2928291066981258adc672d5")),   //switch to equihash 144,5
-		//(100000, uint256S("0x0f02eb1f3a4b89df9909fec81a4bd7d023e32e24e1f5262d9fc2cc36a715be6f")),
-		1529121446,     // * UNIX timestamp of last checkpoint block
-		255378,         // * total number of transactions between genesis and last checkpoint
-		//   (the tx=... number in the SetBestChain debug.log lines)
-		2700            // * estimated number of transactions per day after checkpoint
-		//   total number of tx / (checkpoint block height / (24 * 24))
-            };
+		checkpointData = //(Checkpoints::CCheckpointData)
+		{
+			boost::assign::map_list_of
+				(0, mainParams.consensus.hashGenesisBlock)
+				(5000, uint256S("0x000001b88f87d4641b2d610492dfe391fa4ea11058dbe7dc289fde55e91ca3a3"))
+				(10000, uint256S("0x0000003fac4b19715f7c926678efa76580ec6677f00f986e6d62df24c2c33c40"))
+				(15000, uint256S("0x000000d0d2b4a36ad7b8f707e1937ba357c0d7cae39da00d27aa388f78837168"))
+				(20000, uint256S("0x000001abf017b27b1ed2830915b07840a03ff692130e92ea618abf7dd199bffd"))
+				(25000, uint256S("0x0000010aa7fab18c4fc272c41eb1caad754da1604a59c3a468f43549af3dc0be"))
+				(30000, uint256S("0x0000020087dd554bee50fd4f2bdd267f1e05b8a8825eb6b147de9f5d708c0087"))
+				(35000, uint256S("0x00000020deb3ad31970ea6cd3ea72c9ac949cdbff11e93a6ef8343106011bd37"))
+				(40000, uint256S("0x00000071520e510befabaee27357de84f7d624b019096693845a392b28fdc017"))
+				(45000, uint256S("0x000000c3da72b608ae0c276f5b2c3eda1f6475f6fb42be3c790c3db0299a70dd"))
+				(50000, uint256S("0x000001130278ac0759ba6edf6c046db74b5b5be14536779d9a78e67b97f7f55c"))
+				(55000, uint256S("0x000000579768ad0d4bb99139c1abacc4310c4747fd152fbd62fadba51676af8a"))
+				(60000, uint256S("0x00000072465c9f88a415a4543be84365b036415032cebe35d7cfd247335799cd"))
+				(65000, uint256S("0x0000006383be34aec8e14c0ad0761dcbc4fa5173dc463272a3ac540f6d8dbab9"))
+				(70000, uint256S("0x00000031541bd6ea69b38450121d993cfb41663ab167fcfce47f598073dd534e"))
+				(75000, uint256S("0x00000012f1f0aa4ac984d46739767d503e87087f2ad022eea22e67f2e21a6805"))
+				(80000, uint256S("0x000000010f731dad693d6e60f32f504db5ffdb2e2e9793ece5f2a22dbe53ee0d"))
+				(84748, uint256S("0x00000042f72109bb83060ed5c34505740fcfa5676ccfb724c38b048456ae838a"))
+				(90000, uint256S("0x0000002e1fe89edea68af968a20dde0aa9e3853b15cc4991beb880dd9a7426df"))
+				(95000, uint256S("0x0000002b6620696f57223ee1b64005ca4ae6ff442655f463d53180a9001f8ed9"))
+				(100000, uint256S("0x000000129c8a644b8f70b16b9e512b0aa5a09ab05cb8e793d82c4cfa63f4dd0a"))
+				(102864, uint256S("0x00000025561af0c339a1df438fee5ccfa7c49bfcfdcb4d070b0d96cb429bedb5"))
+				(110000, uint256S("0x0000001cfef4e0a27e6e6986716a88c6d71b5bc5580bd6acfd140a551d289f7a"))
+				(115000, uint256S("0x000000177179c2d273e06932f71f3996b6d7209bed0a23937669f05d06aa2343"))
+				(120000, uint256S("0x0000001dcb3eb8d6278bc61d2b4b393760c93c617f7e001d1f7ea3110b6eb9f4"))
+				(125000, uint256S("0x0000006b2961435420c22cebf1d4df022e976607ba86de9a95abaddead156919"))
+				(130000, uint256S("0x00000008bcac49d2d39c42ce17ed872cd3e954d9fe8634fb58fa36cb9cb68359"))
+				(135000, uint256S("0x0000003d8de4ecae9666ce557b91c2bbf0a5faa1526e8be0a6e11635400745f4"))
+				(140000, uint256S("0x00000044d629ccfeed2dbfa8778d728c3b2ab3fc758ed2d9c26891c7549723a5"))
+				(145000, uint256S("0x0000006f5119d46dfa37bf5a6c304a68a139d381097dbee4c0e7081a91da84ba"))
+				(150000, uint256S("0x000000725e3aacb45f0cf40d84ddcf1d97ba86d5b4cd81a3ed7b03c27c58e53e"))
+				(155000, uint256S("0x00000044c64cb0bea2b24f49153b3b97560d1dc4a955d4ab81c5888bfad13d7a"))
+				(160000, uint256S("0x0000001af6da3b656cbfe9e02e3591ea2749624104f54285047ffd41b4c987c0"))
+				(165000, uint256S("0x00000000d3c2add6fcc7a89e546d5bd40fd8e86ede4fb4df05cd3f622eb10700"))
+				(170242, uint256S("0x00000011069f756ed14d4967b9862331ebb2f41a2928291066981258adc672d5"))   //switch to equihash 144,5
+				(175000, uint256S("0x00000022a647bb1083935663d1de33db78f008a0d26dfd06932b128119ae1d7a"))
+				(360000, uint256S("0x00000260ec5c16afbc1d4e70f9616e60bbc3222ad3604c0d2acdf716da7f8b9c")),
+				(int64_t)1540539546,	// * UNIX timestamp of last checkpoint block
+				(int64_t)649731,		// * total number of transactions between genesis and last checkpoint
+										//   (the tx=... number in the SetBestChain debug.log lines)
+				(double)2283			// * estimated number of transactions per day after checkpoint
+										//   total number of tx / (checkpoint block height / (24 * 24))
+		};
     }
 
     mainParams.SetCheckpointData(checkpointData);
