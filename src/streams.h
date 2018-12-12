@@ -501,54 +501,60 @@ protected:
         }
     }
 
-public:
-    CBufferedFile(FILE *fileIn, uint64_t nBufSize, uint64_t nRewindIn, int nTypeIn, int nVersionIn) :
-        nSrcPos(0), nReadPos(0), nReadLimit((uint64_t)(-1)), nRewind(nRewindIn), vchBuf(nBufSize, 0)
-    {
-        src = fileIn;
-        nType = nTypeIn;
-        nVersion = nVersionIn;
-    }
+ public:
+ CBufferedFile(FILE *fileIn, uint64_t nBufSize, uint64_t nRewindIn, int nTypeIn, int nVersionIn) :
+    nType(nTypeIn), nVersion(nVersionIn), nSrcPos(0), nReadPos(0), nReadLimit((uint64_t)(-1)), nRewind(nRewindIn), vchBuf(nBufSize, 0)
+      {
+	src = fileIn;
+      }
 
     ~CBufferedFile()
-    {
-        fclose();
-    }
+      {
+	fclose();
+      }
+
+    int GetVersion() const { return nVersion; }
+    int GetType() const { return nType; }
 
     void fclose()
     {
-        if (src) {
-            ::fclose(src);
-            src = NULL;
-        }
+      if (src) {
+	::fclose(src);
+	src = NULL;
+      }
     }
 
     // check whether we're at the end of the source file
     bool eof() const {
-        return nReadPos == nSrcPos && feof(src);
+      return nReadPos == nSrcPos && feof(src);
     }
 
     // read a number of bytes
-    CBufferedFile& read(char *pch, size_t nSize) {
-        if (nSize + nReadPos > nReadLimit)
-            throw std::ios_base::failure("Read attempted past buffer limit");
-        if (nSize + nRewind > vchBuf.size())
-            throw std::ios_base::failure("Read larger than buffer size");
-        while (nSize > 0) {
-            if (nReadPos == nSrcPos)
-                Fill();
-            unsigned int pos = nReadPos % vchBuf.size();
-            size_t nNow = nSize;
-            if (nNow + pos > vchBuf.size())
-                nNow = vchBuf.size() - pos;
-            if (nNow + nReadPos > nSrcPos)
-                nNow = nSrcPos - nReadPos;
-            memcpy(pch, &vchBuf[pos], nNow);
-            nReadPos += nNow;
-            pch += nNow;
-            nSize -= nNow;
-        }
-        return (*this);
+    void read(char *pch, size_t nSize) {
+      if (nSize == 0) return;
+
+      if (pch == nullptr) {
+	throw std::ios_base::failure("CBufferedFile::read(): cannot read from null pointer");
+      }
+
+      if (nSize + nReadPos > nReadLimit)
+	throw std::ios_base::failure("Read attempted past buffer limit");
+      if (nSize + nRewind > vchBuf.size())
+	throw std::ios_base::failure("Read larger than buffer size");
+      while (nSize > 0) {
+	if (nReadPos == nSrcPos)
+	  Fill();
+	unsigned int pos = nReadPos % vchBuf.size();
+	size_t nNow = nSize;
+	if (nNow + pos > vchBuf.size())
+	  nNow = vchBuf.size() - pos;
+	if (nNow + nReadPos > nSrcPos)
+	  nNow = nSrcPos - nReadPos;
+	memcpy(pch, &vchBuf[pos], nNow);
+	nReadPos += nNow;
+	pch += nNow;
+	nSize -= nNow;
+      }
     }
 
     // return the current reading position
