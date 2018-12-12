@@ -108,7 +108,7 @@ int32_t safecoin_notaries(uint8_t pubkeys[64][33],int32_t height,uint32_t timest
     pthread_mutex_unlock(&safecoin_mutex);
     if ( (n < 64 && mask == ((1LL << n)-1)) || (n == 64 && mask == 0xffffffffffffffffLL) )
       //        return(n);
-    printf("error retrieving notaries ht.%d got mask.%llx for n.%d\n",height,(long long)mask,n);
+      //printf("error retrieving notaries ht.%d got mask.%llx for n.%d\n",height,(long long)mask,n);
     return(-1);
 }
 
