@@ -84,11 +84,9 @@ void EnsureWalletIsUnlocked()
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 }
 
-uint64_t safecoin_accrued_interest(int32_t *txheightp,uint32_t *locktimep,uint256 hash,int32_t n,int32_t checkheight,uint64_t checkvalue,int32_t tipheight);
-
 void WalletTxToJSON(const CWalletTx& wtx, UniValue& entry)
 {
-    //int32_t i,n,txheight; uint32_t locktime; uint64_t interest = 0;
+
     int confirms = wtx.GetDepthInMainChain();
     entry.push_back(Pair("rawconfirmations", confirms));
     if (wtx.IsCoinBase())
@@ -502,7 +500,7 @@ uint64_t PAX_fiatdest(uint64_t *seedp,int32_t tosafecoin,char *destaddr,uint8_t 
 int32_t safecoin_opreturnscript(uint8_t *script,uint8_t type,uint8_t *opret,int32_t opretlen);
 #define CRYPTO777_SAFEADDR "RXL3YXG2ceaB6C5hfJcN4fvmLH2C34knhA"
 extern int32_t SAFECOIN_PAX;
-extern uint64_t SAFECOIN_INTERESTSUM,SAFECOIN_WALLETBALANCE;
+extern uint64_t SAFECOIN_WALLETBALANCE;
 int32_t safecoin_is_issuer();
 int32_t safenodes_rwnum(int32_t rwflag,uint8_t *serialized,int32_t len,void *endianedp);
 int32_t safecoin_isrealtime(int32_t *safeheightp);
@@ -2715,58 +2713,12 @@ UniValue listunspent(const UniValue& params, bool fHelp)
             }
         }
         entry.push_back(Pair("amount",ValueFromAmount(nValue)));
-        if ( out.tx->nLockTime != 0 )
-        {
-            BlockMap::iterator it = mapBlockIndex.find(pcoinsTip->GetBestBlock());
-            CBlockIndex *tipindex,*pindex = it->second;
-            uint64_t interest; uint32_t locktime; int32_t txheight;
-            if ( pindex != 0 && (tipindex= chainActive.LastTip()) != 0 )
-            {
-                interest = safecoin_accrued_interest(&txheight,&locktime,out.tx->GetHash(),out.i,0,nValue,(int32_t)tipindex->nHeight);
-                //interest = safecoin_interest(txheight,nValue,out.tx->nLockTime,tipindex->nTime);
-                entry.push_back(Pair("interest",ValueFromAmount(interest)));
-            }
-            //fprintf(stderr,"nValue %.8f pindex.%p tipindex.%p locktime.%u txheight.%d pindexht.%d\n",(double)nValue/COIN,pindex,chainActive.LastTip(),locktime,txheight,pindex->nHeight);
-        }
         entry.push_back(Pair("confirmations",out.nDepth));
         entry.push_back(Pair("spendable", out.fSpendable));
         results.push_back(entry);
     }
 
     return results;
-}
-
-uint64_t safecoin_interestsum()
-{
-#ifdef ENABLE_WALLET
-    if ( GetBoolArg("-disablewallet", false) == 0 )
-    {
-        uint64_t interest,sum = 0; int32_t txheight; uint32_t locktime;
-        vector<COutput> vecOutputs;
-        assert(pwalletMain != NULL);
-        LOCK2(cs_main, pwalletMain->cs_wallet);
-        pwalletMain->AvailableCoins(vecOutputs, false, NULL, true);
-        BOOST_FOREACH(const COutput& out,vecOutputs)
-        {
-            CAmount nValue = out.tx->vout[out.i].nValue;
-            if ( out.tx->nLockTime != 0 && out.fSpendable != 0 )
-            {
-                BlockMap::iterator it = mapBlockIndex.find(pcoinsTip->GetBestBlock());
-                CBlockIndex *tipindex,*pindex = it->second;
-                if ( pindex != 0 && (tipindex= chainActive.LastTip()) != 0 )
-                {
-                    interest = safecoin_accrued_interest(&txheight,&locktime,out.tx->GetHash(),out.i,0,nValue,(int32_t)tipindex->nHeight);
-                    //interest = safecoin_interest(pindex->nHeight,nValue,out.tx->nLockTime,tipindex->nTime);
-                    sum += interest;
-                }
-            }
-        }
-        SAFECOIN_INTERESTSUM = sum;
-        SAFECOIN_WALLETBALANCE = pwalletMain->GetBalance();
-        return(sum);
-    }
-#endif
-    return(0);
 }
 
 UniValue fundrawtransaction(const UniValue& params, bool fHelp)
@@ -3572,11 +3524,9 @@ UniValue z_gettotalbalance(const UniValue& params, bool fHelp)
     // so we use our own method to get balance of utxos.
     CAmount nBalance = getBalanceTaddr("", nMinDepth, !fIncludeWatchonly);
     CAmount nPrivateBalance = getBalanceZaddr("", nMinDepth, !fIncludeWatchonly);
-    uint64_t interest = safecoin_interestsum();
     CAmount nTotalBalance = nBalance + nPrivateBalance;
     UniValue result(UniValue::VOBJ);
     result.push_back(Pair("transparent", FormatMoney(nBalance)));
-    result.push_back(Pair("interest", FormatMoney(interest)));
     result.push_back(Pair("private", FormatMoney(nPrivateBalance)));
     result.push_back(Pair("total", FormatMoney(nTotalBalance)));
     return result;

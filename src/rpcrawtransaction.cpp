@@ -118,8 +118,6 @@ UniValue TxJoinSplitToJSON(const CTransaction& tx) {
     return vjoinsplit;
 }
 
-uint64_t safecoin_accrued_interest(int32_t *txheightp,uint32_t *locktimep,uint256 hash,int32_t n,int32_t checkheight,uint64_t checkvalue,int32_t tipheight);
-
 int32_t myIsutxo_spent(uint256 &spenttxid,uint256 txid,int32_t vout)
 {
     CSpentIndexValue spentInfo; CSpentIndexKey spentKey(txid,vout);
@@ -190,19 +188,12 @@ void TxToJSONExpanded(const CTransaction& tx, const uint256 hashBlock, UniValue&
     entry.push_back(Pair("vin", vin));
     BlockMap::iterator it = mapBlockIndex.find(pcoinsTip->GetBestBlock());
     CBlockIndex *tipindex,*pindex = it->second;
-    uint64_t interest;
     UniValue vout(UniValue::VARR);
     for (unsigned int i = 0; i < tx.vout.size(); i++)
     {
         const CTxOut& txout = tx.vout[i];
         UniValue out(UniValue::VOBJ);
         out.push_back(Pair("value", ValueFromAmount(txout.nValue)));
-        if ( ASSETCHAINS_SYMBOL[0] == 0 && pindex != 0 && tx.nLockTime >= 500000000 && (tipindex= chainActive.LastTip()) != 0 )
-        {
-            int64_t interest; int32_t txheight; uint32_t locktime;
-            interest = safecoin_accrued_interest(&txheight,&locktime,tx.GetHash(),i,0,txout.nValue,(int32_t)tipindex->nHeight);
-            out.push_back(Pair("interest", ValueFromAmount(interest)));
-        }
         out.push_back(Pair("valueZat", txout.nValue));
         out.push_back(Pair("valueSat", txout.nValue)); // [+] Decker
         out.push_back(Pair("n", (int64_t)i));

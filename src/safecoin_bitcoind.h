@@ -1020,49 +1020,6 @@ int32_t safecoin_checkpoint(int32_t *notarized_heightp,int32_t nHeight,uint256 h
     return(0);
 }
 
-uint32_t safecoin_interest_args(uint32_t *txheighttimep,int32_t *txheightp,uint32_t *tiptimep,uint64_t *valuep,uint256 hash,int32_t n)
-{
-    LOCK(cs_main);
-    CTransaction tx; uint256 hashBlock; CBlockIndex *pindex,*tipindex;
-    *txheighttimep = *txheightp = *tiptimep = 0;
-    *valuep = 0;
-    if ( !GetTransaction(hash,tx,hashBlock,true) )
-        return(0);
-    uint32_t locktime = 0;
-    if ( n < tx.vout.size() )
-    {
-        if ( (pindex= mapBlockIndex[hashBlock]) != 0 )
-        {
-            *valuep = tx.vout[n].nValue;
-            *txheightp = pindex->nHeight;
-            *txheighttimep = pindex->nTime;
-            if ( *tiptimep == 0 && (tipindex= chainActive.LastTip()) != 0 )
-                *tiptimep = (uint32_t)tipindex->nTime;
-            locktime = tx.nLockTime;
-            //fprintf(stderr,"tx locktime.%u %.8f height.%d | tiptime.%u\n",locktime,(double)*valuep/COIN,*txheightp,*tiptimep);
-        }
-    }
-    return(locktime);
-}
-
-uint64_t safecoin_interest(int32_t txheight,uint64_t nValue,uint32_t nLockTime,uint32_t tiptime);
-
-uint64_t safecoin_accrued_interest(int32_t *txheightp,uint32_t *locktimep,uint256 hash,int32_t n,int32_t checkheight,uint64_t checkvalue,int32_t tipheight)
-{
-    uint64_t value; uint32_t tiptime=0,txheighttimep; CBlockIndex *pindex;
-    if ( (pindex= chainActive[tipheight]) != 0 )
-        tiptime = (uint32_t)pindex->nTime;
-    else fprintf(stderr,"cant find height[%d]\n",tipheight);
-    if ( (*locktimep= safecoin_interest_args(&txheighttimep,txheightp,&tiptime,&value,hash,n)) != 0 )
-    {
-        if ( (checkvalue == 0 || value == checkvalue) && (checkheight == 0 || *txheightp == checkheight) )
-          //  return(safecoin_interest(*txheightp,value,*locktimep,tiptime));
-	return(0);
-        //fprintf(stderr,"nValue %llu lock.%u:%u nTime.%u -> %llu\n",(long long)coins.vout[n].nValue,coins.nLockTime,timestamp,pindex->nTime,(long long)interest);
-        else fprintf(stderr,"safecoin_accrued_interest value mismatch %llu vs %llu or height mismatch %d vs %d\n",(long long)value,(long long)checkvalue,*txheightp,checkheight);
-    }
-    return(0);
-}
 
 int32_t safecoin_isrealtime(int32_t *safeheightp)
 {
@@ -1073,29 +1030,6 @@ int32_t safecoin_isrealtime(int32_t *safeheightp)
     if ( (pindex= chainActive.LastTip()) != 0 && pindex->nHeight >= (int32_t)safecoin_longestchain() )
         return(1);
     else return(0);
-}
-
-int32_t safecoin_validate_interest(const CTransaction &tx,int32_t txheight,uint32_t cmptime,int32_t dispflag)
-{
-    if ( SAFECOIN_REWIND == 0 && ASSETCHAINS_SYMBOL[0] == 0 && (int64_t)tx.nLockTime >= LOCKTIME_THRESHOLD ) //1473793441 )
-    {
-        if ( txheight > 89500 )
-        {
-	  //      if ( txheight < 247205 )
-          //      cmptime -= 16000;
-            if ( (int64_t)tx.nLockTime < cmptime-SAFECOIN_MAXMEMPOOLTIME )
-            {
-                if ( tx.nLockTime != 1477258935 && dispflag != 0 )
-                {
-                    fprintf(stderr,"safecoin_validate_interest.%d reject.%d [%d] locktime %u cmp2.%u\n",dispflag,txheight,(int32_t)(tx.nLockTime - (cmptime-SAFECOIN_MAXMEMPOOLTIME)),(uint32_t)tx.nLockTime,cmptime);
-                }
-                return(-1);
-            }
-            if ( 0 && dispflag != 0 )
-                fprintf(stderr,"validateinterest.%d accept.%d [%d] locktime %u cmp2.%u\n",dispflag,(int32_t)txheight,(int32_t)(tx.nLockTime - (cmptime-SAFECOIN_MAXMEMPOOLTIME)),(int32_t)tx.nLockTime,cmptime);
-        }
-    }
-    return(0);
 }
 
 /*

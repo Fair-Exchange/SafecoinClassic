@@ -6,7 +6,6 @@
 #ifndef BITCOIN_COINS_H
 #define BITCOIN_COINS_H
 
-//define SAFECOIN_ENABLE_INTEREST //enabling this is a hardfork, activate with new RR method
 
 #include "compressor.h"
 #include "core_memusage.h"
@@ -514,7 +513,7 @@ public:
      * @param[in] tx	transaction for which we are checking input total
      * @return	Sum of value of all inputs (scriptSigs)
      */
-    CAmount GetValueIn(int32_t nHeight,int64_t *interestp,const CTransaction& tx,uint32_t prevblocktime) const;
+    CAmount GetValueIn(int32_t nHeight,const CTransaction& tx,uint32_t prevblocktime) const;
 
     //! Check whether all prevouts of the transaction are present in the UTXO set represented by this view
     bool HaveInputs(const CTransaction& tx) const;

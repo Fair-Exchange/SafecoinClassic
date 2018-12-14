@@ -44,12 +44,11 @@ using namespace std;
 
 int32_t Jumblr_depositaddradd(char *depositaddr);
 int32_t Jumblr_secretaddradd(char *secretaddr);
-uint64_t safecoin_interestsum();
 int32_t safecoin_longestchain();
 int32_t safecoin_notarized_height(int32_t *prevhtp,uint256 *hashp,uint256 *txidp);
 uint32_t safecoin_chainactive_timestamp();
 int32_t safecoin_whoami(char *pubkeystr,int32_t height,uint32_t timestamp);
-extern uint64_t SAFECOIN_INTERESTSUM,SAFECOIN_WALLETBALANCE;
+extern uint64_t SAFECOIN_WALLETBALANCE;
 extern int32_t SAFECOIN_LASTMINED,JUMBLR_PAUSE,SAFECOIN_LONGESTCHAIN;
 extern char ASSETCHAINS_SYMBOL[SAFECOIN_ASSETCHAIN_MAXLEN];
 uint32_t safecoin_segid32(char *coinaddr);
@@ -123,8 +122,6 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     if (pwalletMain) {
         obj.push_back(Pair("walletversion", pwalletMain->GetVersion()));
         obj.push_back(Pair("balance",       ValueFromAmount(SAFECOIN_WALLETBALANCE))); //pwalletMain->GetBalance()
-        if ( ASSETCHAINS_SYMBOL[0] == 0 )
-            obj.push_back(Pair("interest",       ValueFromAmount(SAFECOIN_INTERESTSUM))); //safecoin_interestsum()
     }
 #endif
     //fprintf(stderr,"after wallet %u\n",(uint32_t)time(NULL));

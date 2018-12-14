@@ -45,7 +45,6 @@ static bool fDaemon;
 #define SAFECOIN_ASSETCHAIN_MAXLEN 65
 extern char ASSETCHAINS_SYMBOL[SAFECOIN_ASSETCHAIN_MAXLEN];
 void safecoin_passport_iteration();
-uint64_t safecoin_interestsum();
 int32_t safecoin_longestchain();
 
 void WaitForShutdown(boost::thread_group* threadGroup)
@@ -62,7 +61,6 @@ void WaitForShutdown(boost::thread_group* threadGroup)
         }
         else
         {
-            safecoin_interestsum();
             safecoin_longestchain();
             MilliSleep(20000);
         }

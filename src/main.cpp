@@ -1314,11 +1314,6 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState &state, const CTransa
     }
     
     auto verifier = libzcash::ProofVerifier::Strict();
-    if ( safecoin_validate_interest(tx,chainActive.LastTip()->nHeight+1,chainActive.LastTip()->GetMedianTimePast() + 777,0) < 0 )
-    {
-        //fprintf(stderr,"AcceptToMemoryPool safecoin_validate_interest failure\n");
-        return error("AcceptToMemoryPool: safecoin_validate_interest failed");
-    }
     if (!CheckTransaction(tx, state, verifier))
     {
         return error("AcceptToMemoryPool: CheckTransaction failed");
@@ -1390,7 +1385,6 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState &state, const CTransa
     {
         CCoinsView dummy;
         CCoinsViewCache view(&dummy);
-        int64_t interest;
         CAmount nValueIn = 0;
         {
             LOCK(pool.cs);
@@ -1443,9 +1437,8 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState &state, const CTransa
             // Bring the best block into scope
             view.GetBestBlock();
             
-            nValueIn = view.GetValueIn(chainActive.LastTip()->nHeight,&interest,tx,chainActive.LastTip()->nTime);
-            if ( 0 && interest != 0 )
-                fprintf(stderr,"add interest %.8f\n",(double)interest/COIN);
+            nValueIn = view.GetValueIn(chainActive.LastTip()->nHeight,tx,chainActive.LastTip()->nTime); //TODO
+
             // we have all inputs cached now, so switch back to dummy, so we don't need to keep lock on mempool
             view.SetBackend(dummy);
         }
@@ -2255,20 +2248,7 @@ namespace Consensus {
             
             // Check for negative or overflow input values
             nValueIn += coins->vout[prevout.n].nValue;
-#ifdef SAFECOIN_ENABLE_INTEREST
-            if ( ASSETCHAINS_SYMBOL[0] == 0 && nSpendHeight > 103820 )//chainActive.LastTip() != 0 && chainActive.LastTip()->nHeight >= 60000 )
-            {
-                if ( coins->vout[prevout.n].nValue >= 10*COIN )
-                {
-                    int64_t interest; int32_t txheight; uint32_t locktime;
-                    if ( (interest= safecoin_accrued_interest(&txheight,&locktime,prevout.hash,prevout.n,0,coins->vout[prevout.n].nValue,(int32_t)nSpendHeight-1)) != 0 )
-                    {
-                        //fprintf(stderr,"checkResult %.8f += val %.8f interest %.8f ht.%d lock.%u tip.%u\n",(double)nValueIn/COIN,(double)coins->vout[prevout.n].nValue/COIN,(double)interest/COIN,txheight,locktime,chainActive.LastTip()->nTime);
-                        nValueIn += interest;
-                    }
-                }
-            }
-#endif
+
             if (!MoneyRange(coins->vout[prevout.n].nValue) || !MoneyRange(nValueIn))
                 return state.DoS(100, error("CheckInputs(): txin values out of range"),
                                  REJECT_INVALID, "bad-txns-inputvalues-outofrange");
@@ -2933,7 +2913,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     int64_t nTimeStart = GetTimeMicros();
     CAmount nFees = 0;
     int nInputs = 0;
-    int64_t interest,sum = 0;
     unsigned int nSigOps = 0;
     CDiskTxPos pos(pindex->GetBlockPos(), GetSizeOfCompactSize(block.vtx.size()));
     std::vector<std::pair<uint256, CDiskTxPos> > vPos;
@@ -3045,8 +3024,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         
         if (!tx.IsCoinBase())
         {
-            nFees += view.GetValueIn(chainActive.LastTip()->nHeight,&interest,tx,chainActive.LastTip()->nTime) - tx.GetValueOut();
-            sum += interest;
+            nFees += view.GetValueIn(chainActive.LastTip()->nHeight,tx,chainActive.LastTip()->nTime) - tx.GetValueOut(); //TODO
             
             std::vector<CScriptCheck> vChecks;
             if (!ContextualCheckInputs(tx, state, view, fExpensiveChecks, flags, false, txdata[i], chainparams.GetConsensus(), consensusBranchId, nScriptCheckThreads ? &vChecks : NULL))
@@ -3105,8 +3083,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             }
         }
 
-        //if ( ASSETCHAINS_SYMBOL[0] == 0 )
-        //    safecoin_earned_interest(pindex->nHeight,sum);
         CTxUndo undoDummy;
         if (i > 0) {
             blockundo.vtxundo.push_back(CTxUndo());
@@ -3134,7 +3110,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     int64_t nTime1 = GetTimeMicros(); nTimeConnect += nTime1 - nTimeStart;
     LogPrint("bench", "      - Connect %u transactions: %.2fms (%.3fms/tx, %.3fms/txin) [%.2fs]\n", (unsigned)block.vtx.size(), 0.001 * (nTime1 - nTimeStart), 0.001 * (nTime1 - nTimeStart) / block.vtx.size(), nInputs <= 1 ? 0 : 0.001 * (nTime1 - nTimeStart) / (nInputs-1), nTimeConnect * 0.000001);
     
-    CAmount blockReward = nFees + GetBlockSubsidy(pindex->nHeight, chainparams.GetConsensus()) + sum;
+    CAmount blockReward = nFees + GetBlockSubsidy(pindex->nHeight, chainparams.GetConsensus());
     if ( ASSETCHAINS_OVERRIDE_PUBKEY33[0] != 0 && ASSETCHAINS_COMMISSION != 0 )
     {
         uint64_t checktoshis;
@@ -3152,9 +3128,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             return state.DoS(100,
                              error("ConnectBlock(): coinbase pays too much (actual=%d vs limit=%d)",
                                    block.vtx[0].GetValueOut(), blockReward),
-                             REJECT_INVALID, "bad-cb-amount");
-        } else if ( IS_SAFECOIN_NOTARY != 0 )
-            fprintf(stderr,"allow nHeight.%d coinbase %.8f vs %.8f interest %.8f\n",(int32_t)pindex->nHeight,dstr(block.vtx[0].GetValueOut()),dstr(blockReward),dstr(sum));
+                               REJECT_INVALID, "bad-cb-amount");
+        }
     }
     if (!control.Wait())
         return state.DoS(100, false);
@@ -4284,12 +4259,9 @@ bool CheckBlock(int32_t *futureblockp,int32_t height,CBlockIndex *pindex,const C
         //fprintf(stderr,"done putting block's tx into mempool\n");
     }
     BOOST_FOREACH(const CTransaction& tx, block.vtx)
-    {
-      if ((height>103820) & safecoin_validate_interest(tx,height == 0 ? safecoin_block2height((CBlock *)&block) : height,block.nTime,0) < 0 )
-            return error("CheckBlock: safecoin_validate_interest failed");
         if (!CheckTransaction(tx, state, verifier))
-            return error("CheckBlock: CheckTransaction failed");
-    }
+            return error("CheckBlock(): CheckTransaction failed");
+		
     unsigned int nSigOps = 0;
     BOOST_FOREACH(const CTransaction& tx, block.vtx)
     {

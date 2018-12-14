@@ -1356,11 +1356,9 @@ int32_t safecoin_faststateinit(struct safecoin_state *sp,char *fname,char *symbo
     return(-1);
 }
 
-uint64_t safecoin_interestsum();
-
 void safecoin_passport_iteration()
 {
-    static long lastpos[34]; static char userpass[33][1024]; static uint32_t lasttime,callcounter,lastinterest;
+    static long lastpos[34]; static char userpass[33][1024]; static uint32_t lasttime,callcounter;
     int32_t maxseconds = 10;
     FILE *fp; uint8_t *filedata; long fpos,datalen,lastfpos; int32_t baseid,limit,n,ht,isrealtime,expired,refid,blocks,longest; struct safecoin_state *sp,*refsp; char *retstr,fname[512],*base,symbol[SAFECOIN_ASSETCHAIN_MAXLEN],dest[SAFECOIN_ASSETCHAIN_MAXLEN]; uint32_t buf[3],starttime; cJSON *infoobj,*result; uint64_t RTmask = 0;
     expired = 0;
@@ -1368,12 +1366,6 @@ void safecoin_passport_iteration()
     {
         fprintf(stderr,"[%s] PASSPORT iteration waiting for SAFECOIN_INITDONE\n",ASSETCHAINS_SYMBOL);
         sleep(3);
-    }
-    if ( safecoin_chainactive_timestamp() > lastinterest )
-    {
-        safecoin_interestsum();
-        safecoin_longestchain();
-        lastinterest = safecoin_chainactive_timestamp();
     }
     refsp = safecoin_stateptr(symbol,dest);
     if ( ASSETCHAINS_SYMBOL[0] == 0 )
