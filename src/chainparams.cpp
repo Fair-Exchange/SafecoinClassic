@@ -132,8 +132,11 @@ public:
         nPruneAfterHeight = 10000;
         eh_epoch_1 = eh200_9;
         eh_epoch_2 = eh144_5;
+        eh_epoch_3 = eh192_7;
         eh_epoch_1_endblock = 175374;
         eh_epoch_2_startblock = 175344;
+        eh_epoch_2_endblock = 9999999;
+        eh_epoch_3_startblock = 9999999;
 
         CMutableTransaction txNew;
         txNew.vin.resize(1);
@@ -326,10 +329,13 @@ public:
         nMaxTipAge = 24 * 60 * 60;
 
         nPruneAfterHeight = 1000;
-        eh_epoch_1 = eh144_5;
+        eh_epoch_1 = eh200_9;
         eh_epoch_2 = eh144_5;
+        eh_epoch_3 = eh192_7;
         eh_epoch_1_endblock = 10;
         eh_epoch_2_startblock = 30;
+        eh_epoch_2_endblock = 40;
+        eh_epoch_3_startblock = 50;
 
 
         const char* pszTimestamp = "CNN 2018/02/07 Internet rights advocate John Perry Barlow dies";
@@ -358,9 +364,9 @@ public:
 
         vFixedSeeds.clear();
         vSeeds.clear();
-        vSeeds.push_back(CDNSSeedData("safecoin.org", "testnet.dnsseed.safecoin.org")); // Safecoin
-        vSeeds.push_back(CDNSSeedData("ipv6admin.com", "testnet.dnsseed.ipv6admin.com")); // Ipv6ipv6admin
-        vSeeds.push_back(CDNSSeedData("fair.exchange", "testnet.dnsseed.fair.exchange")); // Safecoin
+        vSeeds.push_back(CDNSSeedData("testnode1", "45.63.13.60"));
+        vSeeds.push_back(CDNSSeedData("testnode2", "176.107.179.32"));
+        vSeeds.push_back(CDNSSeedData("testnode3", "185.20.184.51"));
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,0);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,5);
@@ -428,10 +434,14 @@ public:
         nMinerThreads = 1;
         nMaxTipAge = 24 * 60 * 60;
         nPruneAfterHeight = 1000;
-        eh_epoch_1 = eh200_9;
-        eh_epoch_2 = eh144_5;
+        eh_epoch_1 = eh48_5;
+        eh_epoch_2 = eh48_5;
+        eh_epoch_3 = eh48_5;
         eh_epoch_1_endblock = 1;
         eh_epoch_2_startblock = 1;
+        eh_epoch_2_endblock = 1;
+        eh_epoch_3_startblock = 1;
+
         genesis.nTime = 1296688602;
         genesis.nBits = SAFECOIN_MINDIFF_NBITS;
         genesis.nNonce = uint256S("0x0000000000000000000000000000000000000000000000000000000000000021");
@@ -561,6 +571,14 @@ int validEHparameterList(EHparameters *ehparams, unsigned long blockheight, cons
     //if in overlap period, there will be two valid solutions, else 1.
     //The upcoming version of EH is preferred so will always be first element
     //returns number of elements in list
+    if(blockheight>=params.eh_epoch_3_start() && blockheight>params.eh_epoch_2_end()){
+        ehparams[0]=params.eh_epoch_3_params();
+        return 1;
+    }
+    if(blockheight<params.eh_epoch_3_start()){
+        ehparams[0]=params.eh_epoch_2_params();
+        return 1;
+    }
     if(blockheight>=params.eh_epoch_2_start() && blockheight>params.eh_epoch_1_end()){
         ehparams[0]=params.eh_epoch_2_params();
         return 1;
@@ -569,7 +587,8 @@ int validEHparameterList(EHparameters *ehparams, unsigned long blockheight, cons
         ehparams[0]=params.eh_epoch_1_params();
         return 1;
     }
-    ehparams[0]=params.eh_epoch_2_params();
-    ehparams[1]=params.eh_epoch_1_params();
-    return 2;
+    ehparams[0]=params.eh_epoch_3_params();
+    ehparams[1]=params.eh_epoch_2_params();
+    ehparams[2]=params.eh_epoch_1_params();
+    return 3;
 }
