@@ -29,8 +29,6 @@
 #define portable_mutex_lock pthread_mutex_lock
 #define portable_mutex_unlock pthread_mutex_unlock
 
-extern void verus_hash(void *result, const void *data, size_t len);
-
 struct allocitem { uint32_t allocsize,type; };
 struct queueitem { struct queueitem *next,*prev; uint32_t allocsize,type;  };
 
@@ -1781,10 +1779,6 @@ void safecoin_args(char *argv0)
 
         // for now, we only support 50% PoS due to other parts of the algorithm needing adjustment for
         // other values
-        if ( (ASSETCHAINS_LWMAPOS = GetArg("-ac_veruspos",0)) != 0 )
-        {
-            ASSETCHAINS_LWMAPOS = 50;
-        }
         ASSETCHAINS_SAPLING = GetArg("-ac_sapling", -1);
         if (ASSETCHAINS_SAPLING == -1)
         {

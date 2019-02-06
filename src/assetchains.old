@@ -5,7 +5,7 @@ source pubkey.txt
 echo $pubkey
 
 ./safecoind -pubkey=$pubkey -ac_name=REVS -ac_supply=1300000 -addnode=78.47.196.146 $1 &
-./safecoind -pubkey=$pubkey -ac_name=SUPERNET -ac_supply=816061 -addnode=78.47.196.146 $1 &
+./safecoind -pubkey=$pubkey -ac_name=FAIREXCHANGE -ac_supply=816061 -addnode=78.47.196.146 $1 &
 ./safecoind -pubkey=$pubkey -ac_name=DEX -ac_supply=999999 -addnode=78.47.196.146 $1 &
 ./safecoind -pubkey=$pubkey -ac_name=PANGEA -ac_supply=999999 -addnode=78.47.196.146 $1 &
 ./safecoind -pubkey=$pubkey -ac_name=JUMBLR -ac_supply=999999 -addnode=78.47.196.146 $1 &
