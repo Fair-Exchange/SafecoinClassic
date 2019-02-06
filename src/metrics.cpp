@@ -25,7 +25,7 @@
 #include <unistd.h>
 
 extern uint64_t ASSETCHAINS_TIMELOCKGTE;
-extern uint32_t ASSETCHAINS_ALGO, ASSETCHAINS_VERUSHASH;
+extern uint32_t ASSETCHAINS_ALGO;
 int64_t safecoin_block_unlocktime(uint32_t nHeight);
 
 void AtomicTimer::start()
@@ -122,12 +122,7 @@ int64_t GetUptime()
 
 double GetLocalSolPS()
 {
-    if (ASSETCHAINS_ALGO == ASSETCHAINS_VERUSHASH)
-    {
-        return miningTimer.rate(nHashCount);
-    }
-    else
-        return miningTimer.rate(solutionTargetChecks);
+    return miningTimer.rate(solutionTargetChecks);
 }
 
 int EstimateNetHeightInner(int height, int64_t tipmediantime,
