@@ -35,7 +35,7 @@ public:
     uint256 hashFinalSaplingRoot;
     uint32_t nTime;
     uint32_t nBits;
-    CPOSNonce nNonce;
+    uint256 nNonce;
     std::vector<unsigned char> nSolution;
 
     CBlockHeader()
