@@ -882,7 +882,7 @@ CBlockIndex *get_chainactive(int32_t height)
     //fprintf(stderr,"get_chainactive null chainActive.Tip() height %d\n",height);
     return(0);
 }
-
+#endif
 #ifdef ENABLE_WALLET
 void static BitcoinMiner(CWallet *pwallet)
 #else
@@ -1408,13 +1408,9 @@ void static BitcoinMiner()
 #ifdef ENABLE_WALLET
             if (ASSETCHAINS_ALGO == ASSETCHAINS_EQUIHASH)
                 minerThreads->create_thread(boost::bind(&BitcoinMiner, pwallet));
-            else
-                minerThreads->create_thread(boost::bind(&BitcoinMiner_noeq, pwallet));
 #else
             if (ASSETCHAINS_ALGO == ASSETCHAINS_EQUIHASH)
                 minerThreads->create_thread(&BitcoinMiner);
-            else
-                minerThreads->create_thread(&BitcoinMiner_noeq);
 #endif
         }
     }
