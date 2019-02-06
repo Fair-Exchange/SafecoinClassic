@@ -1994,6 +1994,120 @@ bool CWallet::IsMine(const CTransaction& tx)
     return false;
 }
 
+// special case handling for non-standard/Verus OP_RETURN script outputs, which need the transaction
+// to determine ownership
+isminetype CWallet::IsMine(const CTransaction& tx, uint32_t voutNum)
+{
+    vector<valtype> vSolutions;
+    txnouttype whichType;
+    const CScriptExt scriptPubKey = CScriptExt(tx.vout[voutNum].scriptPubKey);
+
+    if (!Solver(scriptPubKey, whichType, vSolutions)) {
+        if (this->HaveWatchOnly(scriptPubKey))
+            return ISMINE_WATCH_ONLY;
+        return ISMINE_NO;
+    }
+
+    CKeyID keyID;
+    CScriptID scriptID;
+    CScriptExt subscript;
+    int voutNext = voutNum + 1;
+
+    switch (whichType)
+    {
+        case TX_NONSTANDARD:
+        case TX_NULL_DATA:
+            break;
+
+        case TX_CRYPTOCONDITION:
+            // for now, default is that the first value returned will be the script, subsequent values will be
+            // pubkeys. if we have the first pub key in our wallet, we consider this spendable
+            if (vSolutions.size() > 1)
+            {
+                keyID = CPubKey(vSolutions[1]).GetID();
+                if (this->HaveKey(keyID))
+                    return ISMINE_SPENDABLE;
+            }
+            break;
+
+        case TX_PUBKEY:
+            keyID = CPubKey(vSolutions[0]).GetID();
+            if (this->HaveKey(keyID))
+                return ISMINE_SPENDABLE;
+            break;
+
+        case TX_PUBKEYHASH:
+            keyID = CKeyID(uint160(vSolutions[0]));
+            if (this->HaveKey(keyID))
+                return ISMINE_SPENDABLE;
+            break;
+
+        case TX_SCRIPTHASH:
+            scriptID = CScriptID(uint160(vSolutions[0]));
+            if (this->GetCScript(scriptID, subscript)) 
+            {
+                // if this is a CLTV, handle it differently
+                if (subscript.IsCheckLockTimeVerify())
+                {
+                    return (::IsMine(*this, subscript));
+                }
+                else
+                {
+                    isminetype ret = ::IsMine(*this, subscript);
+                    if (ret == ISMINE_SPENDABLE)
+                        return ret;
+                }
+            }
+            else if (tx.vout.size() > (voutNext = voutNum + 1) &&
+                tx.vout[voutNext].scriptPubKey.size() > 7 &&
+                tx.vout[voutNext].scriptPubKey[0] == OP_RETURN)
+            {
+                // get the opret script from next vout, verify that the front is CLTV and hash matches
+                // if so, remove it and use the solver
+                opcodetype op;
+                std::vector<uint8_t> opretData;
+                CScript::const_iterator it = tx.vout[voutNext].scriptPubKey.begin() + 1;
+                if (tx.vout[voutNext].scriptPubKey.GetOp2(it, op, &opretData))
+                {
+                    if (opretData.size() > 0 && opretData[0] == OPRETTYPE_TIMELOCK)
+                    {
+                        CScript opretScript = CScript(opretData.begin() + 1, opretData.end());
+
+                        if (CScriptID(opretScript) == scriptID &&
+                            opretScript.IsCheckLockTimeVerify())
+                        {
+                            // if we find that this is ours, we need to add this script to the wallet,
+                            // and we can then recognize this transaction
+                            isminetype t = ::IsMine(*this, opretScript);
+                            if (t != ISMINE_NO)
+                            {
+                                this->AddCScript(opretScript);
+                            }
+                            return t;
+                        }
+                    }
+                }
+            }
+            break;
+
+        case TX_MULTISIG:
+            // Only consider transactions "mine" if we own ALL the
+            // keys involved. Multi-signature transactions that are
+            // partially owned (somebody else has a key that can spend
+            // them) enable spend-out-from-under-you attacks, especially
+            // in shared-wallet situations.
+            vector<valtype> keys(vSolutions.begin()+1, vSolutions.begin()+vSolutions.size()-1);
+            if (HaveKeys(keys, *this) == keys.size())
+                return ISMINE_SPENDABLE;
+            break;
+    }
+
+    if (this->HaveWatchOnly(scriptPubKey))
+        return ISMINE_WATCH_ONLY;
+
+    return ISMINE_NO;
+}
+
 bool CWallet::IsFromMe(const CTransaction& tx) const
 {
     if (GetDebit(tx, ISMINE_ALL) > 0) {
