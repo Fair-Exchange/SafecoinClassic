@@ -441,18 +441,6 @@ public:
     //! Efficiently find an ancestor of this block.
     CBlockIndex* GetAncestor(int height);
     const CBlockIndex* GetAncestor(int height) const;
-
-    int32_t GetVerusPOSTarget() const
-    {
-        return GetBlockHeader().GetVerusPOSTarget();
-    }
-
-    bool IsVerusPOSBlock() const
-    {
-        if ( ASSETCHAINS_LWMAPOS != 0 )
-            return GetBlockHeader().IsVerusPOSBlock();
-        else return(0);
-    }
 };
 
 /** Used to marshal pointers into hashes for db storage. */

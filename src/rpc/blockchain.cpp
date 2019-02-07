@@ -299,7 +299,6 @@ UniValue blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool tx
     result.push_back(Pair("difficulty", GetDifficulty(blockindex)));
     result.push_back(Pair("chainwork", blockindex->chainPower.chainWork.GetHex()));
     result.push_back(Pair("anchor", blockindex->hashFinalSproutRoot.GetHex()));
-    result.push_back(Pair("blocktype", block.IsVerusPOSBlock() ? "minted" : "mined"));
 
     UniValue valuePools(UniValue::VARR);
     valuePools.push_back(ValuePoolDesc("sprout", blockindex->nChainSproutValue, blockindex->nSproutValue));
@@ -836,7 +835,6 @@ UniValue gettxoutsetinfo(const UniValue& params, bool fHelp)
 #define SAFECOIN_KVDURATION 1440
 #define SAFECOIN_KVBINARY 2
 extern char ASSETCHAINS_SYMBOL[SAFECOIN_ASSETCHAIN_MAXLEN];
-extern int32_t ASSETCHAINS_LWMAPOS;
 uint64_t safecoin_paxprice(uint64_t *seedp,int32_t height,char *base,char *rel,uint64_t basevolume);
 int32_t safecoin_paxprices(int32_t *heights,uint64_t *prices,int32_t max,char *base,char *rel);
 int32_t safecoin_notaries(uint8_t pubkeys[64][33],int32_t height,uint32_t timestamp);
@@ -1365,10 +1363,6 @@ UniValue getblockchaininfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("difficulty",            (double)GetNetworkDifficulty()));
     obj.push_back(Pair("verificationprogress",  progress));
     obj.push_back(Pair("chainwork",             chainActive.LastTip()->chainPower.chainWork.GetHex()));
-    if (ASSETCHAINS_LWMAPOS)
-    {
-        obj.push_back(Pair("chainstake",        chainActive.LastTip()->chainPower.chainStake.GetHex()));
-    }
     obj.push_back(Pair("pruned",                fPruneMode));
 
     SproutMerkleTree tree;

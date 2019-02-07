@@ -29,8 +29,6 @@
 #define portable_mutex_lock pthread_mutex_lock
 #define portable_mutex_unlock pthread_mutex_unlock
 
-extern void verus_hash(void *result, const void *data, size_t len);
-
 struct allocitem { uint32_t allocsize,type; };
 struct queueitem { struct queueitem *next,*prev; uint32_t allocsize,type;  };
 
@@ -1025,26 +1023,6 @@ int32_t safecoin_opreturnscript(uint8_t *script,uint8_t type,uint8_t *opret,int3
 // from all other blocks. the sequence is extremely likely, but not guaranteed to be unique for each block chain
 uint64_t safecoin_block_prg(uint32_t nHeight)
 {
-    if (strcmp(ASSETCHAINS_SYMBOL, "VRSC") != 0 || nHeight >= 12800)
-    {
-        uint64_t i, result = 0, hashSrc64 = ((uint64_t)ASSETCHAINS_MAGIC << 32) | (uint64_t)nHeight;
-        uint8_t hashSrc[8];
-        bits256 hashResult;
-
-        for ( i = 0; i < sizeof(hashSrc); i++ )
-        {
-            uint64_t x = hashSrc64 >> (i * 8);
-            hashSrc[i] = (uint8_t)(x & 0xff);
-        }
-        verus_hash(hashResult.bytes, hashSrc, sizeof(hashSrc));
-        for ( i = 0; i < 8; i++ )
-        {
-            result = (result << 8) | hashResult.bytes[i];
-        }
-        return result;
-    }
-    else
-    {
         int i;
         uint8_t hashSrc[8];
         uint64_t result, hashSrc64 = (uint64_t)ASSETCHAINS_MAGIC << 32 + nHeight;
@@ -1063,7 +1041,6 @@ uint64_t safecoin_block_prg(uint32_t nHeight)
             result = (result << 8) + hashResult.bytes[i];
         }
         return result;
-    }
 }
 
 // given a block height, this returns the unlock time for that block height, derived from
@@ -1077,19 +1054,11 @@ int64_t safecoin_block_unlocktime(uint32_t nHeight)
         unlocktime = ASSETCHAINS_TIMEUNLOCKTO;
     else
     {
-        if (strcmp(ASSETCHAINS_SYMBOL, "VRSC") != 0 || nHeight >= 12800)
-        {
-            unlocktime = safecoin_block_prg(nHeight) % (ASSETCHAINS_TIMEUNLOCKTO - ASSETCHAINS_TIMEUNLOCKFROM);
-            unlocktime += ASSETCHAINS_TIMEUNLOCKFROM;
-        }
-        else
-        {
             unlocktime = safecoin_block_prg(nHeight) / (0xffffffffffffffff / ((ASSETCHAINS_TIMEUNLOCKTO - ASSETCHAINS_TIMEUNLOCKFROM) + 1));
             // boundary and power of 2 can make it exceed to time by 1
             unlocktime = unlocktime + ASSETCHAINS_TIMEUNLOCKFROM;
             if (unlocktime > ASSETCHAINS_TIMEUNLOCKTO)
                 unlocktime--;
-        }
     }
     return ((int64_t)unlocktime);
 }
@@ -1781,10 +1750,6 @@ void safecoin_args(char *argv0)
 
         // for now, we only support 50% PoS due to other parts of the algorithm needing adjustment for
         // other values
-        if ( (ASSETCHAINS_LWMAPOS = GetArg("-ac_veruspos",0)) != 0 )
-        {
-            ASSETCHAINS_LWMAPOS = 50;
-        }
         ASSETCHAINS_SAPLING = GetArg("-ac_sapling", -1);
         if (ASSETCHAINS_SAPLING == -1)
         {
@@ -1867,11 +1832,6 @@ void safecoin_args(char *argv0)
             if ( ASSETCHAINS_ALGO != ASSETCHAINS_EQUIHASH )
             {
                 extralen += iguana_rwnum(1,&extraptr[extralen],sizeof(ASSETCHAINS_ALGO),(void *)&ASSETCHAINS_ALGO);
-            }
-
-            if ( ASSETCHAINS_LWMAPOS != 0 )
-            {
-                extralen += iguana_rwnum(1,&extraptr[extralen],sizeof(ASSETCHAINS_LWMAPOS),(void *)&ASSETCHAINS_LWMAPOS);
             }
 
             val = ASSETCHAINS_COMMISSION | (((uint64_t)ASSETCHAINS_STAKED & 0xff) << 32) | (((uint64_t)ASSETCHAINS_CC & 0xffff) << 40) | ((ASSETCHAINS_PUBLIC != 0) << 7) | ((ASSETCHAINS_PRIVATE != 0) << 6) | ASSETCHAINS_TXPOW;

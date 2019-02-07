@@ -80,8 +80,8 @@ void *chainparams_commandline(void *ptr);
 extern char ASSETCHAINS_SYMBOL[SAFECOIN_ASSETCHAIN_MAXLEN];
 extern uint16_t ASSETCHAINS_P2PPORT,ASSETCHAINS_RPCPORT;
 extern uint32_t ASSETCHAIN_INIT, ASSETCHAINS_MAGIC;
-extern int32_t VERUS_BLOCK_POSUNITS, ASSETCHAINS_LWMAPOS, ASSETCHAINS_SAPLING, ASSETCHAINS_OVERWINTER;
-extern uint64_t ASSETCHAINS_SUPPLY, ASSETCHAINS_ALGO, ASSETCHAINS_EQUIHASH, ASSETCHAINS_VERUSHASH;
+extern int32_t ASSETCHAINS_SAPLING, ASSETCHAINS_OVERWINTER;
+extern uint64_t ASSETCHAINS_SUPPLY, ASSETCHAINS_ALGO, ASSETCHAINS_EQUIHASH;
 
 const arith_uint256 maxUint = UintToArith256(uint256S("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"));
 
@@ -270,17 +270,6 @@ void *chainparams_commandline(void *ptr)
             mainParams.consensus.powAlternate = uint256S("00000f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f");
         }
 
-        if (ASSETCHAINS_LWMAPOS != 0)
-        {
-            mainParams.consensus.posLimit = uint256S("000000000f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f");
-            mainParams.consensus.nPOSAveragingWindow = 45;
-            // spacing is 1000 units per block to get better resolution, POS is 50% hard coded for now, we can vary it later
-            // when we get reliable integer math on nLwmaPOSAjustedWeight
-            mainParams.consensus.nPOSTargetSpacing = VERUS_BLOCK_POSUNITS * 2;
-            // nLwmaPOSAjustedWeight = (N+1)/2 * (0.9989^(500/nPOSAveragingWindow)) * nPOSTargetSpacing
-            // this needs to be recalculated if VERUS_BLOCK_POSUNITS is changed
-            mainParams.consensus.nLwmaPOSAjustedWeight = 46531;
-        }
 
         // only require coinbase protection on Verus from the Safecoin family of coins
         if (strcmp(ASSETCHAINS_SYMBOL,"VRSC") == 0)

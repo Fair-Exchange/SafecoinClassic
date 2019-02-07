@@ -75,7 +75,6 @@ using namespace std;
 
 extern void ThreadSendAlert();
 extern int32_t SAFECOIN_LOADINGBLOCKS;
-extern bool VERUS_MINTBLOCKS;
 
 ZCJoinSplit* pzcashParams = NULL;
 
@@ -195,7 +194,7 @@ void Shutdown()
     /// for example if the data directory was found to be locked.
     /// Be sure that anything that writes files or flushes caches only does this if the respective
     /// module was initialized.
-    RenameThread("verus-shutoff");
+    RenameThread("safecoin-shutoff");
     mempool.AddTransactionsUpdated(1);
 
     StopHTTPRPC();
@@ -1163,16 +1162,6 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     ECC_Start();
     globalVerifyHandle.reset(new ECCVerifyHandle());
 
-    // set the hash algorithm to use for this chain
-    extern uint32_t ASSETCHAINS_ALGO, ASSETCHAINS_VERUSHASH;
-    CVerusHash::init();
-    CVerusHashV2::init();
-    if (ASSETCHAINS_ALGO == ASSETCHAINS_VERUSHASH)
-    {
-        // initialize VerusHash
-        CBlockHeader::SetVerusHash();
-    }
-
     // Sanity check
     if (!InitSanityCheck())
         return InitError(_("Initialization sanity check failed. Safecoin is shutting down."));
@@ -1891,15 +1880,19 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     StartNode(threadGroup, scheduler);
 
+    // Monitor the chain, and alert if we get blocks much quicker or slower than expected
+    int64_t nPowTargetSpacing = Params().GetConsensus().nPowTargetSpacing;
+    CScheduler::Function f = boost::bind(&PartitionCheck, &IsInitialBlockDownload,
+                                         boost::ref(cs_main), boost::cref(pindexBestHeader), nPowTargetSpacing);
+    scheduler.scheduleEvery(f, nPowTargetSpacing);
+
 #ifdef ENABLE_MINING
     // Generate coins in the background
  #ifdef ENABLE_WALLET
-    VERUS_MINTBLOCKS = GetBoolArg("-mint", false);
-
     if (pwalletMain || !GetArg("-mineraddress", "").empty())
-        GenerateBitcoins(GetBoolArg("-gen", false), pwalletMain, GetArg("-genproclimit", -1));
+        GenerateBitcoins(GetBoolArg("-gen", false), pwalletMain, GetArg("-genproclimit", 0));
  #else
-    GenerateBitcoins(GetBoolArg("-gen", false), GetArg("-genproclimit", -1));
+    GenerateBitcoins(GetBoolArg("-gen", false), GetArg("-genproclimit", 0));
  #endif
 #endif
 

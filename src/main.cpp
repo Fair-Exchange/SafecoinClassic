@@ -3848,7 +3848,7 @@ bool static DisconnectTip(CValidationState &state, bool fBare = false) {
     for (int i = 0; i < block.vtx.size(); i++)
     {
         CTransaction &tx = block.vtx[i];
-        //if ((i == (block.vtx.size() - 1)) && ((ASSETCHAINS_LWMAPOS && block.IsVerusPOSBlock()) || (ASSETCHAINS_STAKED != 0 && (safecoin_isPoS((CBlock *)&block) != 0))))
+        //if ((i == (block.vtx.size() - 1)) && ((ASSETCHAINS_STAKED != 0 && (safecoin_isPoS((CBlock *)&block) != 0))))
         if ((i == (block.vtx.size() - 1)) && (ASSETCHAINS_STAKED != 0 && (safecoin_isPoS((CBlock *)&block) != 0)))
         {
             EraseFromWallets(tx.GetHash());
@@ -4751,7 +4751,7 @@ bool CheckBlock(int32_t *futureblockp,int32_t height,CBlockIndex *pindex,const C
                     //LogPrintf("Rejected by mempool, reason: .%s.\n", state.GetRejectReason().c_str());
                     // take advantage of other checks, but if we were only rejected because it is a valid staking
                     // transaction, sync with wallets and don't mark as a reject
-                    if (i == (block.vtx.size() - 1) && ASSETCHAINS_LWMAPOS && block.IsVerusPOSBlock() && state.GetRejectReason() == "staking")
+                    if (i == (block.vtx.size() - 1) && state.GetRejectReason() == "staking")
                     {
                         sTx = Tx;
                         ptx = &sTx;
