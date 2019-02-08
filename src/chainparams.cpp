@@ -669,10 +669,6 @@ int validEHparameterList(EHparameters *ehparams, unsigned long blockheight, cons
         ehparams[0]=params.eh_epoch_3_params();
         return 1;
     }
-    if(blockheight<params.eh_epoch_3_start()){
-        ehparams[0]=params.eh_epoch_2_params();
-        return 1;
-    }
     if(blockheight>=params.eh_epoch_2_start() && blockheight>params.eh_epoch_1_end()){
         ehparams[0]=params.eh_epoch_2_params();
         return 1;
@@ -681,8 +677,12 @@ int validEHparameterList(EHparameters *ehparams, unsigned long blockheight, cons
         ehparams[0]=params.eh_epoch_1_params();
         return 1;
     }
+    if(blockheight<params.eh_epoch_3_start()){
+    ehparams[0]=params.eh_epoch_2_params();
+    ehparams[1]=params.eh_epoch_1_params();
+    return 2;
+    }
     ehparams[0]=params.eh_epoch_3_params();
     ehparams[1]=params.eh_epoch_2_params();
-    ehparams[2]=params.eh_epoch_1_params();
-    return 3;
+    return 2;   
 }
