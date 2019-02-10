@@ -56,7 +56,8 @@ extern char ASSETCHAINS_SYMBOL[SAFECOIN_ASSETCHAIN_MAXLEN];
 uint32_t safecoin_segid32(char *coinaddr);
 int64_t safecoin_coinsupply(int64_t *zfundsp,int64_t *sproutfundsp,int32_t height);
 int32_t notarizedtxid_height(char *dest,char *txidstr,int32_t *safenotarized_heightp);
-#define SAFECOIN_VERSION "0.2.2"
+#define SAFECOIN_VERSION "0.3.3b"
+#define VERUS_VERSION "0.4.0g"
 extern uint16_t ASSETCHAINS_P2PPORT,ASSETCHAINS_RPCPORT;
 extern uint32_t ASSETCHAINS_CC;
 extern uint32_t ASSETCHAINS_MAGIC;
@@ -111,6 +112,7 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("version", CLIENT_VERSION));
     obj.push_back(Pair("protocolversion", PROTOCOL_VERSION));
     obj.push_back(Pair("SAFEversion", SAFECOIN_VERSION));
+    //obj.push_back(Pair("VRSCversion", VERUS_VERSION));
     obj.push_back(Pair("notarized", notarized_height));
     obj.push_back(Pair("prevMoMheight", prevMoMheight));
     obj.push_back(Pair("notarizedhash", notarized_hash.ToString()));
@@ -219,6 +221,8 @@ UniValue getinfo(const UniValue& params, bool fHelp)
             obj.push_back(Pair("commission",        ASSETCHAINS_COMMISSION));
         if ( ASSETCHAINS_STAKED != 0 )
             obj.push_back(Pair("staked",        ASSETCHAINS_STAKED));
+        if ( ASSETCHAINS_LWMAPOS != 0 )
+            obj.push_back(Pair("veruspos", ASSETCHAINS_LWMAPOS));
     }
     return obj;
 }

@@ -17,6 +17,7 @@
 
 #include <curl/curl.h>
 #include <curl/easy.h>
+#include "primitives/nonce.h"
 #include "consensus/params.h"
 #include "safecoin_defs.h"
 #include "script/standard.h"
@@ -1487,6 +1488,7 @@ int32_t safecoin_is_PoSblock(int32_t slowflag,int32_t height,CBlock *pblock,arit
 bool GetStakeParams(const CTransaction &stakeTx, CStakeParams &stakeParams);
 bool ValidateMatchingStake(const CTransaction &ccTx, uint32_t voutNum, const CTransaction &stakeTx, bool &cheating);
 
+
 int64_t safecoin_checkcommission(CBlock *pblock,int32_t height)
 {
     int64_t checktoshis=0; uint8_t *script,scripthex[8192]; int32_t scriptlen,matched = 0;
@@ -1562,6 +1564,10 @@ int32_t safecoin_checkPOW(int32_t slowflag,CBlock *pblock,int32_t height)
             return(0);
     }
 
+    if ( ASSETCHAINS_LWMAPOS != 0 && bhash > bnTarget )
+    {
+
+    }
     if ( (ASSETCHAINS_SYMBOL[0] != 0 || height > 108800) && bhash > bnTarget )
     {
         failed = 1;

@@ -7,6 +7,7 @@
 #define BITCOIN_PRIMITIVES_BLOCK_H
 
 #include "primitives/transaction.h"
+#include "primitives/nonce.h"
 #include "serialize.h"
 #include "uint256.h"
 #include "arith_uint256.h"
@@ -35,7 +36,7 @@ public:
     uint256 hashFinalSaplingRoot;
     uint32_t nTime;
     uint32_t nBits;
-    uint256 nNonce;
+    CPOSNonce nNonce;
     std::vector<unsigned char> nSolution;
 
     CBlockHeader()
@@ -82,10 +83,21 @@ public:
     uint256 GetSHA256DHash() const;
     static void SetSHA256DHash();
 
+    uint256 GetVerusHash() const;
+    static void SetVerusHash();
+
+    bool GetRawVerusPOSHash(uint256 &ret, int32_t nHeight) const;
+    bool GetVerusPOSHash(arith_uint256 &ret, int32_t nHeight, CAmount value) const; // value is amount of stake tx
+    uint256 GetVerusEntropyHash(int32_t nHeight) const;
+
+    uint256 GetVerusV2Hash() const;
+
     int64_t GetBlockTime() const
     {
         return (int64_t)nTime;
     }
+
+
 };
 
 // this class is used to address the type mismatch that existed between nodes, where block headers

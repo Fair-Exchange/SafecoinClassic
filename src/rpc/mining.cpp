@@ -33,9 +33,10 @@
 
 using namespace std;
 
-extern int32_t ASSETCHAINS_ALGO, ASSETCHAINS_EQUIHASH;
+extern int32_t ASSETCHAINS_ALGO, ASSETCHAINS_EQUIHASH, ASSETCHAINS_LWMAPOS;
 extern uint64_t ASSETCHAINS_STAKED;
 extern int32_t SAFECOIN_MININGTHREADS;
+extern bool VERUS_MINTBLOCKS;
 arith_uint256 safecoin_PoWtarget(int32_t *percPoSp,arith_uint256 target,int32_t height,int32_t goalperc);
 
 /**
@@ -144,6 +145,7 @@ UniValue getnetworkhashps(const UniValue& params, bool fHelp)
 }
 
 #ifdef ENABLE_MINING
+extern bool VERUS_MINTBLOCKS;
 UniValue getgenerate(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
@@ -165,6 +167,7 @@ UniValue getgenerate(const UniValue& params, bool fHelp)
 
     LOCK(cs_main);
     UniValue obj(UniValue::VOBJ);
+    obj.push_back(Pair("staking",          VERUS_MINTBLOCKS));
     obj.push_back(Pair("generate",         GetBoolArg("-gen", false)));
     obj.push_back(Pair("numthreads",       (int64_t)SAFECOIN_MININGTHREADS));
     return obj;
@@ -342,6 +345,7 @@ UniValue setgenerate(const UniValue& params, bool fHelp)
 
     if (fGenerate && !nGenProcLimit)
     {
+        VERUS_MINTBLOCKS = 1;
         fGenerate = GetBoolArg("-gen", false);
         if ( ASSETCHAINS_STAKED == 0 )
             nGenProcLimit = SAFECOIN_MININGTHREADS;
@@ -350,6 +354,7 @@ UniValue setgenerate(const UniValue& params, bool fHelp)
     }
     else if (!fGenerate)
     {
+        VERUS_MINTBLOCKS = 0;
         SAFECOIN_MININGTHREADS = 0;
     }
     else SAFECOIN_MININGTHREADS = (int32_t)nGenProcLimit;
@@ -418,6 +423,7 @@ UniValue getmininginfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("testnet",          Params().TestnetToBeDeprecatedFieldRPC()));
     obj.push_back(Pair("chain",            Params().NetworkIDString()));
 #ifdef ENABLE_MINING
+    obj.push_back(Pair("staking",          VERUS_MINTBLOCKS));
     obj.push_back(Pair("generate",         GetBoolArg("-gen", false)));
     obj.push_back(Pair("numthreads",       (int64_t)SAFECOIN_MININGTHREADS));
 #endif

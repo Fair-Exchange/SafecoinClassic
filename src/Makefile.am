@@ -95,13 +95,20 @@ $(LIBCRYPTOCONDITIONS): $(wildcard cryptoconditions/src/*) $(wildcard cryptocond
 # But to build the less dependent modules first, we manually select their order here:
 EXTRA_LIBRARIES += \
   $(LIBBITCOIN_CRYPTO) \
+  $(LIBVERUS_PORTABLE_CRYPTO) \
   $(LIBBITCOIN_UTIL) \
   $(LIBBITCOIN_COMMON) \
   $(LIBBITCOIN_SERVER) \
   $(LIBBITCOIN_CLI) \
-  libzcash.a \
-  libsafecoin.a
-
+  libzcash.a
+EXTRA_LIBRARIES = \
+	crypto/libbitcoin_crypto.a \
+	libbitcoin_util.a \
+	libbitcoin_common.a \
+	libbitcoin_server.a \
+	libbitcoin_cli.a \
+	libzcash.a \
+	libsafecoin.a
 if ENABLE_WALLET
 BITCOIN_INCLUDES += $(BDB_CPPFLAGS)
 EXTRA_LIBRARIES += $(LIBBITCOIN_WALLET)
@@ -183,6 +190,8 @@ BITCOIN_CORE_H = \
   consensus/validation.h \
   core_io.h \
   core_memusage.h \
+  crypto/haraka.h \
+  crypto/haraka_portable.h \
   deprecation.h \
   hash.h \
   httprpc.h \
@@ -209,6 +218,7 @@ BITCOIN_CORE_H = \
   prevector.h \
   primitives/block.h \
   primitives/transaction.h \
+  primitives/nonce.h \
   protocol.h \
   pubkey.h \
   random.h \
@@ -309,6 +319,8 @@ libbitcoin_server_a_SOURCES = \
   chain.cpp \
   checkpoints.cpp \
   crosschain.cpp \
+  crypto/haraka.h \
+  crypto/haraka_portable.h \
   deprecation.cpp \
   httprpc.cpp \
   httpserver.cpp \
@@ -410,7 +422,9 @@ crypto_libbitcoin_crypto_a_SOURCES = \
   crypto/sha256.cpp \
   crypto/sha256.h \
   crypto/sha512.cpp \
-  crypto/sha512.h
+  crypto/sha512.h \
+  crypto/haraka.h \
+  crypto/haraka_portable.h
 
 if ENABLE_MINING
 EQUIHASH_TROMP_SOURCES = \
@@ -424,7 +438,7 @@ crypto_libbitcoin_crypto_a_SOURCES += \
 	${EQUIHASH_TROMP_SOURCES}
 endif
 
-# common: shared between safecoind and non-server tools
+# common: shared between zcashd and non-server tools
 libbitcoin_common_a_CPPFLAGS = -fPIC $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbitcoin_common_a_CXXFLAGS = -fPIC $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_common_a_SOURCES = \
@@ -438,6 +452,8 @@ libbitcoin_common_a_SOURCES = \
   consensus/upgrades.cpp \
   core_read.cpp \
   core_write.cpp \
+  crypto/haraka.h \
+  crypto/haraka_portable.h \
   hash.cpp \
   importcoin.cpp \
   key.cpp \
@@ -447,6 +463,7 @@ libbitcoin_common_a_SOURCES = \
   metrics.cpp \
   primitives/block.cpp \
   primitives/transaction.cpp \
+  primitives/nonce.cpp \
   protocol.cpp \
   pubkey.cpp \
   scheduler.cpp \
@@ -518,6 +535,7 @@ safecoind_LDADD = \
   $(LIBBITCOIN_ZMQ) \
   $(LIBBITCOIN_PROTON) \
   $(LIBBITCOIN_CRYPTO) \
+  $(LIBVERUS_PORTABLE_CRYPTO) \
   $(LIBZCASH) \
   $(LIBSAFECOIN) \
   $(LIBSNARK) \
@@ -540,6 +558,7 @@ safecoind_LDADD += \
   $(ZMQ_LIBS) \
   $(PROTON_LIBS) \
   $(LIBBITCOIN_CRYPTO) \
+  $(LIBVERUS_PORTABLE_CRYPTO) \
   $(LIBZCASH_LIBS)
 
 if ENABLE_PROTON
@@ -613,6 +632,7 @@ safecoin_tx_LDADD = \
   $(LIBSAFECOIN) \
   $(LIBSNARK) \
   $(LIBBITCOIN_CRYPTO) \
+  $(LIBVERUS_PORTABLE_CRYPTO) \
   $(LIBZCASH_LIBS) \
   $(LIBCRYPTOCONDITIONS)
 
@@ -659,6 +679,7 @@ libzcashconsensus_la_SOURCES = \
   crypto/sha512.cpp \
   hash.cpp \
   primitives/transaction.cpp \
+  primitives/nonce.cpp \
   pubkey.cpp \
   script/zcashconsensus.cpp \
   script/interpreter.cpp \

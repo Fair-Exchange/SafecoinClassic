@@ -51,8 +51,8 @@ const std::string CLIENT_NAME("SafeNode");
 //! git will put "#define GIT_ARCHIVE 1" on the next line inside archives. 
 #define GIT_ARCHIVE 1
 #ifdef GIT_ARCHIVE
-#define GIT_COMMIT_ID "$Format:%h$"
-#define GIT_COMMIT_DATE "$Format:%cD$"
+#define GIT_COMMIT_ID "db675d8ba1"
+#define GIT_COMMIT_DATE "Sat, 9 Feb 2019 22:46:19 -0700"
 #endif
 
 #define RENDER_BETA_STRING(num) "-beta" DO_STRINGIZE(num)

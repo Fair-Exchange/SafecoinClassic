@@ -5309,6 +5309,11 @@ int32_t safecoin_staked(CMutableTransaction &txNew,uint32_t nBits,uint32_t *bloc
     return(siglen);
 }
 
+int32_t verus_staked(CBlock *pBlock, CMutableTransaction &txNew, uint32_t &nBits, arith_uint256 &hashResult, uint8_t *utxosig, CPubKey &pk)
+{
+    return pwalletMain->VerusStakeTransaction(pBlock, txNew, nBits, hashResult, utxosig, pk);
+}
+
 int32_t ensure_CCrequirements()
 {
     extern uint8_t NOTARY_PUBKEY33[];
