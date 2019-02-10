@@ -376,7 +376,6 @@ int32_t safecoin_eligiblenotary(uint8_t pubkeys[66][33],int32_t *mids,uint32_t b
 int32_t SAFECOIN_LOADINGBLOCKS = 1;
 
 extern std::string NOTARY_PUBKEY;
-
 bool CheckProofOfWork(const CBlockHeader &blkHeader, uint8_t *pubkey33, int32_t height, const Consensus::Params& params)
 {
     extern int32_t SAFECOIN_REWIND;
@@ -395,32 +394,32 @@ bool CheckProofOfWork(const CBlockHeader &blkHeader, uint8_t *pubkey33, int32_t 
         height = safecoin_currentheight() + 1;
         //fprintf(stderr,"set height to %d\n",height);
     }
-    if ( height > 34000 && ASSETCHAINS_SYMBOL[0] == 0 ) // 0 -> non-special notary
+    if ( height > 34000 && ASSETCHAINS_SYMBOL[0] == 0 ) // 0 -> non-special notary  // Activation-Height. This is a Hardfork
     {
         special = safecoin_chosennotary(&notaryid,height,pubkey33,tiptime);
         for (i=0; i<33; i++)
         {
-            if ( pubkey33[i] != 0 )
+            if ( pubkey33[i] != 0 )													// Adds to nonz thus preventing easymining
                 nonz++;
         }
         if ( nonz == 0 )
         {
             //fprintf(stderr,"ht.%d null pubkey checkproof return\n",height);
-            return(true); // will come back via different path with pubkey set
+            return(true); // will come back via different path with pubkey set		// Yay, now special != 0 
         }
         flag = safecoin_eligiblenotary(pubkeys,mids,blocktimes,&nonzpkeys,height);
         special2 = safecoin_is_special(pubkeys,mids,blocktimes,height,pubkey33,blkHeader.nTime);
         if ( notaryid >= 0 )
         {
-            if ( height > 10000 && height < 80000 && (special != 0 || special2 > 0) )
+            if ( height > 10000 && height < 80000 && (special != 0 || special2 > 0) ) // Notaries_genesis
                 flag = 1;
-            else if ( height >= 80000 && height < 108000 && special2 > 0 )
+            else if ( height >= 80000 && height < 108000 && special2 > 0 )	// Notaries_elected0
                 flag = 1;
             else if ( height >= 108000 && special2 > 0 )
                 flag = (height > 1000000 || (height % SAFECOIN_ELECTION_GAP) > 64 || (height % SAFECOIN_ELECTION_GAP) == 0);
             else if ( height == 790833 )
                 flag = 1;
-            else if ( special2 < 0 )
+            else if ( special2 < 0 ) 												
             {
                 if ( height > 108800 )
                     flag = 0;
@@ -432,7 +431,7 @@ bool CheckProofOfWork(const CBlockHeader &blkHeader, uint8_t *pubkey33, int32_t 
                 bnTarget.SetCompact(SAFECOIN_MINDIFF_NBITS,&fNegative,&fOverflow);
             }
         }
-    }
+}
     arith_uint256 bnLimit = (height <= 1 || ASSETCHAINS_ALGO == ASSETCHAINS_EQUIHASH) ? UintToArith256(params.powLimit) : UintToArith256(params.powAlternate);
     if (fNegative || bnTarget == 0 || fOverflow || bnTarget > bnLimit)
         return error("CheckProofOfWork(): nBits below minimum work");
