@@ -52,7 +52,7 @@
 using namespace std;
 
 #if defined(NDEBUG)
-# error "Zcash cannot be compiled without assertions."
+# error "Safecoin cannot be compiled without assertions."
 #endif
 
 #include "librustzcash.h"
@@ -3095,7 +3095,7 @@ bool FindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, unsigne
 static CCheckQueue<CScriptCheck> scriptcheckqueue(128);
 
 void ThreadScriptCheck() {
-    RenameThread("zcash-scriptch");
+    RenameThread("safecoin-scriptch");
     scriptcheckqueue.Thread();
 }
 

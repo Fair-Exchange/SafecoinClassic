@@ -92,7 +92,7 @@ public:
 
         strNetworkID = "main";
         strCurrencyUnits = "SAFE";
-        bip44CoinType = 141; // As registered in https://github.com/satoshilabs/slips/blob/master/slip-0044.md 
+        bip44CoinType = 19165; // As registered in https://github.com/satoshilabs/slips/blob/master/slip-0044.md 
 
         consensus.fCoinbaseMustBeProtected = false; // true this is only true wuth Verus and enforced after block 12800
         consensus.nSubsidySlowStartInterval = 20000;
@@ -122,7 +122,9 @@ public:
         consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nActivationHeight = Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT;
 
         // The best chain should have at least this much work.
-        consensus.nMinimumChainWork = uint256S("0x00000000000000000000000000000000000000000000000000281b32ff3198a1");
+        // getblockchaininfo
+        // block: 512429
+        consensus.nMinimumChainWork = uint256S("0x000000000000000000000000000000000000000000000000000007d85a7ca10b");
 
         /**
          * The message start string is designed to be unlikely to occur in normal data.
@@ -178,7 +180,7 @@ public:
         vSeeds.clear();
         //Disabled until dnsseder is updated to support TLS connections.
         //vSeeds.push_back(CDNSSeedData("dnsseed2", "dnsseedua.local.support"));		// OleksandrBlack
-	//End Disabled
+        //End Disabled
         vSeeds.push_back(CDNSSeedData("dnsseed3", "dnsseed.local.support"));
         vSeeds.push_back(CDNSSeedData("dnsseed4", "dnsseed.fair.exchange"));
         vSeeds.push_back(CDNSSeedData("explorer", "explorer.safecoin.org"));
@@ -343,11 +345,12 @@ void *chainparams_commandline(void *ptr)
 				(170242, uint256S("0x00000011069f756ed14d4967b9862331ebb2f41a2928291066981258adc672d5"))	//switch to equihash 144,5
 				(360000, uint256S("0x00000260ec5c16afbc1d4e70f9616e60bbc3222ad3604c0d2acdf716da7f8b9c"))
 				(420000, uint256S("0x000002f4a612958896c215e9541a3036fd0401377c03e00d5a5e9fb3dbd379a4"))       //add TLS
-				(469630, uint256S("0x000001712c534cca9aca4fac0cf565557ddd8a60ae60b1b8a66f16a0072d608a")),       			
-				(int64_t)1547217229,	// * UNIX timestamp of last checkpoint block
-				(int64_t)814979,		// * total number of transactions between genesis and last checkpoint
+				(469630, uint256S("0x000001712c534cca9aca4fac0cf565557ddd8a60ae60b1b8a66f16a0072d608a"))
+				(512429, uint256S("0x000004710d95421263db721829985e2a43c903718444443c1824b954df523fc1")),       			
+				(int64_t)1549807875,	// * UNIX timestamp of last checkpoint block
+				(int64_t)877839,		// * total number of transactions between genesis and last checkpoint
 										//   (the tx=... number in the SetBestChain debug.log lines)
-				(double)1000			// * estimated number of transactions per day after checkpoint
+				(double)2163			// * estimated number of transactions per day after checkpoint
 										//   total number of tx / (checkpoint block height / (24 * 24))
 		};
     }

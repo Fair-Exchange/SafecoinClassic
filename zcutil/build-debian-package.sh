@@ -5,8 +5,8 @@
 set -e
 set -x
 
-BUILD_PATH="/tmp/verus-cli"
-PACKAGE_NAME="verus-cli"
+BUILD_PATH="/tmp/safebuild"
+PACKAGE_NAME="safecoin"
 SRC_PATH=`pwd`
 SRC_DEB=$SRC_PATH/contrib/debian
 SRC_DOC=$SRC_PATH/doc
@@ -20,7 +20,7 @@ fi
 ## PACKAGE_VERSION=$($SRC_PATH/src/zcashd --version | grep version | cut -d' ' -f4 | tr -d v)
 ## Need version setting from environment
 
-PACKAGE_VERSION=0.3.10-beta
+PACKAGE_VERSION=2.0.0
 
 ##
 ## Also, what does the sed end up doing?
@@ -46,10 +46,8 @@ chmod 0755 -R $BUILD_DIR/*
 # Copy binaries
 cp $SRC_PATH/src/safecoind $DEB_BIN
 strip $DEB_BIN/safecoind
-cp $SRC_PATH/src/verusd $DEB_BIN
 cp $SRC_PATH/src/safecoin-cli $DEB_BIN
 strip $DEB_BIN/safecoin-cli
-cp $SRC_PATH/src/verus $DEB_BIN
 cp $SRC_PATH/zcutil/fetch-params.sh $DEB_BIN/zcash-fetch-params
 # Copy docs
 cp $SRC_PATH/doc/release-notes/release-notes-1.0.0.md $DEB_DOC/changelog
