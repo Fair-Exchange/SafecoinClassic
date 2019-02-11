@@ -426,10 +426,30 @@ bool CheckProofOfWork(const CBlockHeader &blkHeader, uint8_t *pubkey33, int32_t 
                     flag = 0;
                 else fprintf(stderr,"ht.%d notaryid.%d special.%d flag.%d special2.%d\n",height,notaryid,special,flag,special2);
             }
-            if ( (flag != 0 || special2 > 0) && special2 != -2 && (height % 2 != 0) )
+            // This can be used to control the reward split.
+            // Set heights according to activation heights of safenode tiers
+            if ( (flag != 0 || special2 > 0) && special2 != -2 )       
             {
+				if ( height > 554999 && height < 666000 && (height % 2 != 0 ) ) // Reward split control (50%)
+				{
                 //fprintf(stderr,"EASY MINING ht.%d\n",height);
                 bnTarget.SetCompact(SAFECOIN_MINDIFF_NBITS,&fNegative,&fOverflow);
+				}
+				else if ( height > 665999 && height < 777000 && ( ( height % 2 != 0 ) || ( height % 3 = 0 ) )    // Reward split control (65%)
+				{
+                //fprintf(stderr,"EASY MINING ht.%d\n",height);
+                bnTarget.SetCompact(SAFECOIN_MINDIFF_NBITS,&fNegative,&fOverflow);
+				}
+				else if ( height > 776999 && height < 888000 && ( ( height % 2 != 0 ) || ( height % 3 = 0 ) || ( height % 4 = 0 )  )    // Reward split control (83%)
+				{
+                //fprintf(stderr,"EASY MINING ht.%d\n",height);
+                bnTarget.SetCompact(SAFECOIN_MINDIFF_NBITS,&fNegative,&fOverflow);
+				}
+				else if ( height > 887999 )    // Reward split control (no limit)
+				{
+                //fprintf(stderr,"EASY MINING ht.%d\n",height);
+                bnTarget.SetCompact(SAFECOIN_MINDIFF_NBITS,&fNegative,&fOverflow);
+				}
             }
         }
     }
