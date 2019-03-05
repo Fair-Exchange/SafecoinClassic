@@ -77,6 +77,8 @@ void ThreadSendAlert()
 
     // These versions are protocol versions
     // 170002 : 1.0.0
+    // 170021 : 2.0.0-2.0.1
+    //
     alert.nMinVer       = 170002;
     alert.nMaxVer       = 170020;
 
@@ -88,7 +90,7 @@ void ThreadSendAlert()
     //  4000 or higher will put the RPC into safe mode
     alert.nPriority     = 4000;
     alert.strComment    = "";
-    alert.strStatusBar  = "Your client is out of date and incompatible with the SafeNode network upgrade. Please update to the most recent version of Safecoin (2.0.0 or later).";
+    alert.strStatusBar  = "Your client is out of date and incompatible with the SafeNode network upgrade. Please update to the most recent version of Safecoin (2.0.1 or later).";
     alert.strRPCError   = alert.strStatusBar;
 
     // Set specific client version/versions here. If setSubVer is empty, no filtering on subver is done:
