@@ -56,7 +56,7 @@ extern char ASSETCHAINS_SYMBOL[SAFECOIN_ASSETCHAIN_MAXLEN];
 uint32_t safecoin_segid32(char *coinaddr);
 int64_t safecoin_coinsupply(int64_t *zfundsp,int64_t *sproutfundsp,int32_t height);
 int32_t notarizedtxid_height(char *dest,char *txidstr,int32_t *safenotarized_heightp);
-#define SAFECOIN_VERSION "2.0.0"
+#define SAFECOIN_VERSION "2.0.1"
 #define VERUS_VERSION "0.4.0g"
 extern uint16_t ASSETCHAINS_P2PPORT,ASSETCHAINS_RPCPORT;
 extern uint32_t ASSETCHAINS_CC;

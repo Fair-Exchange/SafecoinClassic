@@ -95,9 +95,9 @@ class PosixRandomAccessFile: public RandomAccessFile {
 // problems for very large databases.
 class MmapLimiter {
  public:
-  // Up to 1000 mmaps for 64-bit binaries; none for smaller pointer sizes.
+  // Up to 4096 mmaps for 64-bit binaries; none for smaller pointer sizes.
   MmapLimiter() {
-    SetAllowed(sizeof(void*) >= 8 ? 1000 : 0);
+    SetAllowed(sizeof(void*) >= 8 ? 4096 : 0);
   }
 
   // If another mmap slot is available, acquire it and return true.
