@@ -450,6 +450,27 @@ TEST(WalletTests, SetInvalidSaplingNoteDataInCWalletTx) {
     EXPECT_THROW(wtx.SetSaplingNoteData(noteData), std::logic_error);
 }
 
+TEST(WalletTests, CheckSproutNoteCommitmentAgainstNotePlaintext) {
+    CWallet wallet;
+
+    auto sk = libzcash::SproutSpendingKey::random();
+    auto address = sk.address();
+    auto dec = ZCNoteDecryption(sk.receiving_key());
+
+    auto wtx = GetInvalidCommitmentSproutReceive(sk, 10, true);
+    auto note = GetSproutNote(sk, wtx, 0, 1);
+    auto nullifier = note.nullifier(sk);
+
+    auto hSig = wtx.vjoinsplit[0].h_sig(
+        *params, wtx.joinSplitPubKey);
+
+    ASSERT_THROW(wallet.GetSproutNoteNullifier(
+        wtx.vjoinsplit[0],
+        address,
+        dec,
+        hSig, 1), libzcash::note_decryption_failed);
+}
+
 TEST(WalletTests, GetSproutNoteNullifier) {
     CWallet wallet;
 
@@ -479,27 +500,6 @@ TEST(WalletTests, GetSproutNoteNullifier) {
         dec,
         hSig, 1);
     EXPECT_EQ(nullifier, ret);
-}
-
-TEST(WalletTests, CheckSproutNoteCommitmentAgainstNotePlaintext) {
-    CWallet wallet;
-
-    auto sk = libzcash::SproutSpendingKey::random();
-    auto address = sk.address();
-    auto dec = ZCNoteDecryption(sk.receiving_key());
-
-    auto wtx = GetInvalidCommitmentSproutReceive(sk, 10, true);
-    auto note = GetSproutNote(sk, wtx, 0, 1);
-    auto nullifier = note.nullifier(sk);
-
-    auto hSig = wtx.vjoinsplit[0].h_sig(
-        *params, wtx.joinSplitPubKey);
-
-    ASSERT_THROW(wallet.GetSproutNoteNullifier(
-        wtx.vjoinsplit[0],
-        address,
-        dec,
-        hSig, 1), libzcash::note_decryption_failed);
 }
 
 TEST(WalletTests, FindMySaplingNotes) {
