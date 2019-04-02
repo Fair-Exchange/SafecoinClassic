@@ -8,7 +8,7 @@
 #include "zcash/NoteEncryption.hpp"
 
 CWalletTx GetValidReceive(ZCJoinSplit& params,
-                                                          const libzcash::SpendingKey& sk,
+                                const libzcash::SpendingKey& sk,
                                 CAmount value,
                                 bool randomInputs,
                                 int32_t version = 2);
