@@ -26,7 +26,7 @@
 #include "zcash/IncrementalMerkleTree.hpp"
 //#include "veruslaunch.h"
 
-/** 
+/**
  * Pruned version of CTransaction: only retains metadata and unspent transaction outputs
  *
  * Serialized format:
@@ -128,10 +128,9 @@ public:
     }
 
     void ClearUnspendable() {
-        BOOST_FOREACH(CTxOut &txout, vout) {
+        for (CTxOut &txout : vout)
             if (txout.scriptPubKey.IsUnspendable())
                 txout.SetNull();
-        }
         Cleanup();
     }
 
@@ -236,7 +235,7 @@ public:
     //! check whether the entire CCoins is spent
     //! note that only !IsPruned() CCoins can be serialized
     bool IsPruned() const {
-        BOOST_FOREACH(const CTxOut &out, vout)
+        for (const CTxOut &out : vout)
             if (!out.IsNull())
                 return false;
         return true;
@@ -244,17 +243,15 @@ public:
 
     size_t DynamicMemoryUsage() const {
         size_t ret = memusage::DynamicUsage(vout);
-        BOOST_FOREACH(const CTxOut &out, vout) {
+        for (const CTxOut &out : vout)
             ret += RecursiveDynamicUsage(out.scriptPubKey);
-        }
         return ret;
     }
 
     int64_t TotalTxValue() const {
         int64_t total = 0;
-        BOOST_FOREACH(const CTxOut &out, vout) {
+        for (const CTxOut &out : vout)
             total += out.nValue;
-        }
         return total;
     }
 };
@@ -283,8 +280,8 @@ struct CCoinsCacheEntry
     unsigned char flags;
 
     enum Flags {
-        DIRTY = (1 << 0), // This cache entry is potentially different from the version in the parent view.
-        FRESH = (1 << 1), // The parent view does not have this entry (or it is pruned).
+        DIRTY = 1 << 0, // This cache entry is potentially different from the version in the parent view.
+        FRESH = 1 << 1, // The parent view does not have this entry (or it is pruned).
     };
 
     CCoinsCacheEntry() : coins(), flags(0) {}
@@ -297,7 +294,7 @@ struct CAnchorsSproutCacheEntry
     unsigned char flags;
 
     enum Flags {
-        DIRTY = (1 << 0), // This cache entry is potentially different from the version in the parent view.
+        DIRTY = 1 << 0, // This cache entry is potentially different from the version in the parent view.
     };
 
     CAnchorsSproutCacheEntry() : entered(false), flags(0) {}
@@ -310,7 +307,7 @@ struct CAnchorsSaplingCacheEntry
     unsigned char flags;
 
     enum Flags {
-        DIRTY = (1 << 0), // This cache entry is potentially different from the version in the parent view.
+        DIRTY = 1 << 0, // This cache entry is potentially different from the version in the parent view.
     };
 
     CAnchorsSaplingCacheEntry() : entered(false), flags(0) {}
@@ -322,7 +319,7 @@ struct CNullifiersCacheEntry
     unsigned char flags;
 
     enum Flags {
-        DIRTY = (1 << 0), // This cache entry is potentially different from the version in the parent view.
+        DIRTY = 1 << 0, // This cache entry is potentially different from the version in the parent view.
     };
 
     CNullifiersCacheEntry() : entered(false), flags(0) {}
@@ -428,10 +425,10 @@ public:
 
 class CCoinsViewCache;
 
-/** 
+/**
  * A reference to a mutable cache entry. Encapsulating it allows us to run
  *  cleanup code after the modification is finished, and keeping track of
- *  concurrent modifications. 
+ *  concurrent modifications.
  */
 class CCoinsModifier
 {
@@ -488,7 +485,7 @@ protected:
 
     /**
      * Make mutable so that we can "fill the cache" even from Get-methods
-     * declared as "const".  
+     * declared as "const".
      */
     mutable uint256 hashBlock;
     mutable CCoinsMap cacheCoins;
@@ -564,7 +561,7 @@ public:
     //! Calculate the size of the cache (in bytes)
     size_t DynamicMemoryUsage() const;
 
-    /** 
+    /**
      * Amount of bitcoins coming in to a transaction
      * Note that lightweight clients may not know anything besides the hash of previous transactions,
      * so may not be able to calculate this.

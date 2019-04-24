@@ -32,9 +32,8 @@ void AsyncRPCQueue::run(size_t workerId) {
         std::shared_ptr<AsyncRPCOperation> operation;
         {
             std::unique_lock<std::mutex> guard(lock_);
-            while (operation_id_queue_.empty() && !isClosed() && !isFinishing()) {
+            while (operation_id_queue_.empty() && !isClosed() && !isFinishing())
                 this->condition_.wait(guard);
-            }
 
             // Exit if the queue is empty and we are finishing up
             if (isFinishing() && operation_id_queue_.empty()) {
@@ -55,9 +54,8 @@ void AsyncRPCQueue::run(size_t workerId) {
 
             // Search operation map
             AsyncRPCOperationMap::const_iterator iter = operation_map_.find(key);
-            if (iter != operation_map_.end()) {
+            if (iter != operation_map_.end())
                 operation = iter->second;
-            }
         }
 
         if (!operation) {
@@ -85,9 +83,8 @@ void AsyncRPCQueue::addOperation(const std::shared_ptr<AsyncRPCOperation> &ptrOp
     std::lock_guard<std::mutex> guard(lock_);
 
     // Don't add if queue is closed or finishing
-    if (isClosed() || isFinishing()) {
+    if (isClosed() || isFinishing())
         return;
-    }
 
     AsyncRPCOperationId id = ptrOperation->getId();
     operation_map_.emplace(id, ptrOperation);
@@ -103,9 +100,8 @@ std::shared_ptr<AsyncRPCOperation> AsyncRPCQueue::getOperationForId(AsyncRPCOper
 
     std::lock_guard<std::mutex> guard(lock_);
     AsyncRPCOperationMap::const_iterator iter = operation_map_.find(id);
-    if (iter != operation_map_.end()) {
+    if (iter != operation_map_.end())
         ptr = iter->second;
-    }
     return ptr;
 }
 
@@ -157,9 +153,8 @@ void AsyncRPCQueue::finish() {
  */
 void AsyncRPCQueue::cancelAllOperations() {
     std::lock_guard<std::mutex> guard(lock_);
-    for (auto key : operation_map_) {
+    for (auto key : operation_map_)
         key.second->cancel();
-    }
     this->condition_.notify_all();
 }
 
@@ -193,9 +188,8 @@ size_t AsyncRPCQueue::getNumberOfWorkers() const {
 std::vector<AsyncRPCOperationId> AsyncRPCQueue::getAllOperationIds() const {
     std::lock_guard<std::mutex> guard(lock_);
     std::vector<AsyncRPCOperationId> v;
-    for(auto & entry: operation_map_) {
+    for(auto & entry: operation_map_)
         v.push_back(entry.first);
-    }
     return v;
 }
 
@@ -224,10 +218,8 @@ void AsyncRPCQueue::wait_for_worker_threads() {
         std::lock_guard<std::mutex> guard(lock_);
         this->condition_.notify_all();
     }
-        
-    for (std::thread & t : this->workers_) {
-        if (t.joinable()) {
+
+    for (std::thread & t : this->workers_)
+        if (t.joinable())
             t.join();
-        }
-    }
 }

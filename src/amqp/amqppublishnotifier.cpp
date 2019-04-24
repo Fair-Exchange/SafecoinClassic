@@ -84,18 +84,15 @@ void AMQPAbstractPublishNotifier::Shutdown()
     // terminate the connection if this is the last publisher using this address
     if (count == 1) {
         handler_->terminate();
-        if (thread_.get() != nullptr) {
-            if (thread_->joinable()) {
-                thread_->join();
-            }
-        }
+        if (thread_.get() != nullptr && thread_->joinable())
+            thread_->join();
     }
 }
 
 
 bool AMQPAbstractPublishNotifier::SendMessage(const char *command, const void* data, size_t size)
 {
-    try { 
+    try {
         proton::binary content;
         const char *p = (const char *)data;
         content.assign(p, p + size);

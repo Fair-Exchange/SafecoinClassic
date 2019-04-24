@@ -64,9 +64,9 @@ UniValue JSONRPCError(int code, const string& message)
 /** Username used when cookie authentication is in use (arbitrary, only for
  * recognizability in debugging/logging purposes)
  */
-static const std::string COOKIEAUTH_USER = "__cookie__";
+static const string COOKIEAUTH_USER = "__cookie__";
 /** Default name for auth cookie file */
-static const std::string COOKIEAUTH_FILE = ".cookie";
+static const string COOKIEAUTH_FILE = ".cookie";
 
 boost::filesystem::path GetAuthCookieFile()
 {
@@ -75,16 +75,16 @@ boost::filesystem::path GetAuthCookieFile()
     return path;
 }
 
-bool GenerateAuthCookie(std::string *cookie_out)
+bool GenerateAuthCookie(string *cookie_out)
 {
     unsigned char rand_pwd[32];
     GetRandBytes(rand_pwd, 32);
-    std::string cookie = COOKIEAUTH_USER + ":" + EncodeBase64(&rand_pwd[0],32);
+    string cookie = COOKIEAUTH_USER + ":" + EncodeBase64(&rand_pwd[0],32);
 
     /** the umask determines what permissions are used to create this file -
      * these are set to 077 in init.cpp unless overridden with -sysperms.
      */
-    std::ofstream file;
+    ofstream file;
     boost::filesystem::path filepath = GetAuthCookieFile();
     file.open(filepath.string().c_str());
     if (!file.is_open()) {
@@ -95,23 +95,23 @@ bool GenerateAuthCookie(std::string *cookie_out)
     file.close();
     LogPrintf("Generated RPC authentication cookie %s\n", filepath.string());
 
-    if (cookie_out)
+    if (cookie_out != nullptr)
         *cookie_out = cookie;
     return true;
 }
 
-bool GetAuthCookie(std::string *cookie_out)
+bool GetAuthCookie(string *cookie_out)
 {
-    std::ifstream file;
-    std::string cookie;
+    ifstream file;
+    string cookie;
     boost::filesystem::path filepath = GetAuthCookieFile();
     file.open(filepath.string().c_str());
     if (!file.is_open())
         return false;
-    std::getline(file, cookie);
+    getline(file, cookie);
     file.close();
 
-    if (cookie_out)
+    if (cookie_out != nullptr)
         *cookie_out = cookie;
     return true;
 }

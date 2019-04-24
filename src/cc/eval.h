@@ -134,7 +134,7 @@ bool RunCCEval(const CC *cond, const CTransaction &tx, unsigned int nIn);
  * Virtual machine to use in the case of on-chain app evaluation
  */
 class AppVM
-{ 
+{
 public:
     /*
      * in:  header   - paramters agreed upon by all players
@@ -184,17 +184,17 @@ public:
         if (IsBack)
             READWRITE(txHash);
         SerSymbol(s, ser_action);
-        if (s.size() == 0) return;
+        if (s.empty()) return;
         READWRITE(MoM);
         READWRITE(MoMDepth);
         READWRITE(ccId);
-        if (s.size() == 0) return;
+        if (s.empty()) return;
         if (IsBack) {
             READWRITE(MoMoM);
             READWRITE(MoMoMDepth);
         }
     }
-    
+
     template <typename Stream>
     void SerSymbol(Stream& s, CSerActionSerialize act)
     {
@@ -206,7 +206,7 @@ public:
     {
         size_t readlen = std::min(sizeof(symbol), s.size());
         char *nullPos = (char*) memchr(&s[0], 0, readlen);
-        if (!nullPos)
+        if (nullPos == nullptr)
             throw std::ios_base::failure("couldn't parse symbol");
         s.read(symbol, nullPos-&s[0]+1);
     }
@@ -214,14 +214,10 @@ public:
     template <typename Stream>
     bool DetectBackNotarisation(Stream& s, CSerActionUnserialize act)
     {
-        if (ASSETCHAINS_SYMBOL[0]) return 1;
-        if (s.size() >= 72) {
-            if (strcmp("BTC", &s[68]) == 0) return 1;
-            if (strcmp("SAFE", &s[68]) == 0) return 1;
-        }
-        return 0;
+        return ASSETCHAINS_SYMBOL[0] != '\0' ||
+            (s.size() >= 72 && (strcmp("BTC", &s[68]) == 0 || strcmp("SAFE", &s[68]) == 0));
     }
-    
+
     template <typename Stream>
     bool DetectBackNotarisation(Stream& s, CSerActionSerialize act)
     {
@@ -268,7 +264,7 @@ public:
     }
 
     ADD_SERIALIZE_METHODS;
-    
+
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(VARINT(nIndex));

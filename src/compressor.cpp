@@ -9,6 +9,8 @@
 #include "pubkey.h"
 #include "script/standard.h"
 
+#include <math.h>
+
 bool CScriptCompressor::IsToKeyID(CKeyID &hash) const
 {
     if (script.size() == 25 && script[0] == OP_DUP && script[1] == OP_HASH160
@@ -144,18 +146,17 @@ uint64_t CTxOutCompressor::CompressAmount(uint64_t n)
     if (n == 0)
         return 0;
     int e = 0;
-    while (((n % 10) == 0) && e < 9) {
+    while (n%10 == 0 && e < 9) {
         n /= 10;
         e++;
     }
     if (e < 9) {
-        int d = (n % 10);
-        assert(d >= 1 && d <= 9);
+        int d = n % 10;
+        assert(d != 0);
         n /= 10;
         return 1 + (n*9 + d - 1)*10 + e;
-    } else {
-        return 1 + (n - 1)*10 + 9;
     }
+    return 1 + (n - 1)*10 + 9;
 }
 
 uint64_t CTxOutCompressor::DecompressAmount(uint64_t x)
@@ -177,9 +178,6 @@ uint64_t CTxOutCompressor::DecompressAmount(uint64_t x)
     } else {
         n = x+1;
     }
-    while (e) {
-        n *= 10;
-        e--;
-    }
+    n *= pow(10, e);
     return n;
 }

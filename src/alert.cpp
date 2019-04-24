@@ -44,13 +44,13 @@ void CUnsignedAlert::SetNull()
     strRPCError.clear();
 }
 
-std::string CUnsignedAlert::ToString() const
+string CUnsignedAlert::ToString() const
 {
-    std::string strSetCancel;
-    BOOST_FOREACH(int n, setCancel)
+    string strSetCancel;
+    for (int n : setCancel)
         strSetCancel += strprintf("%d ", n);
-    std::string strSetSubVer;
-    BOOST_FOREACH(const std::string& str, setSubVer)
+    string strSetSubVer;
+    for (const string& str : setSubVer)
         strSetSubVer += "\"" + str + "\" ";
     return strprintf(
         "CAlert(\n"
@@ -92,7 +92,7 @@ void CAlert::SetNull()
 
 bool CAlert::IsNull() const
 {
-    return (nExpiration == 0);
+    return nExpiration == 0;
 }
 
 uint256 CAlert::GetHash() const
@@ -102,27 +102,26 @@ uint256 CAlert::GetHash() const
 
 bool CAlert::IsInEffect() const
 {
-    return (GetAdjustedTime() < nExpiration);
+    return GetAdjustedTime() < nExpiration;
 }
 
 bool CAlert::Cancels(const CAlert& alert) const
 {
     if (!IsInEffect())
         return false; // this was a no-op before 31403
-    return (alert.nID <= nCancel || setCancel.count(alert.nID));
+    return alert.nID <= nCancel || setCancel.count(alert.nID);
 }
 
-bool CAlert::AppliesTo(int nVersion, const std::string& strSubVerIn) const
+bool CAlert::AppliesTo(int nVersion, const string& strSubVerIn) const
 {
     // TODO: rework for client-version-embedded-in-strSubVer ?
-    return (IsInEffect() &&
-            nMinVer <= nVersion && nVersion <= nMaxVer &&
-            (setSubVer.empty() || setSubVer.count(strSubVerIn)));
+    return IsInEffect() && nMinVer <= nVersion && nVersion <= nMaxVer &&
+            (setSubVer.empty() || setSubVer.count(strSubVerIn));
 }
 
 bool CAlert::AppliesToMe() const
 {
-    return AppliesTo(PROTOCOL_VERSION, FormatSubVersion(CLIENT_NAME, CLIENT_VERSION, std::vector<std::string>()));
+    return AppliesTo(PROTOCOL_VERSION, FormatSubVersion(CLIENT_NAME, CLIENT_VERSION, vector<string>()));
 }
 
 bool CAlert::RelayTo(CNode* pnode) const
@@ -136,8 +135,7 @@ bool CAlert::RelayTo(CNode* pnode) const
     if (pnode->setKnown.insert(GetHash()).second)
     {
         if (AppliesTo(pnode->nVersion, pnode->strSubVer) ||
-            AppliesToMe() ||
-            GetAdjustedTime() < nRelayUntil)
+            AppliesToMe() || GetAdjustedTime() < nRelayUntil)
         {
             pnode->PushMessage("alert", *this);
             return true;
@@ -146,7 +144,7 @@ bool CAlert::RelayTo(CNode* pnode) const
     return false;
 }
 
-bool CAlert::CheckSignature(const std::vector<unsigned char>& alertKey) const
+bool CAlert::CheckSignature(const vector<unsigned char>& alertKey) const
 {
     CPubKey key(alertKey);
     if (!key.Verify(Hash(vchMsg.begin(), vchMsg.end()), vchSig))
@@ -170,7 +168,7 @@ CAlert CAlert::getAlertByHash(const uint256 &hash)
     return retval;
 }
 
-bool CAlert::ProcessAlert(const std::vector<unsigned char>& alertKey, bool fThread)
+bool CAlert::ProcessAlert(const vector<unsigned char>& alertKey, bool fThread)
 {
     if (!CheckSignature(alertKey))
         return false;
@@ -184,18 +182,16 @@ bool CAlert::ProcessAlert(const std::vector<unsigned char>& alertKey, bool fThre
     // alerts or it will be ignored (so an attacker can't
     // send an "everything is OK, don't panic" version that
     // cannot be overridden):
-    int maxInt = std::numeric_limits<int>::max();
+    int maxInt = numeric_limits<int>::max();
     if (nID == maxInt)
     {
-        if (!(
-                nExpiration == maxInt &&
-                nCancel == (maxInt-1) &&
-                nMinVer == 0 &&
-                nMaxVer == maxInt &&
-                setSubVer.empty() &&
-                nPriority == maxInt &&
-                strStatusBar == "URGENT: Alert key compromised, upgrade required"
-                ))
+        if (nExpiration != maxInt ||
+            nCancel != maxInt-1 ||
+            nMinVer != 0 ||
+            nMaxVer != maxInt ||
+            !setSubVer.empty() ||
+            nPriority != maxInt ||
+            strStatusBar != "URGENT: Alert key compromised, upgrade required")
             return false;
     }
 
@@ -204,26 +200,25 @@ bool CAlert::ProcessAlert(const std::vector<unsigned char>& alertKey, bool fThre
         // Cancel previous alerts
         for (map<uint256, CAlert>::iterator mi = mapAlerts.begin(); mi != mapAlerts.end();)
         {
-            const CAlert& alert = (*mi).second;
+            const CAlert& alert = mi->second;
             if (Cancels(alert))
             {
                 LogPrint("alert", "cancelling alert %d\n", alert.nID);
-                uiInterface.NotifyAlertChanged((*mi).first, CT_DELETED);
-                mapAlerts.erase(mi++);
+                uiInterface.NotifyAlertChanged(mi->first, CT_DELETED);
+                mi = mapAlerts.erase(mi);
             }
             else if (!alert.IsInEffect())
             {
                 LogPrint("alert", "expiring alert %d\n", alert.nID);
-                uiInterface.NotifyAlertChanged((*mi).first, CT_DELETED);
-                mapAlerts.erase(mi++);
+                uiInterface.NotifyAlertChanged(mi->first, CT_DELETED);
+                mi = mapAlerts.erase(mi);
             }
             else
                 mi++;
         }
 
         // Check if this alert has been cancelled
-        BOOST_FOREACH(PAIRTYPE(const uint256, CAlert)& item, mapAlerts)
-        {
+        for (PAIRTYPE(const uint256, CAlert)& item : mapAlerts) {
             const CAlert& alert = item.second;
             if (alert.Cancels(*this))
             {
@@ -247,16 +242,16 @@ bool CAlert::ProcessAlert(const std::vector<unsigned char>& alertKey, bool fThre
 }
 
 void
-CAlert::Notify(const std::string& strMessage, bool fThread)
+CAlert::Notify(const string& strMessage, bool fThread)
 {
-    std::string strCmd = GetArg("-alertnotify", "");
+    string strCmd = GetArg("-alertnotify", "");
     if (strCmd.empty()) return;
 
     // Alert text should be plain ascii coming from a trusted source, but to
     // be safe we first strip anything not in safeChars, then add single quotes around
     // the whole string before passing it to the shell:
-    std::string singleQuote("'");
-    std::string safeStatus = SanitizeString(strMessage);
+    string singleQuote("'");
+    string safeStatus = SanitizeString(strMessage);
     safeStatus = singleQuote+safeStatus+singleQuote;
     boost::replace_all(strCmd, "%s", safeStatus);
 

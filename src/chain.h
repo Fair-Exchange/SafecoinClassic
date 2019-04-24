@@ -111,8 +111,8 @@ class CBlockIndex;
 // This class provides an accumulator for both the chainwork and the chainPOS value
 // CChainPower's can be compared, and the comparison ensures that work and proof of stake power
 // are both used equally to determine which chain has the most work. This makes an attack
-// that involves mining in secret completely ineffective, even before dPOW, unless a large part 
-// of the staking supply is also controlled. It also enables a faster deterministic convergence, 
+// that involves mining in secret completely ineffective, even before dPOW, unless a large part
+// of the staking supply is also controlled. It also enables a faster deterministic convergence,
 // aided by both POS and POW.
 class CChainPower
 {
@@ -125,7 +125,7 @@ class CChainPower
         CChainPower(CBlockIndex *pblockIndex);
         CChainPower(CBlockIndex *pblockIndex, const arith_uint256 &stake, const arith_uint256 &work);
         CChainPower(int32_t height) : nHeight(height), chainStake(0), chainWork(0) {}
-        CChainPower(int32_t height, const arith_uint256 &stake, const arith_uint256 &work) : 
+        CChainPower(int32_t height, const arith_uint256 &stake, const arith_uint256 &work) :
                     nHeight(height), chainStake(stake), chainWork(work) {}
 
         CChainPower &operator=(const CChainPower &chainPower)
@@ -284,14 +284,14 @@ public:
 
     //! (memory only) Sequential id assigned to distinguish order in which blocks are received.
     uint32_t nSequenceId;
-    
+
     void SetNull()
     {
-        phashBlock = NULL;
+        phashBlock = nullptr;
         newcoins = zfunds = 0;
         segid = -2;
-        pprev = NULL;
-        pskip = NULL;
+        pprev = nullptr;
+        pskip = nullptr;
         nFile = 0;
         nDataPos = 0;
         nUndoPos = 0;
@@ -335,7 +335,7 @@ public:
         nSolution      = block.nSolution;
     }
 
-    int32_t SetHeight(int32_t height)
+    void SetHeight(int32_t height)
     {
         this->chainPower.nHeight = height;
     }
@@ -367,7 +367,7 @@ public:
     {
         CBlockHeader block;
         block.nVersion       = nVersion;
-        if (pprev)
+        if (pprev != nullptr)
             block.hashPrevBlock = pprev->GetBlockHash();
         block.hashMerkleRoot = hashMerkleRoot;
         block.hashFinalSaplingRoot   = hashFinalSaplingRoot;
@@ -418,7 +418,7 @@ public:
         assert(!(nUpTo & ~BLOCK_VALID_MASK)); // Only validity flags allowed.
         if (nStatus & BLOCK_FAILED_MASK)
             return false;
-        return ((nStatus & BLOCK_VALID_MASK) >= nUpTo);
+        return (nStatus & BLOCK_VALID_MASK) >= nUpTo;
     }
 
     //! Raise the validity level of this block index entry.
@@ -467,9 +467,9 @@ public:
         if (!(s.GetType() & SER_GETHASH))
             READWRITE(VARINT(nVersion));
 
-        if (ser_action.ForRead()) {
+        if (ser_action.ForRead())
             chainPower = CChainPower();
-        }
+
         READWRITE(VARINT(chainPower.nHeight));
         READWRITE(VARINT(nStatus));
         READWRITE(VARINT(nTx));
@@ -503,16 +503,15 @@ public:
         READWRITE(nNonce);
         READWRITE(nSolution);
 
-        // Only read/write nSproutValue if the client version used to create
-        // this index was storing them.
-        if ((s.GetType() & SER_DISK) && (nVersion >= SPROUT_VALUE_VERSION)) {
-            READWRITE(nSproutValue);
-        }
-
-        // Only read/write nSaplingValue if the client version used to create
-        // this index was storing them.
-        if ((s.GetType() & SER_DISK) && (nVersion >= SAPLING_VALUE_VERSION)) {
-            READWRITE(nSaplingValue);
+        if (s.GetType() & SER_DISK) {
+            // Only read/write nSproutValue if the client version used to create
+            // this index was storing them.
+            if (nVersion >= SPROUT_VALUE_VERSION)
+                READWRITE(nSproutValue);
+            // Only read/write nSaplingValue if the client version used to create
+            // this index was storing them.
+            if (nVersion >= SAPLING_VALUE_VERSION)
+                READWRITE(nSaplingValue);
         }
     }
 
@@ -549,32 +548,32 @@ private:
     CBlockIndex *lastTip;
 
 public:
-    /** Returns the index entry for the genesis block of this chain, or NULL if none. */
+    /** Returns the index entry for the genesis block of this chain, or nullptr if none. */
     CBlockIndex *Genesis() const {
-        return vChain.size() > 0 ? vChain[0] : NULL;
+        return vChain.empty() ? nullptr : vChain.front();
     }
 
-    /** Returns the index entry for the tip of this chain, or NULL if none. */
+    /** Returns the index entry for the tip of this chain, or nullptr if none. */
     CBlockIndex *Tip() const {
-        return vChain.size() > 0 ? vChain[vChain.size() - 1] : NULL;
-    }
-    
-    /** Returns the last tip of the chain, or NULL if none. */
-    CBlockIndex *LastTip() const {
-        return vChain.size() > 0 ? lastTip : NULL;
+        return vChain.empty() ? nullptr : vChain.back();
     }
 
-    /** Returns the index entry at a particular height in this chain, or NULL if no such height exists. */
+    /** Returns the last tip of the chain, or nullptr if none. */
+    CBlockIndex *LastTip() const {
+        return vChain.empty() ? nullptr : lastTip;
+    }
+
+    /** Returns the index entry at a particular height in this chain, or nullptr if no such height exists. */
     CBlockIndex *operator[](int nHeight) const {
         if (nHeight < 0 || nHeight >= (int)vChain.size())
-            return NULL;
+            return nullptr;
         return vChain[nHeight];
     }
 
     /** Compare two chains efficiently. */
     friend bool operator==(const CChain &a, const CChain &b) {
         return a.vChain.size() == b.vChain.size() &&
-               a.vChain[a.vChain.size() - 1] == b.vChain[b.vChain.size() - 1];
+               a.vChain.back() == b.vChain.back();
     }
 
     /** Efficiently check whether a block is present in this chain. */
@@ -582,12 +581,11 @@ public:
         return (*this)[pindex->GetHeight()] == pindex;
     }
 
-    /** Find the successor of a block in this chain, or NULL if the given index is not found or is the tip. */
+    /** Find the successor of a block in this chain, or nullptr if the given index is not found or is the tip. */
     CBlockIndex *Next(const CBlockIndex *pindex) const {
         if (Contains(pindex))
             return (*this)[pindex->GetHeight() + 1];
-        else
-            return NULL;
+        return nullptr;
     }
 
     /** Return the maximal height in the chain. Is equal to chain.Tip() ? chain.Tip()->GetHeight() : -1. */
@@ -599,7 +597,7 @@ public:
     void SetTip(CBlockIndex *pindex);
 
     /** Return a CBlockLocator that refers to a block in this chain (by default the tip). */
-    CBlockLocator GetLocator(const CBlockIndex *pindex = NULL) const;
+    CBlockLocator GetLocator(const CBlockIndex *pindex = nullptr) const;
 
     /** Find the last common block between this chain and a block index entry. */
     const CBlockIndex *FindFork(const CBlockIndex *pindex) const;

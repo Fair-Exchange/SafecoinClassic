@@ -13,18 +13,12 @@ arith_uint256 CPOSNonce::posDiffMask = UintToArith256(uint256S("0000000000000000
 
 bool CPOSNonce::NewPOSActive(int32_t height)
 {
-    if ((strcmp(ASSETCHAINS_SYMBOL, "VRSC") == 0) && (height < (96480 + 100)))
-        return false;
-    else
-        return true;
+  return strcmp(ASSETCHAINS_SYMBOL, "VRSC") != 0 || height >= 96480 + 100;
 }
 
 bool CPOSNonce::NewNonceActive(int32_t height)
 {
-    if ((strcmp(ASSETCHAINS_SYMBOL, "VRSC") == 0) && (height < 96480))
-        return false;
-    else
-        return true;
+  return strcmp(ASSETCHAINS_SYMBOL, "VRSC") != 0 || height >= 96480;
 }
 
 void CPOSNonce::SetPOSEntropy(const uint256 &pastHash, uint256 txid, int32_t voutNum)
@@ -50,6 +44,7 @@ void CPOSNonce::SetPOSEntropy(const uint256 &pastHash, uint256 txid, int32_t vou
 
 bool CPOSNonce::CheckPOSEntropy(const uint256 &pastHash, uint256 txid, int32_t voutNum)
 {
+  return false;
 
     // first hash the pastHash, txid, and voutNum, to create a combined 96 bits, which will be used in the nonce
   // hashWriter << pastHash;

@@ -17,7 +17,7 @@ using namespace std;
 class CRPCConvertParam
 {
 public:
-    std::string methodName;            //! method whose params want conversion
+    string methodName;            //! method whose params want conversion
     int paramIdx;                      //! 0-based idx of param to convert
 };
 
@@ -158,25 +158,22 @@ static const CRPCConvertParam vRPCConvertParams[] =
 class CRPCConvertTable
 {
 private:
-    std::set<std::pair<std::string, int> > members;
+    set<pair<string, int> > members;
 
 public:
     CRPCConvertTable();
 
-    bool convert(const std::string& method, int idx) {
-        return (members.count(std::make_pair(method, idx)) > 0);
+    bool convert(const string& method, int idx) {
+        return members.count(make_pair(method, idx)) > 0;
     }
 };
 
 CRPCConvertTable::CRPCConvertTable()
 {
-    const unsigned int n_elem =
-        (sizeof(vRPCConvertParams) / sizeof(vRPCConvertParams[0]));
+    const unsigned int n_elem = sizeof(vRPCConvertParams) / sizeof(vRPCConvertParams[0]);
 
-    for (unsigned int i = 0; i < n_elem; i++) {
-        members.insert(std::make_pair(vRPCConvertParams[i].methodName,
-                                      vRPCConvertParams[i].paramIdx));
-    }
+    for (unsigned int i = 0; i < n_elem; i++)
+        members.insert(make_pair(vRPCConvertParams[i].methodName, vRPCConvertParams[i].paramIdx));
 }
 
 static CRPCConvertTable rpcCvtTable;
@@ -184,30 +181,25 @@ static CRPCConvertTable rpcCvtTable;
 /** Non-RFC4627 JSON parser, accepts internal values (such as numbers, true, false, null)
  * as well as objects and arrays.
  */
-UniValue ParseNonRFCJSONValue(const std::string& strVal)
+UniValue ParseNonRFCJSONValue(const string& strVal)
 {
     UniValue jVal;
-    if (!jVal.read(std::string("[")+strVal+std::string("]")) ||
-        !jVal.isArray() || jVal.size()!=1)
+    if (!jVal.read(string("[")+strVal+string("]")) || !jVal.isArray() || jVal.size() != 1)
         throw runtime_error(string("Error JSON:")+strVal);
     return jVal[0];
 }
 
 /** Convert strings to command-specific RPC representation */
-UniValue RPCConvertValues(const std::string &strMethod, const std::vector<std::string> &strParams)
+UniValue RPCConvertValues(const string &strMethod, const vector<string> &strParams)
 {
     UniValue params(UniValue::VARR);
 
-    for (unsigned int idx = 0; idx < strParams.size(); idx++) {
-        const std::string& strVal = strParams[idx];
-        if (!rpcCvtTable.convert(strMethod, idx)) {
-            // insert string value directly
-            params.push_back(strVal);
-        } else {
-            // parse string as JSON, insert bool/number/object/etc. value
-            params.push_back(ParseNonRFCJSONValue(strVal));
-        }
-    }
+    int idx = 0;
+    for (auto strVal : strParams)
+        if (!rpcCvtTable.convert(strMethod, idx++))
+            params.push_back(strVal); // insert string value directly
+        else
+            params.push_back(ParseNonRFCJSONValue(strVal)); // parse string as JSON, insert bool/number/object/etc. value
 
     return params;
 }

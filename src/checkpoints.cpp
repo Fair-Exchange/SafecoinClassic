@@ -26,15 +26,14 @@ namespace Checkpoints {
     bool CheckBlock(const CChainParams::CCheckpointData& data, int nHeight, const uint256& hash)
     {
         const MapCheckpoints& checkpoints = data.mapCheckpoints;
-        
+
         MapCheckpoints::const_iterator i = checkpoints.find(nHeight);
-        if (i == checkpoints.end()) return true;
-        return hash == i->second;
+        return i == checkpoints.end() || hash == i->second;
     }
 
     //! Guess how far we are in the verification process at the given block index
     double GuessVerificationProgress(const CChainParams::CCheckpointData& data, CBlockIndex *pindex, bool fSigchecks) {
-        if (pindex==NULL)
+        if (pindex==nullptr)
             return 0.0;
 
         int64_t nNow = time(NULL);
@@ -83,7 +82,7 @@ namespace Checkpoints {
             if (t != mapBlockIndex.end())
                 return t->second;
         }
-        return NULL;
+        return nullptr;
     }
 
 } // namespace Checkpoints

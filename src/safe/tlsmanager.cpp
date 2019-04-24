@@ -114,7 +114,7 @@ int TLSManager::waitFor(SSLConnectionRoutine eRoutine, SOCKET hSocket, SSL* ssl,
 }
 /**
  * @brief establish TLS connection to an address
- * 
+ *
  * @param hSocket socket
  * @param addrConnect the outgoing address
  * @param tls_ctx_client TLS Client context
@@ -124,7 +124,7 @@ SSL* TLSManager::connect(SOCKET hSocket, const CAddress& addrConnect)
 {
     LogPrint("net", "TLS: establishing connection (tid = %X), (peerid = %s)\n", pthread_self(), addrConnect.ToString());
 
-    SSL* ssl = NULL;
+    SSL* ssl = nullptr;
     bool bConnectedTLS = false;
 
     if ((ssl = SSL_new(tls_ctx_client))) {
@@ -140,16 +140,16 @@ SSL* TLSManager::connect(SOCKET hSocket, const CAddress& addrConnect)
     } else {
         LogPrintf("TLS: %s: %s: TLS connection to %s failed\n", __FILE__, __func__, addrConnect.ToString());
 
-        if (ssl) {
+        if (ssl != nullptr) {
             SSL_free(ssl);
-            ssl = NULL;
+            ssl = nullptr;
         }
     }
     return ssl;
 }
 /**
  * @brief Initialize TLS Context
- * 
+ *
  * @param ctxType context type
  * @param privateKeyFile private key file path
  * @param certificateFile certificate key file path
@@ -160,14 +160,14 @@ SSL_CTX* TLSManager::initCtx(
     TLSContextType ctxType,
     const boost::filesystem::path& privateKeyFile,
     const boost::filesystem::path& certificateFile,
-    const std::vector<boost::filesystem::path>& trustedDirs)
+    const vector<boost::filesystem::path>& trustedDirs)
 {
     if (!boost::filesystem::exists(privateKeyFile) ||
         !boost::filesystem::exists(certificateFile))
-        return NULL;
+        return nullptr;
 
     bool bInitialized = false;
-    SSL_CTX* tlsCtx = NULL;
+    SSL_CTX* tlsCtx = nullptr;
 
     if ((tlsCtx = SSL_CTX_new(ctxType == SERVER_CONTEXT ? TLS_server_method() : TLS_client_method()))) {
         SSL_CTX_set_mode(tlsCtx, SSL_MODE_AUTO_RETRY);
@@ -176,7 +176,7 @@ SSL_CTX* TLSManager::initCtx(
         int trustedPathsNum = 0;
 
         for (boost::filesystem::path trustedDir : trustedDirs) {
-            if (SSL_CTX_load_verify_locations(tlsCtx, NULL, trustedDir.string().c_str()) == 1)
+            if (SSL_CTX_load_verify_locations(tlsCtx, nullptr, trustedDir.string().c_str()) == 1)
                 trustedPathsNum++;
         }
 
@@ -203,7 +203,7 @@ SSL_CTX* TLSManager::initCtx(
     if (!bInitialized) {
         if (tlsCtx) {
             SSL_CTX_free(tlsCtx);
-            tlsCtx = NULL;
+            tlsCtx = nullptr;
         }
     }
 
@@ -211,7 +211,7 @@ SSL_CTX* TLSManager::initCtx(
 }
 /**
  * @brief load the certificate credentials from file.
- * 
+ *
  * @return true returns true is successful.
  * @return false returns false if an error has occured.
  */
@@ -227,7 +227,7 @@ bool TLSManager::prepareCredentials()
             boost::filesystem::path(GetArg("-tlscertpath", defaultCertPath.string())),
             GetArg("-tlskeypwd", ""));
 
-    bool bPrepared = (credStatus == credOk);
+    bool bPrepared = credStatus == credOk;
 
     if (!bPrepared) {
         if (!mapArgs.count("-tlskeypath") && !mapArgs.count("-tlscertpath")) {
@@ -248,7 +248,7 @@ bool TLSManager::prepareCredentials()
 }
 /**
  * @brief accept a TLS connection
- * 
+ *
  * @param hSocket the TLS socket.
  * @param addr incoming address.
  * @param tls_ctx_server TLS server context.
@@ -258,7 +258,7 @@ SSL* TLSManager::accept(SOCKET hSocket, const CAddress& addr)
 {
     LogPrint("net", "TLS: accepting connection from %s (tid = %X)\n", addr.ToString(), pthread_self());
 
-    SSL* ssl = NULL;
+    SSL* ssl = nullptr;
     bool bAcceptedTLS = false;
 
     if ((ssl = SSL_new(tls_ctx_server))) {
@@ -273,9 +273,9 @@ SSL* TLSManager::accept(SOCKET hSocket, const CAddress& addr)
     } else {
         LogPrintf("TLS: ERROR: %s: %s: TLS connection from %s failed\n", __FILE__, __func__, addr.ToString());
 
-        if (ssl) {
+        if (ssl != nullptr) {
             SSL_free(ssl);
-            ssl = NULL;
+            ssl = nullptr;
         }
     }
 
@@ -283,7 +283,7 @@ SSL* TLSManager::accept(SOCKET hSocket, const CAddress& addr)
 }
 /**
  * @brief Determines whether a string exists in the non-TLS address pool.
- * 
+ *
  * @param strAddr The address.
  * @param vPool Pool to search in.
  * @param cs reference to the corresponding CCriticalSection.
@@ -297,24 +297,24 @@ bool TLSManager::isNonTLSAddr(const string& strAddr, const vector<NODE_ADDR>& vP
 }
 /**
  * @brief Removes non-TLS node addresses based on timeout.
- * 
- * @param vPool 
- * @param cs 
+ *
+ * @param vPool
+ * @param cs
  */
-void TLSManager::cleanNonTLSPool(std::vector<NODE_ADDR>& vPool, CCriticalSection& cs)
+void TLSManager::cleanNonTLSPool(vector<NODE_ADDR>& vPool, CCriticalSection& cs)
 {
     LOCK(cs);
 
     vector<NODE_ADDR> vDeleted;
 
-    BOOST_FOREACH (NODE_ADDR nodeAddr, vPool) {
+    for  (NODE_ADDR nodeAddr : vPool) {
         if ((GetTimeMillis() - nodeAddr.time) >= 900000) {
             vDeleted.push_back(nodeAddr);
             LogPrint("net", "TLS: Node %s is deleted from the non-TLS pool\n", nodeAddr.ipAddr);
         }
     }
 
-    BOOST_FOREACH (NODE_ADDR nodeAddrDeleted, vDeleted) {
+    for  (NODE_ADDR nodeAddrDeleted : vDeleted) {
         vPool.erase(
             remove(
                 vPool.begin(),
@@ -326,11 +326,11 @@ void TLSManager::cleanNonTLSPool(std::vector<NODE_ADDR>& vPool, CCriticalSection
 
 /**
  * @brief Handles send and recieve functionality in TLS Sockets.
- * 
+ *
  * @param pnode reference to the CNode object.
- * @param fdsetRecv 
- * @param fdsetSend 
- * @param fdsetError 
+ * @param fdsetRecv
+ * @param fdsetSend
+ * @param fdsetError
  * @return int returns -1 when socket is invalid. returns 0 otherwise.
  */
 int TLSManager::threadSocketHandler(CNode* pnode, fd_set& fdsetRecv, fd_set& fdsetSend, fd_set& fdsetError)
@@ -454,7 +454,7 @@ bool TLSManager::initialize()
     if (!fs::exists(privKeyFile))
             privKeyFile = (GetDataDir() / TLS_KEY_FILE_NAME);
     
-    std::vector<fs::path> trustedDirs;
+    vector<fs::path> trustedDirs;
     fs::path trustedDir = GetArg("-tlstrustdir", "");
     if (fs::exists(trustedDir))
         // Use only the specified trusted directory

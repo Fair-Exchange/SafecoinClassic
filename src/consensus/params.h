@@ -84,9 +84,7 @@ struct Params {
      */
     int SubsidySlowStartShift() const { return nSubsidySlowStartInterval / 2; }
     int nSubsidyHalvingInterval;
-    int GetLastFoundersRewardBlockHeight() const {
-        return nSubsidyHalvingInterval + SubsidySlowStartShift() - 1;
-    }
+    int GetLastFoundersRewardBlockHeight() const { return nSubsidyHalvingInterval + SubsidySlowStartShift() - 1; }
     /** Used to check majorities for block version upgrade */
     int nMajorityEnforceBlockUpgrade;
     int nMajorityRejectBlockOutdated;
@@ -113,15 +111,15 @@ struct Params {
     int64_t nMaxFutureBlockTime;
 
     int64_t AveragingWindowTimespan() const { return nPowAveragingWindow * nPowTargetSpacing; }
-    int64_t MinActualTimespan() const { return (AveragingWindowTimespan() * (100 - nPowMaxAdjustUp  )) / 100; }
-    int64_t MaxActualTimespan() const { return (AveragingWindowTimespan() * (100 + nPowMaxAdjustDown)) / 100; }
-    int32_t SetSaplingHeight(int32_t height) { vUpgrades[Consensus::UPGRADE_SAPLING].nActivationHeight = height; }
-    int32_t SetOverwinterHeight(int32_t height) { vUpgrades[Consensus::UPGRADE_OVERWINTER].nActivationHeight = height; }
+    int64_t MinActualTimespan() const { return AveragingWindowTimespan() * (100 - nPowMaxAdjustUp  ) / 100; }
+    int64_t MaxActualTimespan() const { return AveragingWindowTimespan() * (100 + nPowMaxAdjustDown) / 100; }
+    void SetSaplingHeight(int32_t height) { vUpgrades[Consensus::UPGRADE_SAPLING].nActivationHeight = height; }
+    void SetOverwinterHeight(int32_t height) { vUpgrades[Consensus::UPGRADE_OVERWINTER].nActivationHeight = height; }
     uint256 nMinimumChainWork;
 
   /** Hard Fork to disable Interest **/
   int hfDisableInterest;
-  
+
 };
 
 } // namespace Consensus

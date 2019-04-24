@@ -881,11 +881,11 @@ public:
 
      /** update statistics (does not update nSize) */
      void AddBlock(unsigned int nHeightIn, uint64_t nTimeIn) {
-         if (nBlocks==0 || nHeightFirst > nHeightIn)
+         if (nBlocks == 0 || nHeightFirst > nHeightIn)
              nHeightFirst = nHeightIn;
-         if (nBlocks==0 || nTimeFirst > nTimeIn)
+         if (nBlocks == 0 || nTimeFirst > nTimeIn)
              nTimeFirst = nTimeIn;
-         nBlocks++;
+         ++nBlocks;
          if (nHeightIn > nHeightLast)
              nHeightLast = nHeightIn;
          if (nTimeIn > nTimeLast)

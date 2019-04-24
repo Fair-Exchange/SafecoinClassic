@@ -14,12 +14,11 @@
 using namespace std;
 
 namespace {
-    inline std::string ValueString(const std::vector<unsigned char>& vch)
+    inline string ValueString(const vector<unsigned char>& vch)
     {
         if (vch.size() <= 4)
             return strprintf("%d", CScriptNum(vch, false).getint());
-        else
-            return HexStr(vch);
+        return HexStr(vch);
     }
 } // anon namespace
 
@@ -248,7 +247,7 @@ bool CScript::IsPayToScriptHash() const
 // this returns true if either there is nothing left and pc points at the end, or 
 // all instructions from the pc to the end of the script are balanced pushes and pops
 // if there is data, it also returns all the values as byte vectors in a list of vectors
-bool CScript::GetBalancedData(const_iterator& pc, std::vector<std::vector<unsigned char>>& vSolutions) const
+bool CScript::GetBalancedData(const_iterator& pc, vector<vector<unsigned char>>& vSolutions) const
 {
     int netPushes = 0;
     vSolutions.clear();
@@ -297,11 +296,11 @@ bool CScript::GetBalancedData(const_iterator& pc, std::vector<std::vector<unsign
 
 // this returns true if either there is nothing left and pc points at the end
 // if there is data, it also returns all the values as byte vectors in a list of vectors
-bool CScript::GetPushedData(CScript::const_iterator pc, std::vector<std::vector<unsigned char>>& vData) const
+bool CScript::GetPushedData(CScript::const_iterator pc, vector<vector<unsigned char>>& vData) const
 {
     vector<unsigned char> data;
     opcodetype opcode;
-    std::vector<unsigned char> vch1 = std::vector<unsigned char>(1);
+    vector<unsigned char> vch1 = vector<unsigned char>(1);
 
     vData.clear();
 
@@ -332,7 +331,7 @@ bool CScript::GetPushedData(CScript::const_iterator pc, std::vector<std::vector<
 
 // this returns true if either there is nothing left and pc points at the end
 // if there is data, it also returns all the values as byte vectors in a list of vectors
-bool CScript::GetOpretData(std::vector<std::vector<unsigned char>>& vData) const
+bool CScript::GetOpretData(vector<vector<unsigned char>>& vData) const
 {
     vector<unsigned char> data;
     opcodetype opcode;
@@ -345,7 +344,7 @@ bool CScript::GetOpretData(std::vector<std::vector<unsigned char>>& vData) const
     else return false;
 }
 
-bool CScript::IsPayToCryptoCondition(CScript *pCCSubScript, std::vector<std::vector<unsigned char>>& vParams) const
+bool CScript::IsPayToCryptoCondition(CScript *pCCSubScript, vector<vector<unsigned char>>& vParams) const
 {
     const_iterator pc = begin();
     vector<unsigned char> data;
@@ -369,7 +368,7 @@ bool CScript::IsPayToCryptoCondition(CScript *pCCSubScript, std::vector<std::vec
 
 bool CScript::IsPayToCryptoCondition(CScript *pCCSubScript) const
 {
-    std::vector<std::vector<unsigned char>> vParams;
+    vector<vector<unsigned char>> vParams;
     return IsPayToCryptoCondition(pCCSubScript, vParams);
 }
 
@@ -427,7 +426,7 @@ bool CScript::IsPushOnly() const
 bool CScript::IsCheckLockTimeVerify(int64_t *unlockTime) const
 {
     opcodetype op;
-    std::vector<unsigned char> unlockTimeParam = std::vector<unsigned char>();
+    vector<unsigned char> unlockTimeParam = vector<unsigned char>();
     CScript::const_iterator it = this->begin();
 
     if (this->GetOp2(it, op, &unlockTimeParam))
@@ -453,11 +452,11 @@ bool CScript::IsCheckLockTimeVerify() const
     return this->IsCheckLockTimeVerify(&ult);
 }
 
-std::string CScript::ToString() const
+string CScript::ToString() const
 {
-    std::string str;
+    string str;
     opcodetype opcode;
-    std::vector<unsigned char> vch;
+    vector<unsigned char> vch;
     const_iterator pc = begin();
     while (pc < end())
     {

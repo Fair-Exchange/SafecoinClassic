@@ -51,7 +51,8 @@ bool safecoin_txnotarizedconfirmed(uint256 txid);
 uint32_t safecoin_chainactive_timestamp();
 int32_t safecoin_whoami(char *pubkeystr,int32_t height,uint32_t timestamp);
 extern uint64_t SAFECOIN_INTERESTSUM,SAFECOIN_WALLETBALANCE;
-extern int32_t SAFECOIN_LASTMINED,JUMBLR_PAUSE,SAFECOIN_LONGESTCHAIN;
+extern int32_t SAFECOIN_LASTMINED,SAFECOIN_LONGESTCHAIN;
+extern bool JUMBLR_PAUSE;
 extern char ASSETCHAINS_SYMBOL[SAFECOIN_ASSETCHAIN_MAXLEN];
 uint32_t safecoin_segid32(char *coinaddr);
 int64_t safecoin_coinsupply(int64_t *zfundsp,int64_t *sproutfundsp,int32_t height);
@@ -64,7 +65,7 @@ extern uint32_t ASSETCHAINS_MAGIC;
 extern uint64_t ASSETCHAINS_COMMISSION,ASSETCHAINS_STAKED,ASSETCHAINS_SUPPLY,ASSETCHAINS_LASTERA;
 extern int32_t ASSETCHAINS_LWMAPOS,ASSETCHAINS_SAPLING;
 extern uint64_t ASSETCHAINS_ENDSUBSIDY[],ASSETCHAINS_REWARD[],ASSETCHAINS_HALVING[],ASSETCHAINS_DECAY[];
-extern std::string NOTARY_PUBKEY; extern uint8_t NOTARY_PUBKEY33[];
+extern string NOTARY_PUBKEY; extern uint8_t NOTARY_PUBKEY33[];
 
 UniValue getinfo(const UniValue& params, bool fHelp)
 {
@@ -117,18 +118,18 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("prevMoMheight", prevMoMheight));
     obj.push_back(Pair("notarizedhash", notarized_hash.ToString()));
     obj.push_back(Pair("notarizedtxid", notarized_desttxid.ToString()));
-    txid_height = notarizedtxid_height(ASSETCHAINS_SYMBOL[0] != 0 ? (char *)"SAFE" : (char *)"BTC",(char *)notarized_desttxid.ToString().c_str(),&safenotarized_height);
+    txid_height = notarizedtxid_height(ASSETCHAINS_SYMBOL[0] != '\0' ? (char *)"SAFE" : (char *)"BTC",(char *)notarized_desttxid.ToString().c_str(),&safenotarized_height);
     if ( txid_height > 0 )
         obj.push_back(Pair("notarizedtxid_height", txid_height));
     else obj.push_back(Pair("notarizedtxid_height", "mempool"));
-    if ( ASSETCHAINS_SYMBOL[0] != 0 )
+    if ( ASSETCHAINS_SYMBOL[0] != '\0' )
         obj.push_back(Pair("SAFEnotarized_height", safenotarized_height));
     obj.push_back(Pair("notarized_confirms", txid_height < safenotarized_height ? (safenotarized_height - txid_height + 1) : 0));
     //fprintf(stderr,"after notarized_confirms %u\n",(uint32_t)time(NULL));
 #ifdef ENABLE_WALLET
     if (pwalletMain) {
         obj.push_back(Pair("walletversion", pwalletMain->GetVersion()));
-        if ( ASSETCHAINS_SYMBOL[0] == 0 )
+        if ( ASSETCHAINS_SYMBOL[0] == '\0' )
         {
             obj.push_back(Pair("interest",       ValueFromAmount(SAFECOIN_INTERESTSUM)));
             obj.push_back(Pair("balance",       ValueFromAmount(SAFECOIN_WALLETBALANCE))); //pwalletMain->GetBalance()
@@ -149,7 +150,7 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     if ( chainActive.LastTip() != 0 )
         obj.push_back(Pair("tiptime", (int)chainActive.LastTip()->nTime));
     obj.push_back(Pair("connections",   (int)vNodes.size()));
-    obj.push_back(Pair("tls_connections", (int)std::count_if(vNodes.begin(), vNodes.end(), [](CNode* n) {return n->ssl != NULL;})));
+    obj.push_back(Pair("tls_connections", (int)count_if(vNodes.begin(), vNodes.end(), [](CNode* n) {return n->ssl != NULL;})));
     obj.push_back(Pair("proxy",         (proxy.IsValid() ? proxy.proxy.ToStringIPPort() : string())));
     obj.push_back(Pair("difficulty",    (double)GetDifficulty()));
     obj.push_back(Pair("testnet",       Params().TestnetToBeDeprecatedFieldRPC()));
@@ -178,12 +179,12 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     }
     if ( ASSETCHAINS_CC != 0 )
         obj.push_back(Pair("CCid",        (int)ASSETCHAINS_CC));
-    obj.push_back(Pair("name",        ASSETCHAINS_SYMBOL[0] == 0 ? "SAFE" : ASSETCHAINS_SYMBOL));
+    obj.push_back(Pair("name",        ASSETCHAINS_SYMBOL[0] == '\0' ? "SAFE" : ASSETCHAINS_SYMBOL));
     obj.push_back(Pair("sapling", ASSETCHAINS_SAPLING));
 
     obj.push_back(Pair("p2pport",        ASSETCHAINS_P2PPORT));
     obj.push_back(Pair("rpcport",        ASSETCHAINS_RPCPORT));
-    if ( ASSETCHAINS_SYMBOL[0] != 0 )
+    if ( ASSETCHAINS_SYMBOL[0] != '\0' )
     {
         //obj.push_back(Pair("name",        ASSETCHAINS_SYMBOL));
         obj.push_back(Pair("magic",        (int)ASSETCHAINS_MAGIC));
@@ -191,22 +192,22 @@ UniValue getinfo(const UniValue& params, bool fHelp)
 
         if ( ASSETCHAINS_REWARD[0] != 0 || ASSETCHAINS_LASTERA > 0 )
         {
-            std::string acReward = "", acHalving = "", acDecay = "", acEndSubsidy = "";
+            string acReward = "", acHalving = "", acDecay = "", acEndSubsidy = "";
             for (int i = 0; i <= ASSETCHAINS_LASTERA; i++)
             {
                 if (i == 0)
                 {
-                    acReward = std::to_string(ASSETCHAINS_REWARD[i]);
-                    acHalving = std::to_string(ASSETCHAINS_HALVING[i]);
-                    acDecay = std::to_string(ASSETCHAINS_DECAY[i]);
-                    acEndSubsidy = std::to_string(ASSETCHAINS_ENDSUBSIDY[i]);
+                    acReward = to_string(ASSETCHAINS_REWARD[i]);
+                    acHalving = to_string(ASSETCHAINS_HALVING[i]);
+                    acDecay = to_string(ASSETCHAINS_DECAY[i]);
+                    acEndSubsidy = to_string(ASSETCHAINS_ENDSUBSIDY[i]);
                 }
                 else
                 {
-                    acReward += "," + std::to_string(ASSETCHAINS_REWARD[i]);
-                    acHalving += "," + std::to_string(ASSETCHAINS_HALVING[i]);
-                    acDecay += "," + std::to_string(ASSETCHAINS_DECAY[i]);
-                    acEndSubsidy += "," + std::to_string(ASSETCHAINS_ENDSUBSIDY[i]);
+                    acReward += "," + to_string(ASSETCHAINS_REWARD[i]);
+                    acHalving += "," + to_string(ASSETCHAINS_HALVING[i]);
+                    acDecay += "," + to_string(ASSETCHAINS_DECAY[i]);
+                    acEndSubsidy += "," + to_string(ASSETCHAINS_ENDSUBSIDY[i]);
                 }
             }
             if (ASSETCHAINS_LASTERA > 0)
@@ -263,7 +264,7 @@ public:
         CScript subscript;
         obj.push_back(Pair("isscript", true));
         if (pwalletMain && pwalletMain->GetCScript(scriptID, subscript)) {
-            std::vector<CTxDestination> addresses;
+            vector<CTxDestination> addresses;
             txnouttype whichType;
             int nRequired;
             ExtractDestinations(subscript, whichType, addresses, nRequired);
@@ -313,7 +314,7 @@ UniValue coinsupply(const UniValue& params, bool fHelp)
         if ( (supply= safecoin_coinsupply(&zfunds,&sproutfunds,height)) > 0 )
         {
             result.push_back(Pair("result", "success"));
-            result.push_back(Pair("coin", ASSETCHAINS_SYMBOL[0] == 0 ? "SAFE" : ASSETCHAINS_SYMBOL));
+            result.push_back(Pair("coin", ASSETCHAINS_SYMBOL[0] == '\0' ? "SAFE" : ASSETCHAINS_SYMBOL));
             result.push_back(Pair("height", (int)height));
             result.push_back(Pair("supply", ValueFromAmount(supply)));
             result.push_back(Pair("zfunds", ValueFromAmount(zfunds)));
@@ -339,7 +340,7 @@ UniValue jumblr_deposit(const UniValue& params, bool fHelp)
         if ( (retval= Jumblr_depositaddradd((char *)addr.c_str())) >= 0 )
         {
             result.push_back(Pair("result", retval));
-            JUMBLR_PAUSE = 0;
+            JUMBLR_PAUSE = false;
         }
         else result.push_back(Pair("error", retval));
     } else result.push_back(Pair("error", "invalid address"));
@@ -359,7 +360,7 @@ UniValue jumblr_secret(const UniValue& params, bool fHelp)
         retval = Jumblr_secretaddradd((char *)addr.c_str());
         result.push_back(Pair("result", "success"));
         result.push_back(Pair("num", retval));
-        JUMBLR_PAUSE = 0;
+        JUMBLR_PAUSE = false;
     } else result.push_back(Pair("error", "invalid address"));
     return(result);
 }
@@ -369,7 +370,7 @@ UniValue jumblr_pause(const UniValue& params, bool fHelp)
     int32_t retval; UniValue result(UniValue::VOBJ);
     if (fHelp )
         throw runtime_error("jumblr_pause\n");
-    JUMBLR_PAUSE = 1;
+    JUMBLR_PAUSE = true;
     result.push_back(Pair("result", "paused"));
     return(result);
 }
@@ -379,7 +380,7 @@ UniValue jumblr_resume(const UniValue& params, bool fHelp)
     int32_t retval; UniValue result(UniValue::VOBJ);
     if (fHelp )
         throw runtime_error("jumblr_resume\n");
-    JUMBLR_PAUSE = 0;
+    JUMBLR_PAUSE = false;
     result.push_back(Pair("result", "resumed"));
     return(result);
 }
@@ -421,7 +422,7 @@ UniValue validateaddress(const UniValue& params, bool fHelp)
     ret.push_back(Pair("isvalid", isValid));
     if (isValid)
     {
-        std::string currentAddress = EncodeDestination(dest);
+        string currentAddress = EncodeDestination(dest);
         ret.push_back(Pair("address", currentAddress));
 
         CScript scriptPubKey = GetScriptForDestination(dest);
@@ -543,22 +544,22 @@ CScript _createmultisig_redeemScript(const UniValue& params)
                       "(got %u keys, but need at least %d to redeem)", keys.size(), nRequired));
     if (keys.size() > 16)
         throw runtime_error("Number of addresses involved in the multisignature address creation > 16\nReduce the number");
-    std::vector<CPubKey> pubkeys;
+    vector<CPubKey> pubkeys;
     pubkeys.resize(keys.size());
     for (unsigned int i = 0; i < keys.size(); i++)
     {
-        const std::string& ks = keys[i].get_str();
+        const string& ks = keys[i].get_str();
 #ifdef ENABLE_WALLET
         // Case 1: Bitcoin address and we have full public key:
         CTxDestination dest = DecodeDestination(ks);
         if (pwalletMain && IsValidDestination(dest)) {
             const CKeyID *keyID = boost::get<CKeyID>(&dest);
             if (!keyID) {
-                throw std::runtime_error(strprintf("%s does not refer to a key", ks));
+                throw runtime_error(strprintf("%s does not refer to a key", ks));
             }
             CPubKey vchPubKey;
             if (!pwalletMain->GetPubKey(*keyID, vchPubKey)) {
-                throw std::runtime_error(strprintf("no full public key for address %s", ks));
+                throw runtime_error(strprintf("no full public key for address %s", ks));
             }
             if (!vchPubKey.IsFullyValid())
                 throw runtime_error(" Invalid public key: "+ks);
@@ -718,7 +719,7 @@ UniValue setmocktime(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-bool getAddressFromIndex(const int &type, const uint160 &hash, std::string &address)
+bool getAddressFromIndex(const int &type, const uint160 &hash, string &address)
 {
     if (type == 2) {
         address = CBitcoinAddress(CScriptID(hash)).ToString();
@@ -731,7 +732,7 @@ bool getAddressFromIndex(const int &type, const uint160 &hash, std::string &addr
     return true;
 }
 
-bool getAddressesFromParams(const UniValue& params, std::vector<std::pair<uint160, int> > &addresses)
+bool getAddressesFromParams(const UniValue& params, vector<pair<uint160, int> > &addresses)
 {
     if (params[0].isStr()) {
         CBitcoinAddress address(params[0].get_str());
@@ -740,7 +741,7 @@ bool getAddressesFromParams(const UniValue& params, std::vector<std::pair<uint16
         if (!address.GetIndexKey(hashBytes, type)) {
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
         }
-        addresses.push_back(std::make_pair(hashBytes, type));
+        addresses.push_back(make_pair(hashBytes, type));
     } else if (params[0].isObject()) {
 
         UniValue addressValues = find_value(params[0].get_obj(), "addresses");
@@ -748,9 +749,9 @@ bool getAddressesFromParams(const UniValue& params, std::vector<std::pair<uint16
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Addresses is expected to be an array");
         }
 
-        std::vector<UniValue> values = addressValues.getValues();
+        vector<UniValue> values = addressValues.getValues();
 
-        for (std::vector<UniValue>::iterator it = values.begin(); it != values.end(); ++it) {
+        for (vector<UniValue>::iterator it = values.begin(); it != values.end(); ++it) {
 
             CBitcoinAddress address(it->get_str());
             uint160 hashBytes;
@@ -758,7 +759,7 @@ bool getAddressesFromParams(const UniValue& params, std::vector<std::pair<uint16
             if (!address.GetIndexKey(hashBytes, type)) {
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid addresses");
             }
-            addresses.push_back(std::make_pair(hashBytes, type));
+            addresses.push_back(make_pair(hashBytes, type));
         }
     } else {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid addresse");
@@ -767,13 +768,13 @@ bool getAddressesFromParams(const UniValue& params, std::vector<std::pair<uint16
     return true;
 }
 
-bool heightSort(std::pair<CAddressUnspentKey, CAddressUnspentValue> a,
-                std::pair<CAddressUnspentKey, CAddressUnspentValue> b) {
+bool heightSort(pair<CAddressUnspentKey, CAddressUnspentValue> a,
+                pair<CAddressUnspentKey, CAddressUnspentValue> b) {
     return a.second.blockHeight < b.second.blockHeight;
 }
 
-bool timestampSort(std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta> a,
-                   std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta> b) {
+bool timestampSort(pair<CMempoolAddressDeltaKey, CMempoolAddressDelta> a,
+                   pair<CMempoolAddressDeltaKey, CMempoolAddressDelta> b) {
     return a.second.time < b.second.time;
 }
 
@@ -808,26 +809,26 @@ UniValue getaddressmempool(const UniValue& params, bool fHelp)
             + HelpExampleRpc("getaddressmempool", "{\"addresses\": [\"RY5LccmGiX9bUHYGtSWQouNy1yFhc5rM87\"]}")
         );
 
-    std::vector<std::pair<uint160, int> > addresses;
+    vector<pair<uint160, int> > addresses;
 
     if (!getAddressesFromParams(params, addresses)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
     }
 
-    std::vector<std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta> > indexes;
+    vector<pair<CMempoolAddressDeltaKey, CMempoolAddressDelta> > indexes;
 
     if (!mempool.getAddressIndex(addresses, indexes)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available for address");
     }
 
-    std::sort(indexes.begin(), indexes.end(), timestampSort);
+    sort(indexes.begin(), indexes.end(), timestampSort);
 
     UniValue result(UniValue::VARR);
 
-    for (std::vector<std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta> >::iterator it = indexes.begin();
+    for (vector<pair<CMempoolAddressDeltaKey, CMempoolAddressDelta> >::iterator it = indexes.begin();
          it != indexes.end(); it++) {
 
-        std::string address;
+        string address;
         if (!getAddressFromIndex(it->first.type, it->first.addressBytes, address)) {
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
         }
@@ -887,27 +888,27 @@ UniValue getaddressutxos(const UniValue& params, bool fHelp)
         }
     }
 
-    std::vector<std::pair<uint160, int> > addresses;
+    vector<pair<uint160, int> > addresses;
 
     if (!getAddressesFromParams(params, addresses)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
     }
 
-    std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > unspentOutputs;
+    vector<pair<CAddressUnspentKey, CAddressUnspentValue> > unspentOutputs;
 
-    for (std::vector<std::pair<uint160, int> >::iterator it = addresses.begin(); it != addresses.end(); it++) {
+    for (vector<pair<uint160, int> >::iterator it = addresses.begin(); it != addresses.end(); it++) {
         if (!GetAddressUnspent((*it).first, (*it).second, unspentOutputs)) {
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available for address");
         }
     }
 
-    std::sort(unspentOutputs.begin(), unspentOutputs.end(), heightSort);
+    sort(unspentOutputs.begin(), unspentOutputs.end(), heightSort);
 
     UniValue utxos(UniValue::VARR);
 
-    for (std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> >::const_iterator it=unspentOutputs.begin(); it!=unspentOutputs.end(); it++) {
+    for (vector<pair<CAddressUnspentKey, CAddressUnspentValue> >::const_iterator it=unspentOutputs.begin(); it!=unspentOutputs.end(); it++) {
         UniValue output(UniValue::VOBJ);
-        std::string address;
+        string address;
         if (!getAddressFromIndex(it->first.type, it->first.hashBytes, address)) {
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
         }
@@ -990,15 +991,15 @@ UniValue getaddressdeltas(const UniValue& params, bool fHelp)
         }
     }
 
-    std::vector<std::pair<uint160, int> > addresses;
+    vector<pair<uint160, int> > addresses;
 
     if (!getAddressesFromParams(params, addresses)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
     }
 
-    std::vector<std::pair<CAddressIndexKey, CAmount> > addressIndex;
+    vector<pair<CAddressIndexKey, CAmount> > addressIndex;
 
-    for (std::vector<std::pair<uint160, int> >::iterator it = addresses.begin(); it != addresses.end(); it++) {
+    for (vector<pair<uint160, int> >::iterator it = addresses.begin(); it != addresses.end(); it++) {
         if (start > 0 && end > 0) {
             if (!GetAddressIndex((*it).first, (*it).second, addressIndex, start, end)) {
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available for address");
@@ -1012,8 +1013,8 @@ UniValue getaddressdeltas(const UniValue& params, bool fHelp)
 
     UniValue deltas(UniValue::VARR);
 
-    for (std::vector<std::pair<CAddressIndexKey, CAmount> >::const_iterator it=addressIndex.begin(); it!=addressIndex.end(); it++) {
-        std::string address;
+    for (vector<pair<CAddressIndexKey, CAmount> >::const_iterator it=addressIndex.begin(); it!=addressIndex.end(); it++) {
+        string address;
         if (!getAddressFromIndex(it->first.type, it->first.hashBytes, address)) {
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
         }
@@ -1083,15 +1084,15 @@ UniValue getaddressbalance(const UniValue& params, bool fHelp)
             + HelpExampleRpc("getaddressbalance", "{\"addresses\": [\"RY5LccmGiX9bUHYGtSWQouNy1yFhc5rM87\"]}")
         );
 
-    std::vector<std::pair<uint160, int> > addresses;
+    vector<pair<uint160, int> > addresses;
 
     if (!getAddressesFromParams(params, addresses)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
     }
 
-    std::vector<std::pair<CAddressIndexKey, CAmount> > addressIndex;
+    vector<pair<CAddressIndexKey, CAmount> > addressIndex;
 
-    for (std::vector<std::pair<uint160, int> >::iterator it = addresses.begin(); it != addresses.end(); it++) {
+    for (vector<pair<uint160, int> >::iterator it = addresses.begin(); it != addresses.end(); it++) {
         if (!GetAddressIndex((*it).first, (*it).second, addressIndex)) {
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available for address");
         }
@@ -1100,7 +1101,7 @@ UniValue getaddressbalance(const UniValue& params, bool fHelp)
     CAmount balance = 0;
     CAmount received = 0;
 
-    for (std::vector<std::pair<CAddressIndexKey, CAmount> >::const_iterator it=addressIndex.begin(); it!=addressIndex.end(); it++) {
+    for (vector<pair<CAddressIndexKey, CAmount> >::const_iterator it=addressIndex.begin(); it!=addressIndex.end(); it++) {
         if (it->second > 0) {
             received += it->second;
         }
@@ -1195,7 +1196,7 @@ UniValue getaddresstxids(const UniValue& params, bool fHelp)
             + HelpExampleRpc("getaddresstxids", "{\"addresses\": [\"RY5LccmGiX9bUHYGtSWQouNy1yFhc5rM87\"]}")
         );
 
-    std::vector<std::pair<uint160, int> > addresses;
+    vector<pair<uint160, int> > addresses;
 
     if (!getAddressesFromParams(params, addresses)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
@@ -1212,9 +1213,9 @@ UniValue getaddresstxids(const UniValue& params, bool fHelp)
         }
     }
 
-    std::vector<std::pair<CAddressIndexKey, CAmount> > addressIndex;
+    vector<pair<CAddressIndexKey, CAmount> > addressIndex;
 
-    for (std::vector<std::pair<uint160, int> >::iterator it = addresses.begin(); it != addresses.end(); it++) {
+    for (vector<pair<uint160, int> >::iterator it = addresses.begin(); it != addresses.end(); it++) {
         if (start > 0 && end > 0) {
             if (!GetAddressIndex((*it).first, (*it).second, addressIndex, start, end)) {
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available for address");
@@ -1226,24 +1227,24 @@ UniValue getaddresstxids(const UniValue& params, bool fHelp)
         }
     }
 
-    std::set<std::pair<int, std::string> > txids;
+    set<pair<int, string> > txids;
     UniValue result(UniValue::VARR);
 
-    for (std::vector<std::pair<CAddressIndexKey, CAmount> >::const_iterator it=addressIndex.begin(); it!=addressIndex.end(); it++) {
+    for (vector<pair<CAddressIndexKey, CAmount> >::const_iterator it=addressIndex.begin(); it!=addressIndex.end(); it++) {
         int height = it->first.blockHeight;
-        std::string txid = it->first.txhash.GetHex();
+        string txid = it->first.txhash.GetHex();
 
         if (addresses.size() > 1) {
-            txids.insert(std::make_pair(height, txid));
+            txids.insert(make_pair(height, txid));
         } else {
-            if (txids.insert(std::make_pair(height, txid)).second) {
+            if (txids.insert(make_pair(height, txid)).second) {
                 result.push_back(txid);
             }
         }
     }
 
     if (addresses.size() > 1) {
-        for (std::set<std::pair<int, std::string> >::const_iterator it=txids.begin(); it!=txids.end(); it++) {
+        for (set<pair<int, string> >::const_iterator it=txids.begin(); it!=txids.end(); it++) {
             result.push_back(it->second);
         }
     }

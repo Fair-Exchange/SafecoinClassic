@@ -61,10 +61,10 @@ uint256 CalculateProofRoot(const char* symbol, uint32_t targetCCid, int safeHeig
             continue;
 
         // See if we have an own notarisation in this block
-        BOOST_FOREACH(Notarisation& nota, notarisations) {
+        for (Notarisation& nota : notarisations) {
             if (strcmp(nota.second.symbol, symbol) == 0)
             {
-                seenOwnNotarisations++;
+                ++seenOwnNotarisations;
                 if (seenOwnNotarisations == 1)
                     destNotarisationTxid = nota.first;
                 else if (seenOwnNotarisations == 2)
@@ -73,13 +73,11 @@ uint256 CalculateProofRoot(const char* symbol, uint32_t targetCCid, int safeHeig
             }
         }
 
-        if (seenOwnNotarisations == 1) {
-            BOOST_FOREACH(Notarisation& nota, notarisations) {
+        if (seenOwnNotarisations == 1)
+            for (Notarisation& nota : notarisations)
                 if (IsTXSCL(nota.second.symbol) == txscl)
                     if (nota.second.ccId == targetCCid)
                         moms.push_back(nota.second.MoM);
-            }
-        }
     }
 
 end:
@@ -104,11 +102,9 @@ int ScanNotarisationsFromHeight(int nHeight, const IsTarget f, Notarisation &fou
         if (!GetBlockNotarisations(*chainActive[h]->phashBlock, notarisations))
             continue;
 
-        BOOST_FOREACH(found, notarisations) {
-            if (f(found)) {
+        for (Notarisation found : notarisations)
+            if (f(found))
                 return h;
-            }
-        }
     }
     return 0;
 }
@@ -149,7 +145,7 @@ TxProof GetCrossChainProof(const uint256 txid, const char* targetSymbol, uint32_
         return strcmp(nota.second.symbol, targetSymbol) == 0;
     };
     safeHeight = ScanNotarisationsFromHeight(safeHeight, isTarget, nota);
-    if (!safeHeight)
+    if (safeHeight == 0)
         throw std::runtime_error("Cannot find notarisation for target inclusive of source");
 
     // Get MoMs for safe height and symbol
@@ -161,10 +157,9 @@ TxProof GetCrossChainProof(const uint256 txid, const char* targetSymbol, uint32_
 
     // Find index of source MoM in MoMoM
     int nIndex;
-    for (nIndex=0; nIndex<moms.size(); nIndex++) {
-        if (moms[nIndex] == MoM)
+    for (auto mom : moms)
+        if (mom == MoM)
             goto cont;
-    }
     throw std::runtime_error("Couldn't find MoM within MoMoM set");
 cont:
 
@@ -243,7 +238,7 @@ bool GetNextBacknotarisation(uint256 safeNotarisationTxid, Notarisation &out)
         return false;
     }
 
-    return (bool) ScanNotarisationsFromHeight(block.GetHeight()+1, &IsSameAssetChain, out);
+    return ScanNotarisationsFromHeight(block.GetHeight()+1, &IsSameAssetChain, out) != 0;
 }
 
 
@@ -274,7 +269,7 @@ bool CheckMoMoM(uint256 safeNotarisationHash, uint256 momom)
         return nota.second.MoMoM == momom;
     };
 
-    return (bool) ScanNotarisationsFromHeight(block.GetHeight()-100, checkMoMoM, nota);
+    return ScanNotarisationsFromHeight(block.GetHeight()-100, checkMoMoM, nota) != 0;
 
 }
 
@@ -306,8 +301,7 @@ TxProof GetAssetchainProof(uint256 hash)
         // the transaction block height will contain the corresponding MoM. If there
         // are sequence issues with the notarisations this may fail.
         auto isTarget = [&](Notarisation &nota) {
-            if (!IsSameAssetChain(nota)) return false;
-            return nota.second.height >= blockIndex->GetHeight();
+            return IsSameAssetChain(nota) && nota.second.height >= blockIndex->GetHeight();
         };
         if (!ScanNotarisationsFromHeight(blockIndex->GetHeight(), isTarget, nota))
             throw std::runtime_error("backnotarisation not yet confirmed");

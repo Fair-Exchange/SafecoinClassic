@@ -30,9 +30,9 @@ uint64_t safecoin_maxallowed(int32_t baseid) { return(100000000LL * 1000000); } 
 static const int DEFAULT_HTTP_CLIENT_TIMEOUT=900;
 static const int CONTINUE_EXECUTION=-1;
 
-std::string HelpMessageCli()
+string HelpMessageCli()
 {
-    std::string strUsage;
+    string strUsage;
     strUsage += HelpMessageGroup(_("Options:"));
     strUsage += HelpMessageOpt("-?", _("This help message"));
     strUsage += HelpMessageOpt("-conf=<file>", strprintf(_("Specify configuration file (default: %s)"), "safecoin.conf"));
@@ -60,12 +60,12 @@ std::string HelpMessageCli()
 // Exception thrown on connection error.  This error is used to determine
 // when to wait if -rpcwait is given.
 //
-class CConnectionFailed : public std::runtime_error
+class CConnectionFailed : public runtime_error
 {
 public:
 
-    explicit inline CConnectionFailed(const std::string& msg) :
-        std::runtime_error(msg)
+    explicit inline CConnectionFailed(const string& msg) :
+        runtime_error(msg)
     {}
 
 };
@@ -90,7 +90,7 @@ static int AppInitRPC(int argc, char* argv[])
         strncpy(ASSETCHAINS_SYMBOL,name.c_str(),sizeof(ASSETCHAINS_SYMBOL)-1);
 
     if (argc<2 || mapArgs.count("-?") || mapArgs.count("-h") || mapArgs.count("-help") || mapArgs.count("-version")) {
-        std::string strUsage = _("Safecoin RPC client version") + " " + FormatFullVersion() + "\n" + PrivacyInfo();
+        string strUsage = _("Safecoin RPC client version") + " " + FormatFullVersion() + "\n" + PrivacyInfo();
         if (!mapArgs.count("-version")) {
             strUsage += "\n" + _("Usage:") + "\n" +
                   "  safecoin-cli [options] <command> [params]  " + _("Send command to Safecoin") + "\n" +
@@ -115,7 +115,7 @@ static int AppInitRPC(int argc, char* argv[])
     }
     try {
         ReadConfigFile(mapArgs, mapMultiArgs);
-    } catch (const std::exception& e) {
+    } catch (const exception& e) {
         fprintf(stderr,"Error reading configuration file: %s\n", e.what());
         return EXIT_FAILURE;
     }
@@ -140,7 +140,7 @@ struct HTTPReply
 
     int status;
     int error;
-    std::string body;
+    string body;
 };
 
 const char *http_errorstring(int code)
@@ -169,7 +169,7 @@ static void http_request_done(struct evhttp_request *req, void *ctx)
 {
     HTTPReply *reply = static_cast<HTTPReply*>(ctx);
 
-    if (req == NULL) {
+    if (req == nullptr) {
         /* If req is NULL, it means an error occurred while connecting: the
          * error code will have been passed to http_error_cb.
          */
@@ -180,12 +180,12 @@ static void http_request_done(struct evhttp_request *req, void *ctx)
     reply->status = evhttp_request_get_response_code(req);
 
     struct evbuffer *buf = evhttp_request_get_input_buffer(req);
-    if (buf)
+    if (buf != nullptr)
     {
         size_t size = evbuffer_get_length(buf);
         const char *data = (const char*)evbuffer_pullup(buf, size);
-        if (data)
-            reply->body = std::string(data, size);
+        if (data != nullptr)
+            reply->body = string(data, size);
         evbuffer_drain(buf, size);
     }
 }
@@ -198,9 +198,9 @@ static void http_error_cb(enum evhttp_request_error err, void *ctx)
 }
 #endif
 
-UniValue CallRPC(const std::string& strMethod, const UniValue& params)
+UniValue CallRPC(const string& strMethod, const UniValue& params)
 {
-    std::string host = GetArg("-rpcconnect", "127.0.0.1");
+    string host = GetArg("-rpcconnect", "127.0.0.1");
     int port = GetArg("-rpcport", BaseParams().RPCPort());
     BITCOIND_RPCPORT = port;
     // Obtain event base
@@ -212,18 +212,18 @@ UniValue CallRPC(const std::string& strMethod, const UniValue& params)
 
     HTTPReply response;
     raii_evhttp_request req = obtain_evhttp_request(http_request_done, (void*)&response);
-    if (req == NULL)
-        throw std::runtime_error("create http request failed");
+    if (req == nullptr)
+        throw runtime_error("create http request failed");
 #if LIBEVENT_VERSION_NUMBER >= 0x02010300
     evhttp_request_set_error_cb(req.get(), http_error_cb);
 #endif
 
     // Get credentials
-    std::string strRPCUserColonPass;
-    if (mapArgs["-rpcpassword"] == "") {
+    string strRPCUserColonPass;
+    if (mapArgs["-rpcpassword"].empty()) {
         // Try fall back to cookie-based authentication if no password is provided
         if (!GetAuthCookie(&strRPCUserColonPass)) {
-            throw std::runtime_error(strprintf(
+            throw runtime_error(strprintf(
                 _("Could not locate RPC credentials. No authentication cookie could be found,\n"
                   "and no rpcpassword is set in the configuration file (%s)."),
                     GetConfigFile().string().c_str()));
@@ -237,45 +237,44 @@ UniValue CallRPC(const std::string& strMethod, const UniValue& params)
     assert(output_headers);
     evhttp_add_header(output_headers, "Host", host.c_str());
     evhttp_add_header(output_headers, "Connection", "close");
-    evhttp_add_header(output_headers, "Authorization", (std::string("Basic ") + EncodeBase64(strRPCUserColonPass)).c_str());
+    evhttp_add_header(output_headers, "Authorization", (string("Basic ") + EncodeBase64(strRPCUserColonPass)).c_str());
 
     // Attach request data
-    std::string strRequest = JSONRPCRequest(strMethod, params, 1);
+    string strRequest = JSONRPCRequest(strMethod, params, 1);
     struct evbuffer* output_buffer = evhttp_request_get_output_buffer(req.get());
     assert(output_buffer);
     evbuffer_add(output_buffer, strRequest.data(), strRequest.size());
 
     int r = evhttp_make_request(evcon.get(), req.get(), EVHTTP_REQ_POST, "/");
     req.release(); // ownership moved to evcon in above call
-    if (r != 0) {
+    if (r != 0)
         throw CConnectionFailed("send http request failed");
-    }
 
     event_base_dispatch(base.get());
 
     if (response.status == 0)
         throw CConnectionFailed(strprintf("couldn't connect to server: %s (code %d)\n(make sure server is running and you are connecting to the correct RPC port)", http_errorstring(response.error), response.error));
     else if (response.status == HTTP_UNAUTHORIZED)
-        throw std::runtime_error("incorrect rpcuser or rpcpassword (authorization failed)");
+        throw runtime_error("incorrect rpcuser or rpcpassword (authorization failed)");
     else if (response.status >= 400 && response.status != HTTP_BAD_REQUEST && response.status != HTTP_NOT_FOUND && response.status != HTTP_INTERNAL_SERVER_ERROR)
-        throw std::runtime_error(strprintf("server returned HTTP error %d", response.status));
+        throw runtime_error(strprintf("server returned HTTP error %d", response.status));
     else if (response.body.empty())
-        throw std::runtime_error("no response from server");
+        throw runtime_error("no response from server");
 
     // Parse reply
     UniValue valReply(UniValue::VSTR);
     if (!valReply.read(response.body))
-        throw std::runtime_error("couldn't parse reply from server");
+        throw runtime_error("couldn't parse reply from server");
     const UniValue& reply = valReply.get_obj();
     if (reply.empty())
-        throw std::runtime_error("expected reply to have result, error and id properties");
+        throw runtime_error("expected reply to have result, error and id properties");
 
     return reply;
 }
 
 int CommandLineRPC(int argc, char *argv[])
 {
-    std::string strPrint;
+    string strPrint;
     int nRet = 0;
     try {
         // Skip switches
@@ -283,17 +282,17 @@ int CommandLineRPC(int argc, char *argv[])
             argc--;
             argv++;
         }
-        std::vector<std::string> args = std::vector<std::string>(&argv[1], &argv[argc]);
+        vector<string> args = vector<string>(&argv[1], &argv[argc]);
         if (GetBoolArg("-stdin", false)) {
             // Read one arg per line from stdin and append
-            std::string line;
-            while (std::getline(std::cin,line))
+            string line;
+            while (getline(cin,line))
                 args.push_back(line);
         }
         if (args.size() < 1)
-            throw std::runtime_error("too few parameters (need at least command)");
-        std::string strMethod = args[0];
-        UniValue params = RPCConvertValues(strMethod, std::vector<std::string>(args.begin()+1, args.end()));
+            throw runtime_error("too few parameters (need at least command)");
+        string strMethod = args[0];
+        UniValue params = RPCConvertValues(strMethod, vector<string>(args.begin()+1, args.end()));
 
         // Execute and handle connection failures with -rpcwait
         const bool fWait = GetBoolArg("-rpcwait", false);
@@ -344,8 +343,8 @@ int CommandLineRPC(int argc, char *argv[])
     catch (const boost::thread_interrupted&) {
         throw;
     }
-    catch (const std::exception& e) {
-        strPrint = std::string("error: ") + e.what();
+    catch (const exception& e) {
+        strPrint = string("error: ") + e.what();
         nRet = EXIT_FAILURE;
     }
     catch (...) {
@@ -362,17 +361,19 @@ int CommandLineRPC(int argc, char *argv[])
 int main(int argc, char* argv[])
 {
     SetupEnvironment();
+#ifdef _WIN32
     if (!SetupNetworking()) {
         fprintf(stderr, "Error: Initializing networking failed\n");
         return EXIT_FAILURE;
     }
+#endif
 
     try {
         int ret = AppInitRPC(argc, argv);
         if (ret != CONTINUE_EXECUTION)
             return ret;
     }
-    catch (const std::exception& e) {
+    catch (const exception& e) {
         PrintExceptionContinue(&e, "AppInitRPC()");
         return EXIT_FAILURE;
     } catch (...) {
@@ -384,7 +385,7 @@ int main(int argc, char* argv[])
     try {
         ret = CommandLineRPC(argc, argv);
     }
-    catch (const std::exception& e) {
+    catch (const exception& e) {
         PrintExceptionContinue(&e, "CommandLineRPC()");
     } catch (...) {
         PrintExceptionContinue(NULL, "CommandLineRPC()");

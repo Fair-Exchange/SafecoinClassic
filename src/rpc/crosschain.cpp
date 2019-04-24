@@ -27,7 +27,7 @@
 using namespace std;
 
 int32_t safecoin_MoM(int32_t *notarized_htp,uint256 *MoMp,uint256 *safetxidp,int32_t nHeight,uint256 *MoMoMp,int32_t *MoMoMoffsetp,int32_t *MoMoMdepthp,int32_t *safestartip,int32_t *safeendip);
-int32_t safecoin_MoMoMdata(char *hexstr,int32_t hexsize,struct safecoin_ccdataMoMoM *mdata,char *symbol,int32_t safeheight,int32_t notarized_height);
+int8_t safecoin_MoMoMdata(char *hexstr,int32_t hexsize,struct safecoin_ccdataMoMoM *mdata,char *symbol,int32_t safeheight,int32_t notarized_height);
 struct safecoin_ccdata_entry *safecoin_allMoMs(int32_t *nump,uint256 *MoMoMp,int32_t safestarti,int32_t safeendi);
 uint256 safecoin_calcMoM(int32_t height,int32_t MoMdepth);
 
@@ -52,7 +52,7 @@ UniValue crosschainproof(const UniValue& params, bool fHelp)
 {
     UniValue ret(UniValue::VOBJ);
     //fprintf(stderr,"crosschainproof needs to be implemented\n");
-    return(ret);
+    return ret;
 }
 
 
@@ -68,13 +68,13 @@ UniValue height_MoM(const UniValue& params, bool fHelp)
         if ( chainActive.Tip() == 0 )
         {
             ret.push_back(Pair("error",(char *)"no active chain yet"));
-            return(ret);
+            return ret;
         }
         height = chainActive.Tip()->GetHeight();
     }
     //fprintf(stderr,"height_MoM height.%d\n",height);
     depth = safecoin_MoM(&notarized_height,&MoM,&safetxid,height,&MoMoM,&MoMoMoffset,&MoMoMdepth,&safestarti,&safeendi);
-    ret.push_back(Pair("coin",(char *)(ASSETCHAINS_SYMBOL[0] == 0 ? "SAFE" : ASSETCHAINS_SYMBOL)));
+    ret.push_back(Pair("coin",(char *)(ASSETCHAINS_SYMBOL[0] == '\0' ? "SAFE" : ASSETCHAINS_SYMBOL)));
     ret.push_back(Pair("height",height));
     ret.push_back(Pair("timestamp",(uint64_t)timestamp));
     if ( depth > 0 )
@@ -83,7 +83,7 @@ UniValue height_MoM(const UniValue& params, bool fHelp)
         ret.push_back(Pair("notarized_height",notarized_height));
         ret.push_back(Pair("MoM",MoM.GetHex()));
         ret.push_back(Pair("safetxid",safetxid.GetHex()));
-        if ( ASSETCHAINS_SYMBOL[0] != 0 )
+        if ( ASSETCHAINS_SYMBOL[0] != '\0' )
         {
             ret.push_back(Pair("MoMoM",MoMoM.GetHex()));
             ret.push_back(Pair("MoMoMoffset",MoMoMoffset));
@@ -92,7 +92,7 @@ UniValue height_MoM(const UniValue& params, bool fHelp)
             ret.push_back(Pair("safeendi",safeendi));
         }
     } else ret.push_back(Pair("error",(char *)"no MoM for height"));
-    
+
     return ret;
 }
 
@@ -113,7 +113,7 @@ UniValue MoMoMdata(const UniValue& params, bool fHelp)
     uint256 MoMoM = CalculateProofRoot(symbol, ccid, safeheight, moms, destNotarisationTxid);
 
     UniValue valMoms(UniValue::VARR);
-    for (int i=0; i<moms.size(); i++) valMoms.push_back(moms[i].GetHex());
+    for (auto mom : moms) valMoms.push_back(mom.GetHex());
     ret.push_back(Pair("MoMs", valMoms));
     ret.push_back(Pair("notarization_hash", destNotarisationTxid.GetHex()));
     ret.push_back(Pair("MoMoM", MoMoM.GetHex()));
@@ -135,7 +135,7 @@ UniValue calc_MoM(const UniValue& params, bool fHelp)
         throw runtime_error("calc_MoM illegal height or MoMdepth\n");
     //fprintf(stderr,"height_MoM height.%d\n",height);
     MoM = safecoin_calcMoM(height,MoMdepth);
-    ret.push_back(Pair("coin",(char *)(ASSETCHAINS_SYMBOL[0] == 0 ? "SAFE" : ASSETCHAINS_SYMBOL)));
+    ret.push_back(Pair("coin",(char *)(ASSETCHAINS_SYMBOL[0] == '\0' ? "SAFE" : ASSETCHAINS_SYMBOL)));
     ret.push_back(Pair("height",height));
     ret.push_back(Pair("MoMdepth",MoMdepth));
     ret.push_back(Pair("MoM",MoM.GetHex()));
@@ -159,7 +159,7 @@ UniValue migrate_converttoexport(const UniValue& params, bool fHelp)
     if (ASSETCHAINS_CC < SAFECOIN_FIRSTFUNGIBLEID)
         throw runtime_error("-ac_cc < SAFECOIN_FIRSTFUNGIBLEID");
 
-    if (ASSETCHAINS_SYMBOL[0] == 0)
+    if (ASSETCHAINS_SYMBOL[0] == '\0')
         throw runtime_error("Must be called on assetchain");
 
     vector<uint8_t> txData(ParseHexV(params[0], "argument 1"));
@@ -176,7 +176,8 @@ UniValue migrate_converttoexport(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for export");
     {
         CAmount needed = 0;
-        for (int i=0; i<tx.vout.size(); i++) needed += tx.vout[i].nValue;
+        for (auto out : tx.vout)
+            needed += out.nValue;
         if (burnAmount < needed)
             throw runtime_error("export_amount too small");
     }
@@ -214,7 +215,7 @@ UniValue migrate_createimporttransaction(const UniValue& params, bool fHelp)
     if (ASSETCHAINS_CC < SAFECOIN_FIRSTFUNGIBLEID)
         throw runtime_error("-ac_cc < SAFECOIN_FIRSTFUNGIBLEID");
 
-    if (ASSETCHAINS_SYMBOL[0] == 0)
+    if (ASSETCHAINS_SYMBOL[0] == '\0')
         throw runtime_error("Must be called on assetchain");
 
     vector<uint8_t> txData(ParseHexV(params[0], "argument 1"));
@@ -222,8 +223,8 @@ UniValue migrate_createimporttransaction(const UniValue& params, bool fHelp)
     CTransaction burnTx;
     if (!E_UNMARSHAL(txData, ss >> burnTx))
         throw runtime_error("Couldn't parse burnTx");
-    
-    
+
+
     vector<CTxOut> payouts;
     if (!E_UNMARSHAL(ParseHexV(params[1], "argument 2"), ss >> payouts))
         throw runtime_error("Couldn't parse payouts");
@@ -242,8 +243,8 @@ UniValue migrate_completeimporttransaction(const UniValue& params, bool fHelp)
         throw runtime_error("migrate_completeimporttransaction importTx\n\n"
                 "Takes a cross chain import tx with proof generated on assetchain "
                 "and extends proof to target chain proof root");
-    
-    if (ASSETCHAINS_SYMBOL[0] != 0)
+
+    if (ASSETCHAINS_SYMBOL[0] != '\0')
         throw runtime_error("Must be called on SAFE");
 
     CTransaction importTx;
@@ -268,7 +269,7 @@ UniValue getNotarisationsForBlock(const UniValue& params, bool fHelp)
     NotarisationsInBlock nibs;
     GetBlockNotarisations(blockHash, nibs);
     UniValue out(UniValue::VARR);
-    BOOST_FOREACH(const Notarisation& n, nibs)
+    for (const Notarisation& n : nibs)
     {
         UniValue item(UniValue::VARR);
         item.push_back(n.first.GetHex());
@@ -289,14 +290,12 @@ UniValue scanNotarisationsDB(const UniValue& params, bool fHelp)
     std::string symbol = params[1].get_str().c_str();
 
     int limit = 1440;
-    if (params.size() > 2) {
+    if (params.size() > 2)
         limit = atoi(params[2].get_str().c_str());
-    }
 
-    if (height == 0) {
+    if (height == 0)
         height = chainActive.Height();
-    }
-    
+
     Notarisation nota;
     int matchedHeight = ScanNotarisationsDB(height, symbol, limit, nota);
     if (!matchedHeight) return NullUniValue;

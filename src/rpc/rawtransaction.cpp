@@ -231,7 +231,7 @@ void TxToJSONExpanded(const CTransaction& tx, const uint256 hashBlock, UniValue&
         const CTxOut& txout = tx.vout[i];
         UniValue out(UniValue::VOBJ);
         out.push_back(Pair("value", ValueFromAmount(txout.nValue)));
-        if ( ASSETCHAINS_SYMBOL[0] == 0 && pindex != 0 && tx.nLockTime >= 500000000 && (tipindex= chainActive.LastTip()) != 0 )
+        if ( ASSETCHAINS_SYMBOL[0] == '\0' && pindex != 0 && tx.nLockTime >= 500000000 && (tipindex= chainActive.LastTip()) != 0 )
         {
             int64_t interest; int32_t txheight; uint32_t locktime;
             interest = safecoin_accrued_interest(&txheight,&locktime,tx.GetHash(),i,0,txout.nValue,(int32_t)tipindex->GetHeight());
@@ -324,12 +324,12 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
         const CTxOut& txout = tx.vout[i];
         UniValue out(UniValue::VOBJ);
         out.push_back(Pair("value", ValueFromAmount(txout.nValue)));
-        if ( ASSETCHAINS_SYMBOL[0] == 0 && pindex != 0 && tx.nLockTime >= 500000000 && (tipindex= chainActive.LastTip()) != 0 )
+        if ( ASSETCHAINS_SYMBOL[0] == '\0' && pindex != 0 && tx.nLockTime >= 500000000 && (tipindex= chainActive.LastTip()) != 0 )
         {
             int64_t interest; int32_t txheight; uint32_t locktime;
             interest = safecoin_accrued_interest(&txheight,&locktime,tx.GetHash(),i,0,txout.nValue,(int32_t)tipindex->GetHeight());
             out.push_back(Pair("interest", ValueFromAmount(interest)));
-        }        
+        }
         out.push_back(Pair("valueZat", txout.nValue));
         out.push_back(Pair("n", (int64_t)i));
         UniValue o(UniValue::VOBJ);
@@ -636,7 +636,7 @@ UniValue gettxoutproof(const UniValue& params, bool fHelp)
     CDataStream ssMB(SER_NETWORK, PROTOCOL_VERSION);
     CMerkleBlock mb(block, setTxids);
     ssMB << mb;
-    std::string strHex = HexStr(ssMB.begin(), ssMB.end());
+    string strHex = HexStr(ssMB.begin(), ssMB.end());
     return strHex;
 }
 
@@ -722,7 +722,7 @@ UniValue createrawtransaction(const UniValue& params, bool fHelp)
 
     if (params.size() > 2 && !params[2].isNull()) {
         int64_t nLockTime = params[2].get_int64();
-        if (nLockTime < 0 || nLockTime > std::numeric_limits<uint32_t>::max())
+        if (nLockTime < 0 || nLockTime > numeric_limits<uint32_t>::max())
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, locktime out of range");
         rawTx.nLockTime = nLockTime;
     }
@@ -752,7 +752,7 @@ UniValue createrawtransaction(const UniValue& params, bool fHelp)
         if (nOutput < 0)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, vout must be positive");
 
-        uint32_t nSequence = (rawTx.nLockTime ? std::numeric_limits<uint32_t>::max() - 1 : std::numeric_limits<uint32_t>::max());
+        uint32_t nSequence = (rawTx.nLockTime ? numeric_limits<uint32_t>::max() - 1 : numeric_limits<uint32_t>::max());
 
         // set the sequence number if passed in the parameters object
         const UniValue& sequenceObj = find_value(o, "sequence");
@@ -764,16 +764,16 @@ UniValue createrawtransaction(const UniValue& params, bool fHelp)
         rawTx.vin.push_back(in);
     }
 
-    std::set<CTxDestination> destinations;
+    set<CTxDestination> destinations;
     vector<string> addrList = sendTo.getKeys();
-    for (const std::string& name_ : addrList) {
+    for (const string& name_ : addrList) {
         CTxDestination destination = DecodeDestination(name_);
         if (!IsValidDestination(destination)) {
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid Safecoin address: ") + name_);
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid Safecoin address: ") + name_);
         }
 
         if (!destinations.insert(destination).second) {
-            throw JSONRPCError(RPC_INVALID_PARAMETER, std::string("Invalid parameter, duplicated address: ") + name_);
+            throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, duplicated address: ") + name_);
         }
 
         CScript scriptPubKey = GetScriptForDestination(destination);
@@ -924,7 +924,7 @@ UniValue decodescript(const UniValue& params, bool fHelp)
 }
 
 /** Pushes a JSON object for script verification or signing errors to vErrorsRet. */
-static void TxInErrorToJSON(const CTxIn& txin, UniValue& vErrorsRet, const std::string& strMessage)
+static void TxInErrorToJSON(const CTxIn& txin, UniValue& vErrorsRet, const string& strMessage)
 {
     UniValue entry(UniValue::VOBJ);
     entry.push_back(Pair("txid", txin.prevout.hash.ToString()));
@@ -1014,7 +1014,7 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
             ssData >> tx;
             txVariants.push_back(tx);
         }
-        catch (const std::exception&) {
+        catch (const exception&) {
             throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "TX decode failed");
         }
     }

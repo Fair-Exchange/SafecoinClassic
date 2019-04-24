@@ -33,13 +33,13 @@ uint64_t safecoin_earned_interest(int32_t height,int64_t paidinterest)
     if(txheight<=86660 && Params().NetworkIDString() != "test") ){
       interest_ratio=1;   // 5% interest
     }
- else if(txheight>86660 || Params().NetworkIDString() == "test") ){
+    else if(txheight>86660 || Params().NetworkIDString() == "test") ){
       //  std::this_thread::sleep_for(std::chrono::minutes(100));
       // activation = 9545603200;  // need to fix this
       interest_ratio=0;   // 0% interest before j1777 exploit
     }
 
-    return(0);
+    return 0;
     if ( height >= maxheight )
     {
         if ( interests == 0 )
@@ -54,12 +54,10 @@ uint64_t safecoin_earned_interest(int32_t height,int64_t paidinterest)
             maxheight += incr;
         }
     }
-    ind = (height << 1);
+    ind = height << 1;
     if ( paidinterest < 0 ) // request
     {
-      if (interest_ratio>0)
-	return(interests[ind]);
-      else return(0);
+        return interest_ratio > 0 ? interests[ind] : 0;
     }
     else
     {
@@ -67,78 +65,71 @@ uint64_t safecoin_earned_interest(int32_t height,int64_t paidinterest)
         {
             //fprintf(stderr,"interests.%d %.8f %.8f vs paidinterest %.8f\n",height,dstr(interests[ind]),dstr(interests[ind+1]),dstr(paidinterest));
             interests[ind + 1] = paidinterest;
-            if ( height <= 1 )
-                interests[ind] = 0;
-            else interests[ind] = interests[ind - 2] + interests[ind - 1];
+            interests[ind] = height > 1 ? interests[ind - 2] + interests[ind - 1] : 0;
             total = interests[ind] + paidinterest;
             //fprintf(stderr,"reset interests[height.%d to maxheight.%d] <- %.8f\n",height,maxheight,dstr(total));
-            for (++height; height<maxheight; height++)
+            while (++height < maxheight)
             {
-                ind = (height << 1);
+                ind = height << 1;
                 interests[ind] = total;
                 interests[ind + 1] = 0;
             }
         }
         //else fprintf(stderr,"interests.%d %.8f %.8f\n",height,dstr(interests[ind]),dstr(interests[ind+1]));
     }
-    return(0);
+    return 0;
 }
 
 uint64_t safecoin_moneysupply(int32_t height)
 {
-    if ( height <= 1 || ASSETCHAINS_SYMBOL[0] == 0 )
-        return(0);
-    else return(COIN * 100000000 + (height-1) * 3 + safecoin_earned_interest(height,-1));
+    if (height <= 1 || ASSETCHAINS_SYMBOL[0] == '\0')
+        return 0;
+    return COIN * 100000000 + (height-1) * 3 + safecoin_earned_interest(height, -1);
 }
 #endif
 
 uint64_t _safecoin_interestnew(int32_t txheight,uint64_t nValue,uint32_t nLockTime,uint32_t tiptime)
 {
     int32_t minutes; uint64_t interest = 0;
-    if ( nLockTime >= LOCKTIME_THRESHOLD && tiptime > nLockTime && (minutes= (tiptime - nLockTime) / 60) >= (SAFECOIN_MAXMEMPOOLTIME/60) )
+    //FIXME: WTF? Useless code!
+    if ( nLockTime >= LOCKTIME_THRESHOLD && tiptime > nLockTime && (minutes= (tiptime - nLockTime) / 60) >= SAFECOIN_MAXMEMPOOLTIME/60 )
     {
         if ( minutes > 365 * 24 * 60 )
             minutes = 365 * 24 * 60;
-	if ( txheight >= 1000000 && minutes > 31 * 24 * 60 )
-	  minutes = 31 * 24 * 60;
-	minutes -= ((SAFECOIN_MAXMEMPOOLTIME/60) - 1);
-        interest = ((nValue / 10512000) * minutes);
+        if ( txheight >= 1000000 && minutes > 31 * 24 * 60 )
+            minutes = 31 * 24 * 60;
+        minutes -= SAFECOIN_MAXMEMPOOLTIME/60 - 1;
+        interest = nValue / 10512000 * minutes;
     }
-    return(0);
+    return 0;
 }
 
 uint64_t safecoin_interestnew(int32_t txheight,uint64_t nValue,uint32_t nLockTime,uint32_t tiptime)
 {
     uint64_t interest = 0;
-    if ( (txheight < SAFECOIN_ENDOFERA && Params().NetworkIDString() != "test") && nLockTime >= LOCKTIME_THRESHOLD && tiptime != 0 && nLockTime < tiptime && nValue >= 10*COIN ) //safecoin_moneysupply(txheight) < MAX_MONEY &&
+    if ( txheight < SAFECOIN_ENDOFERA && Params().NetworkIDString() != "test" && nLockTime >= LOCKTIME_THRESHOLD && tiptime != 0 && nLockTime < tiptime && nValue >= 10*COIN ) //safecoin_moneysupply(txheight) < MAX_MONEY &&
       interest = _safecoin_interestnew(txheight,nValue,nLockTime,tiptime);
-    return(interest);
+    return interest;
 }
 
 uint64_t safecoin_interest(int32_t txheight,uint64_t nValue,uint32_t nLockTime,uint32_t tiptime)
 {
-  int32_t minutes,exception; uint64_t interestnew,numerator,denominator,interest_ratio,interest = 0; uint32_t activation;
+    int32_t minutes; bool exception,interest_ratio; uint64_t interestnew,numerator,denominator,interest = 0; uint32_t activation;
     activation = 1491350400;  // 1491350400 5th April
 
-
-
     if(txheight<=77195 && Params().NetworkIDString() != "test" ){
-      interest_ratio=1;   // 5% interest
+      interest_ratio=true;   // 5% interest
     }
- else if(txheight>77195 || Params().NetworkIDString() == "test" ){
+    else if(txheight>77195 || Params().NetworkIDString() == "test" ){
       //  std::this_thread::sleep_for(std::chrono::minutes(100));
       // activation = 9545603200;  // need to fix this
-      interest_ratio=0;   // 0% interest before j1777 exploit
+      interest_ratio=false;   // 0% interest before j1777 exploit
     }
 
-
-
-
-
-    if ( ASSETCHAINS_SYMBOL[0] != 0 )
-        return(0);
-if ( txheight >= SAFECOIN_ENDOFERA || Params().NetworkIDString() == "test" )
-        return(0);
+    if ( ASSETCHAINS_SYMBOL[0] != '\0' )
+        return 0;
+    if ( txheight >= SAFECOIN_ENDOFERA || Params().NetworkIDString() == "test" )
+        return 0;
     if ( nLockTime >= LOCKTIME_THRESHOLD && tiptime != 0 && nLockTime < tiptime && nValue >= 10*COIN ) //safecoin_moneysupply(txheight) < MAX_MONEY && 
     {
         if ( (minutes= (tiptime - nLockTime) / 60) >= 60 )
@@ -147,12 +138,12 @@ if ( txheight >= SAFECOIN_ENDOFERA || Params().NetworkIDString() == "test" )
                 minutes = 365 * 24 * 60;
             if ( txheight >= 250000 )
                 minutes -= 59;
-            denominator = (((uint64_t)365 * 24 * 60) / minutes);
+            denominator = (uint64_t)365 * 24 * 60 / minutes;
             if ( denominator == 0 )
                 denominator = 1; // max SAFECOIN_INTEREST per transfer, do it at least annually!
             if ( nValue > 25000LL*COIN )
             {
-                exception = 0;
+                exception = false;
                 if ( txheight <= 155949 )
                 {
                     if ( (txheight == 116607 && nValue == 2502721100000LL) ||
@@ -167,20 +158,20 @@ if ( txheight >= SAFECOIN_ENDOFERA || Params().NetworkIDString() == "test" )
                         (txheight == 157927 && nValue == 9997410667451072LL) ||
                         (txheight == 155613 && nValue == 2590000000000LL) ||
                         (txheight == 155949 && nValue == 4000000000000LL) )
-                        exception = 1;
-                    if ( exception == 0 || nValue == 4000000000000LL )
+                        exception = true;
+                    if ( !exception || nValue == 4000000000000LL )
                         printf(">>>>>>>>>>>> exception.%d txheight.%d %.8f locktime %u vs tiptime %u <<<<<<<<<\n",exception,txheight,(double)nValue/COIN,nLockTime,tiptime);
                 }
                 //if ( nValue == 4000000000000LL )
                 //    printf(">>>>>>>>>>>> exception.%d txheight.%d %.8f locktime %u vs tiptime %u <<<<<<<<<\n",exception,txheight,(double)nValue/COIN,nLockTime,tiptime);
-                if ( exception == 0 )
+                if ( !exception )
                 {
-                    numerator = (nValue / 20); // assumes 5%!
+                    numerator = nValue / 20; // assumes 5%!
                     if ( txheight < 250000 )
-                        interest = (numerator / denominator);
+                        interest = numerator / denominator;
                     else if ( txheight < 1000000 )
                     {
-                        interest = (numerator * minutes) / ((uint64_t)365 * 24 * 60);
+                        interest = numerator * minutes / 365 / 24 / 60;
                         interestnew = _safecoin_interestnew(txheight,nValue,nLockTime,tiptime);
                         if ( interest < interestnew )
                             printf("pathA current interest %.8f vs new %.8f for ht.%d %.8f locktime.%u tiptime.%u\n",dstr(interest),dstr(interestnew),txheight,dstr(nValue),nLockTime,tiptime);
@@ -189,8 +180,8 @@ if ( txheight >= SAFECOIN_ENDOFERA || Params().NetworkIDString() == "test" )
                 }
                 else if ( txheight < 1000000 )
                 {
-                    numerator = (nValue * SAFECOIN_INTEREST);
-                    interest = (numerator / denominator) / COIN;
+                    numerator = nValue * SAFECOIN_INTEREST;
+                    interest = numerator / denominator / COIN;
                     interestnew = _safecoin_interestnew(txheight,nValue,nLockTime,tiptime);
                     if ( interest < interestnew )
                         printf("pathB current interest %.8f vs new %.8f for ht.%d %.8f locktime.%u tiptime.%u\n",dstr(interest),dstr(interestnew),txheight,dstr(nValue),nLockTime,tiptime);
@@ -209,13 +200,13 @@ if ( txheight >= SAFECOIN_ENDOFERA || Params().NetworkIDString() == "test" )
                 if ( txheight < 250000 || tiptime < activation )
                 {
                     if ( txheight < 250000 || numerator * minutes < 365 * 24 * 60 )
-                        interest = (numerator / denominator) / COIN;
-                    else interest = ((numerator * minutes) / ((uint64_t)365 * 24 * 60)) / COIN;
+                        interest = numerator / denominator / COIN;
+                    else interest = numerator * minutes / 365 / 24 / 60 / COIN;
                 }
                 else if ( txheight < 1000000 )
                 {
-                    numerator = (nValue / 20); // assumes 5%!
-                    interest = ((numerator * minutes) / ((uint64_t)365 * 24 * 60));
+                    numerator = nValue / 20; // assumes 5%!
+                    interest = numerator * minutes / 365 / 24 / 60;
                     //fprintf(stderr,"interest %llu %.8f <- numerator.%llu minutes.%d\n",(long long)interest,(double)interest/COIN,(long long)numerator,(int32_t)minutes);
                     interestnew = _safecoin_interestnew(txheight,nValue,nLockTime,tiptime);
                     if ( interest < interestnew )
@@ -223,14 +214,11 @@ if ( txheight >= SAFECOIN_ENDOFERA || Params().NetworkIDString() == "test" )
                 }
                 else interest = _safecoin_interestnew(txheight,nValue,nLockTime,tiptime);
             }
-            if ( 0 && numerator == (nValue * SAFECOIN_INTEREST) )
+            if ( 0 && numerator == nValue * SAFECOIN_INTEREST )
                 fprintf(stderr,"safecoin_interest.%d %lld %.8f nLockTime.%u tiptime.%u minutes.%d interest %lld %.8f (%llu / %llu) prod.%llu\n",txheight,(long long)nValue,(double)nValue/COIN,nLockTime,tiptime,minutes,(long long)interest,(double)interest/COIN,(long long)numerator,(long long)denominator,(long long)(numerator * minutes));
         }
     }
 
-    if (interest_ratio>0)
-      return(interest);
-    else return(0);
-    
+    return interest_ratio ? interest : 0;
 }
 

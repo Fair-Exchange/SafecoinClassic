@@ -12,7 +12,7 @@ bool CScriptExt::IsPayToScriptHash(CScriptID *scriptID) const
 {
     if (((CScript *)this)->IsPayToScriptHash())
     {
-        *scriptID = CScriptID(uint160(std::vector<unsigned char>(this->begin() + 2, this->end() - 1)));
+        *scriptID = CScriptID(uint160(vector<unsigned char>(this->begin() + 2, this->end() - 1)));
         return true;
     }
     return false;
@@ -99,7 +99,7 @@ bool CScriptExt::ExtractVoutDestination(const CTransaction& tx, int32_t voutNum,
         tx.vout[1].scriptPubKey.IsOpReturn())
     {
         opcodetype op;
-        std::vector<uint8_t> opretData = std::vector<uint8_t>();
+        vector<uint8_t> opretData = vector<uint8_t>();
         CScript::const_iterator it = tx.vout[1].scriptPubKey.begin() + 1;
         if (tx.vout[1].scriptPubKey.GetOp2(it, op, &opretData))
         {

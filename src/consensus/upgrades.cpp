@@ -39,16 +39,14 @@ UpgradeState NetworkUpgradeState(
     Consensus::UpgradeIndex idx)
 {
     if (nHeight < 0)
-    {
         printf("height: %d", nHeight);
-    }
     assert(nHeight >= 0);
     assert(idx >= Consensus::BASE_SPROUT && idx < Consensus::MAX_NETWORK_UPGRADES);
     auto nActivationHeight = params.vUpgrades[idx].nActivationHeight;
 
-    if (nActivationHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) {
+    if (nActivationHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT)
         return UPGRADE_DISABLED;
-    } else if (nHeight >= nActivationHeight) {
+    if (nHeight >= nActivationHeight) {
         // From ZIP 200:
         //
         // ACTIVATION_HEIGHT
@@ -59,25 +57,18 @@ UpgradeState NetworkUpgradeState(
         //     subject to the pre-upgrade consensus rules, and would be the last common
         //     block in the event of a persistent pre-upgrade branch.
         return UPGRADE_ACTIVE;
-    } else {
-        return UPGRADE_PENDING;
     }
+    return UPGRADE_PENDING;
 }
 
-bool NetworkUpgradeActive(
-    int nHeight,
-    const Consensus::Params& params,
-    Consensus::UpgradeIndex idx)
-{
+bool NetworkUpgradeActive(int nHeight, const Consensus::Params& params, Consensus::UpgradeIndex idx) {
     return NetworkUpgradeState(nHeight, params, idx) == UPGRADE_ACTIVE;
 }
 
 int CurrentEpoch(int nHeight, const Consensus::Params& params) {
-    for (auto idxInt = Consensus::MAX_NETWORK_UPGRADES - 1; idxInt >= Consensus::BASE_SPROUT; idxInt--) {
-        if (NetworkUpgradeActive(nHeight, params, Consensus::UpgradeIndex(idxInt))) {
+    for (auto idxInt = Consensus::MAX_NETWORK_UPGRADES - 1; idxInt >= Consensus::BASE_SPROUT; idxInt--)
+        if (NetworkUpgradeActive(nHeight, params, Consensus::UpgradeIndex(idxInt)))
             return idxInt;
-        }
-    }
     // Base case
     return Consensus::BASE_SPROUT;
 }
@@ -87,68 +78,49 @@ uint32_t CurrentEpochBranchId(int nHeight, const Consensus::Params& params) {
 }
 
 bool IsConsensusBranchId(int branchId) {
-    for (int idx = Consensus::BASE_SPROUT; idx < Consensus::MAX_NETWORK_UPGRADES; idx++) {
-        if (branchId == NetworkUpgradeInfo[idx].nBranchId) {
+    for (int idx = Consensus::BASE_SPROUT; idx < Consensus::MAX_NETWORK_UPGRADES; idx++)
+        if (branchId == NetworkUpgradeInfo[idx].nBranchId)
             return true;
-        }
-    }
     return false;
 }
 
-bool IsActivationHeight(
-    int nHeight,
-    const Consensus::Params& params,
-    Consensus::UpgradeIndex idx)
-{
+bool IsActivationHeight(int nHeight, const Consensus::Params& params, Consensus::UpgradeIndex idx) {
     assert(idx >= Consensus::BASE_SPROUT && idx < Consensus::MAX_NETWORK_UPGRADES);
 
     // Don't count Sprout as an activation height
-    if (idx == Consensus::BASE_SPROUT) {
+    if (idx == Consensus::BASE_SPROUT)
         return false;
-    }
 
     return nHeight >= 0 && nHeight == params.vUpgrades[idx].nActivationHeight;
 }
 
-bool IsActivationHeightForAnyUpgrade(
-    int nHeight,
-    const Consensus::Params& params)
-{
-    if (nHeight < 0) {
+bool IsActivationHeightForAnyUpgrade(int nHeight, const Consensus::Params& params) {
+    if (nHeight < 0)
         return false;
-    }
 
     // Don't count Sprout as an activation height
-    for (int idx = Consensus::BASE_SPROUT + 1; idx < Consensus::MAX_NETWORK_UPGRADES; idx++) {
+    for (int idx = Consensus::BASE_SPROUT + 1; idx < Consensus::MAX_NETWORK_UPGRADES; idx++)
         if (nHeight == params.vUpgrades[idx].nActivationHeight)
             return true;
-    }
 
     return false;
 }
 
 boost::optional<int> NextEpoch(int nHeight, const Consensus::Params& params) {
-    if (nHeight < 0) {
+    if (nHeight < 0)
         return boost::none;
-    }
 
     // Sprout is never pending
-    for (auto idx = Consensus::BASE_SPROUT + 1; idx < Consensus::MAX_NETWORK_UPGRADES; idx++) {
-        if (NetworkUpgradeState(nHeight, params, Consensus::UpgradeIndex(idx)) == UPGRADE_PENDING) {
+    for (auto idx = Consensus::BASE_SPROUT + 1; idx < Consensus::MAX_NETWORK_UPGRADES; idx++)
+        if (NetworkUpgradeState(nHeight, params, Consensus::UpgradeIndex(idx)) == UPGRADE_PENDING)
             return idx;
-        }
-    }
 
     return boost::none;
 }
 
-boost::optional<int> NextActivationHeight(
-    int nHeight,
-    const Consensus::Params& params)
-{
+boost::optional<int> NextActivationHeight(int nHeight, const Consensus::Params& params) {
     auto idx = NextEpoch(nHeight, params);
-    if (idx) {
+    if (idx != boost::none)
         return params.vUpgrades[idx.get()].nActivationHeight;
-    }
     return boost::none;
 }

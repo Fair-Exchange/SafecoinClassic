@@ -60,13 +60,12 @@ CWalletTx GetValidReceive(ZCJoinSplit& params,
     uint256 dataToBeSigned = SignatureHash(scriptCode, signTx, NOT_AN_INPUT, SIGHASH_ALL, 0, consensusBranchId);
 
     // Add the signature
-    assert(crypto_sign_detached(&mtx.joinSplitSig[0], NULL,
+    assert(crypto_sign_detached(&mtx.joinSplitSig[0], nullptr,
                                 dataToBeSigned.begin(), 32,
-                                joinSplitPrivKey
-                               ) == 0);
+                                joinSplitPrivKey) == 0);
 
     CTransaction tx {mtx};
-    CWalletTx wtx {NULL, tx};
+    CWalletTx wtx {nullptr, tx};
     return wtx;
 }
 
@@ -143,11 +142,10 @@ CWalletTx GetValidSpend(ZCJoinSplit& params,
     uint256 dataToBeSigned = SignatureHash(scriptCode, signTx, NOT_AN_INPUT, SIGHASH_ALL, 0, consensusBranchId);
 
     // Add the signature
-    assert(crypto_sign_detached(&mtx.joinSplitSig[0], NULL,
+    assert(crypto_sign_detached(&mtx.joinSplitSig[0], nullptr,
                                 dataToBeSigned.begin(), 32,
-                                joinSplitPrivKey
-                               ) == 0);
+                                joinSplitPrivKey) == 0);
     CTransaction tx {mtx};
-    CWalletTx wtx {NULL, tx};
+    CWalletTx wtx {nullptr, tx};
     return wtx;
 }

@@ -27,7 +27,7 @@ namespace {
 
 inline bool set_success(ScriptError* ret)
 {
-    if (ret)
+    if (ret != nullptr)
         *ret = SCRIPT_ERR_OK;
     return true;
 }
@@ -101,7 +101,7 @@ bool static IsCompressedOrUncompressedPubKey(const valtype &vchPubKey) {
  *
  * This function is consensus-critical since BIP66.
  */
-bool static IsValidSignatureEncoding(const std::vector<unsigned char> &sig) {
+bool static IsValidSignatureEncoding(const vector<unsigned char> &sig) {
     // Format: 0x30 [total-length] 0x02 [R-length] [R] 0x02 [S-length] [S] [sighash]
     // * total-length: 1-byte length descriptor of everything that follows,
     //   excluding the sighash byte.
@@ -136,7 +136,7 @@ bool static IsValidSignatureEncoding(const std::vector<unsigned char> &sig) {
     // Verify that the length of the signature matches the sum of the length
     // of the elements.
     if ((size_t)(lenR + lenS + 7) != sig.size()) return false;
- 
+
     // Check whether the R element is an integer.
     if (sig[2] != 0x02) return false;
 
@@ -173,7 +173,7 @@ bool static IsLowDERSignature(const valtype &vchSig, ScriptError* serror) {
     // https://bitcoin.stackexchange.com/a/12556:
     //     Also note that inside transaction signatures, an extra hashtype byte
     //     follows the actual signature data.
-    std::vector<unsigned char> vchSigCopy(vchSig.begin(), vchSig.begin() + vchSig.size() - 1);
+    vector<unsigned char> vchSigCopy(vchSig.begin(), vchSig.begin() + vchSig.size() - 1);
     // If the S value is above the order of the curve divided by two, its
     // complement modulo the order could have been used instead, which is
     // one byte shorter when encoded correctly.
@@ -1308,7 +1308,7 @@ uint256 SignatureHash(
 }
 
 bool TransactionSignatureChecker::VerifySignature(
-    const std::vector<unsigned char>& vchSig, const CPubKey& pubkey, const uint256& sighash) const
+    const vector<unsigned char>& vchSig, const CPubKey& pubkey, const uint256& sighash) const
 {
     return pubkey.Verify(sighash, vchSig);
 }
@@ -1345,8 +1345,8 @@ bool TransactionSignatureChecker::CheckSig(
 
 
 int TransactionSignatureChecker::CheckCryptoCondition(
-        const std::vector<unsigned char>& condBin,
-        const std::vector<unsigned char>& ffillBin,
+        const vector<unsigned char>& condBin,
+        const vector<unsigned char>& ffillBin,
         const CScript& scriptCode,
         uint32_t consensusBranchId) const
 {
@@ -1360,7 +1360,7 @@ int TransactionSignatureChecker::CheckCryptoCondition(
 
     if (!IsSupportedCryptoCondition(cond)) return 0;
     if (!IsSignedCryptoCondition(cond)) return 0;
-    
+
     uint256 sighash;
     int nHashType = ffillBin.back();
     try {
@@ -1432,7 +1432,7 @@ bool TransactionSignatureChecker::CheckLockTime(const CScriptNum& nLockTime) con
     // required to prove correct CHECKLOCKTIMEVERIFY execution.
     if (txTo->vin[nIn].IsFinal())
     {
-        //fprintf(stderr,"CLTV error: nonfinal vin.%d nSequence.%u vs %u\n",(int32_t)nIn,(uint32_t)txTo->vin[nIn].nSequence,(uint32_t)std::numeric_limits<uint32_t>::max());
+        //fprintf(stderr,"CLTV error: nonfinal vin.%d nSequence.%u vs %u\n",(int32_t)nIn,(uint32_t)txTo->vin[nIn].nSequence,(uint32_t)numeric_limits<uint32_t>::max());
         return false;
     }
 
@@ -1466,7 +1466,7 @@ bool EvalCryptoConditionSig(
         return set_error(serror, SCRIPT_ERR_PUSH_SIZE);
 
     stack.push_back(vchPushValue);
-    
+
     return true;
 }
 

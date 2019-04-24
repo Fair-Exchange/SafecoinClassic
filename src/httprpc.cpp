@@ -126,11 +126,11 @@ static bool HTTPReq_JSONRPC(HTTPRequest* req, const std::string &)
         // singleton request
         if (valRequest.isObject()) {
             jreq.parse(valRequest);
-            
+
             if (!RPCAuthorized(authHeader.second)) {
                 LogPrintf("ThreadRPCServer incorrect password attempt from %s\n", req->GetPeer().ToString());
                 MilliSleep(250);
-                
+
                 req->WriteHeader("WWW-Authenticate", WWW_AUTH_HEADER_DATA);
                 req->WriteReply(HTTP_UNAUTHORIZED);
                 return false;
@@ -161,7 +161,7 @@ static bool HTTPReq_JSONRPC(HTTPRequest* req, const std::string &)
 
 static bool InitRPCAuthentication()
 {
-    if (mapArgs["-rpcpassword"] == "")
+    if (mapArgs["-rpcpassword"].empty())
     {
         LogPrintf("No rpcpassword set - using random cookie authentication\n");
         if (!GenerateAuthCookie(&strRPCUserColonPass)) {
@@ -202,6 +202,6 @@ void StopHTTPRPC()
     if (httpRPCTimerInterface) {
         RPCUnregisterTimerInterface(httpRPCTimerInterface);
         delete httpRPCTimerInterface;
-        httpRPCTimerInterface = 0;
+        httpRPCTimerInterface = nullptr;
     }
 }

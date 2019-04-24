@@ -52,7 +52,7 @@ const std::string ADDR_TYPE_SPROUT = "sprout";
 const std::string ADDR_TYPE_SAPLING = "sapling";
 
 extern UniValue TxJoinSplitToJSON(const CTransaction& tx);
-extern uint8_t ASSETCHAINS_PRIVATE;
+extern bool ASSETCHAINS_PRIVATE;
 extern int32_t USE_EXTERNAL_PUBKEY;
 uint32_t safecoin_segid32(char *coinaddr);
 int32_t safecoin_dpowconfs(int32_t height,int32_t numconfs);
@@ -82,8 +82,7 @@ bool EnsureWalletIsAvailable(bool avoidException)
     {
         if (!avoidException)
             throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (disabled)");
-        else
-            return false;
+        return false;
     }
     return true;
 }
@@ -135,7 +134,7 @@ string AccountFromValue(const UniValue& value)
 
 char *safecoin_chainname()
 {
-     return(ASSETCHAINS_SYMBOL[0] == 0 ? (char *)"SAFE" : ASSETCHAINS_SYMBOL);
+     return ASSETCHAINS_SYMBOL[0] == '\0' ? (char *)"SAFE" : ASSETCHAINS_SYMBOL;
 }
 
 UniValue getnewaddress(const UniValue& params, bool fHelp)
@@ -474,7 +473,7 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
             + HelpExampleRpc("sendtoaddress", "\"RD6GgnrMpPaTSMn8vai6yiGA7mN4QGPV\", 0.1, \"donation\", \"seans outpost\"")
         );
 
-    if ( ASSETCHAINS_PRIVATE != 0 && AmountFromValue(params[1]) > 0 )
+    if ( ASSETCHAINS_PRIVATE && AmountFromValue(params[1]) > 0 )
     {
         if ( safecoin_isnotaryvout((char *)params[0].get_str().c_str()) == 0 )
         {
@@ -517,22 +516,22 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
 #define SAFECOIN_KVBINARY 2
 #define SAFECOIN_KVDURATION 1440
 #define IGUANA_MAXSCRIPTSIZE 10001
-uint64_t PAX_fiatdest(uint64_t *seedp,int32_t tosafecoin,char *destaddr,uint8_t pubkey37[37],char *coinaddr,int32_t height,char *base,int64_t fiatoshis);
+uint64_t PAX_fiatdest(uint64_t *seedp,bool tosafecoin,char *destaddr,uint8_t pubkey37[37],char *coinaddr,int32_t height,char *base,int64_t fiatoshis);
 int32_t safecoin_opreturnscript(uint8_t *script,uint8_t type,uint8_t *opret,int32_t opretlen);
 #define CRYPTO777_SAFEADDR "RXL3YXG2ceaB6C5hfJcN4fvmLH2C34knhA"
 extern int32_t SAFECOIN_PAX;
 extern uint64_t SAFECOIN_INTERESTSUM,SAFECOIN_WALLETBALANCE;
-int32_t safecoin_is_issuer();
+bool safecoin_is_issuer();
 int32_t iguana_rwnum(int32_t rwflag,uint8_t *serialized,int32_t len,void *endianedp);
-int32_t safecoin_isrealtime(int32_t *safeheightp);
-int32_t pax_fiatstatus(uint64_t *available,uint64_t *deposited,uint64_t *issued,uint64_t *withdrawn,uint64_t *approved,uint64_t *redeemed,char *base);
+bool safecoin_isrealtime(int32_t *safeheightp);
+int8_t pax_fiatstatus(uint64_t *available,uint64_t *deposited,uint64_t *issued,uint64_t *withdrawn,uint64_t *approved,uint64_t *redeemed,char *base);
 int32_t safecoin_kvsearch(uint256 *refpubkeyp,int32_t current_height,uint32_t *flagsp,int32_t *heightp,uint8_t value[IGUANA_MAXSCRIPTSIZE],uint8_t *key,int32_t keylen);
 int32_t safecoin_kvcmp(uint8_t *refvalue,uint16_t refvaluesize,uint8_t *value,uint16_t valuesize);
 uint64_t safecoin_kvfee(uint32_t flags,int32_t opretlen,int32_t keylen);
 uint256 safecoin_kvsig(uint8_t *buf,int32_t len,uint256 privkey);
 int32_t safecoin_kvduration(uint32_t flags);
 uint256 safecoin_kvprivkey(uint256 *pubkeyp,char *passphrase);
-int32_t safecoin_kvsigverify(uint8_t *buf,int32_t len,uint256 _pubkey,uint256 sig);
+int8_t safecoin_kvsigverify(uint8_t *buf,int32_t len,uint256 _pubkey,uint256 sig);
 
 UniValue kvupdate(const UniValue& params, bool fHelp)
 {
@@ -567,7 +566,7 @@ UniValue kvupdate(const UniValue& params, bool fHelp)
         );
     if (!EnsureWalletIsAvailable(fHelp))
         return 0;
-    if ( ASSETCHAINS_SYMBOL[0] == 0 )
+    if ( ASSETCHAINS_SYMBOL[0] == '\0' )
         return(0);
     haveprivkey = 0;
     memset(&sig,0,sizeof(sig));
@@ -624,7 +623,7 @@ UniValue kvupdate(const UniValue& params, bool fHelp)
         //for (i=0; i<32; i++)
         //    printf("%02x",((uint8_t *)&sig)[i]);
         //printf(" sig for keylen.%d + valuesize.%d\n",keylen,refvaluesize);
-        ret.push_back(Pair("coin",(char *)(ASSETCHAINS_SYMBOL[0] == 0 ? "SAFE" : ASSETCHAINS_SYMBOL)));
+        ret.push_back(Pair("coin",(char *)(ASSETCHAINS_SYMBOL[0] == '\0' ? "SAFE" : ASSETCHAINS_SYMBOL)));
         height = chainActive.LastTip()->GetHeight();
         if ( memcmp(&zeroes,&refpubkey,sizeof(refpubkey)) != 0 )
             ret.push_back(Pair("owner",refpubkey.GetHex()));
@@ -684,7 +683,7 @@ UniValue paxdeposit(const UniValue& params, bool fHelp)
     {
         throw runtime_error("paxdeposit disabled without -pax");
     }
-    if ( safecoin_is_issuer() != 0 )
+    if ( safecoin_is_issuer())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "paxdeposit only from SAFE");
     if (!EnsureWalletIsAvailable(fHelp))
         throw runtime_error("paxdeposit needs wallet"); //return Value::null;
@@ -703,7 +702,7 @@ UniValue paxdeposit(const UniValue& params, bool fHelp)
         fprintf(stderr,"available %llu vs fiatoshis %llu\n",(long long)available,(long long)fiatoshis);
         throw runtime_error("paxdeposit not enough available inventory");
     }
-    safecoinshis = PAX_fiatdest(&seed,0,destaddr,pubkey37,(char *)params[0].get_str().c_str(),height,(char *)base.c_str(),fiatoshis);
+    safecoinshis = PAX_fiatdest(&seed,false,destaddr,pubkey37,(char *)params[0].get_str().c_str(),height,(char *)base.c_str(),fiatoshis);
     dest.append(destaddr);
     CBitcoinAddress destaddress(CRYPTO777_SAFEADDR);
     if (!destaddress.IsValid())
@@ -725,21 +724,21 @@ UniValue paxdeposit(const UniValue& params, bool fHelp)
 UniValue paxwithdraw(const UniValue& params, bool fHelp)
 {
     CWalletTx wtx; std::string dest; int32_t safeheight; uint64_t seed,safecoinshis = 0; char destaddr[64]; uint8_t i,pubkey37[37]; bool fSubtractFeeFromAmount = false;
-    if ( ASSETCHAINS_SYMBOL[0] == 0 )
+    if ( ASSETCHAINS_SYMBOL[0] == '\0' )
         return(0);
     if (!EnsureWalletIsAvailable(fHelp))
         return 0;
     throw runtime_error("paxwithdraw deprecated");
     if (fHelp || params.size() != 2)
         throw runtime_error("paxwithdraw address fiatamount");
-    if ( safecoin_isrealtime(&safeheight) == 0 )
+    if ( !safecoin_isrealtime(&safeheight) )
         return(0);
     LOCK2(cs_main, pwalletMain->cs_wallet);
     CBitcoinAddress address(params[0].get_str());
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
     int64_t fiatoshis = atof(params[1].get_str().c_str()) * COIN;
-    safecoinshis = PAX_fiatdest(&seed,1,destaddr,pubkey37,(char *)params[0].get_str().c_str(),safeheight,ASSETCHAINS_SYMBOL,fiatoshis);
+    safecoinshis = PAX_fiatdest(&seed,true,destaddr,pubkey37,(char *)params[0].get_str().c_str(),safeheight,ASSETCHAINS_SYMBOL,fiatoshis);
     dest.append(destaddr);
     CBitcoinAddress destaddress(CRYPTO777_SAFEADDR);
     if (!destaddress.IsValid())
@@ -1129,7 +1128,7 @@ UniValue movecmd(const UniValue& params, bool fHelp)
             "\nAs a json rpc call\n"
             + HelpExampleRpc("move", "\"timotei\", \"akiko\", 0.01, 6, \"happy birthday!\"")
         );
-    if ( ASSETCHAINS_PRIVATE != 0 )
+    if ( ASSETCHAINS_PRIVATE )
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "cant use transparent addresses in private chain");
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -1210,7 +1209,7 @@ UniValue sendfrom(const UniValue& params, bool fHelp)
             "\nAs a json rpc call\n"
             + HelpExampleRpc("sendfrom", "\"tabby\", \"RD6GgnrMpPaTSMn8vai6yiGA7mN4QGPV\", 0.01, 6, \"donation\", \"seans outpost\"")
         );
-    if ( ASSETCHAINS_PRIVATE != 0 )
+    if ( ASSETCHAINS_PRIVATE )
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "cant use transparent addresses in private chain");
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -1287,7 +1286,7 @@ UniValue sendmany(const UniValue& params, bool fHelp)
             "\nAs a json rpc call\n"
             + HelpExampleRpc("sendmany", "\"\", {\"RD6GgnrMpPaTSMn8vai6yiGA7mN4QGPVMY\":0.01,\"RRyyejME7LRTuvdziWsXkAbSW1fdiohGwK\":0.02}, 6, \"testing\"")
         );
-    if ( ASSETCHAINS_PRIVATE != 0 )
+    if ( ASSETCHAINS_PRIVATE )
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "cant use transparent addresses in private chain");
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -2353,7 +2352,7 @@ UniValue encryptwallet(const UniValue& params, bool fHelp)
         return NullUniValue;
 
     string enableArg = "developerencryptwallet";
-    int32_t flag = (safecoin_acpublic(0) || ASSETCHAINS_SYMBOL[0] == 0);
+    int32_t flag = (safecoin_acpublic(0) || ASSETCHAINS_SYMBOL[0] == '\0');
     auto fEnableWalletEncryption = fExperimentalMode && GetBoolArg("-" + enableArg, flag);
 
     std::string strWalletEncryptionDisabledMsg = "";
@@ -2781,7 +2780,7 @@ UniValue listunspent(const UniValue& params, bool fHelp)
 uint64_t safecoin_interestsum()
 {
 #ifdef ENABLE_WALLET
-    if ( ASSETCHAINS_SYMBOL[0] == 0 && GetBoolArg("-disablewallet", false) == 0 )
+    if ( ASSETCHAINS_SYMBOL[0] == '\0' && GetBoolArg("-disablewallet", false) == 0 )
     {
         uint64_t interest,sum = 0; int32_t txheight; uint32_t locktime;
         vector<COutput> vecOutputs;
@@ -4113,9 +4112,9 @@ UniValue z_sendmany(const UniValue& params, bool fHelp)
                     if ( fromSprout || toSprout )
                         throw JSONRPCError(RPC_INVALID_PARAMETER,"Sprout usage has expired");
                 }
-                if ( toSapling && ASSETCHAINS_SYMBOL[0] == 0 )
+                if ( toSapling && ASSETCHAINS_SYMBOL[0] == '\0' )
                     throw JSONRPCError(RPC_INVALID_PARAMETER,"Sprout usage will expire soon");
-   
+
                 // If we are sending from a shielded address, all recipient
                 // shielded addresses must be of the same type.
                 if ((fromSprout && toSapling) || (fromSapling && toSprout)) {
@@ -4127,7 +4126,7 @@ UniValue z_sendmany(const UniValue& params, bool fHelp)
                 throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, unknown address format: ")+address );
             }
         }
-        //else if ( ASSETCHAINS_PRIVATE != 0 && safecoin_isnotaryvout((char *)address.c_str()) == 0 )
+        //else if ( ASSETCHAINS_PRIVATE && safecoin_isnotaryvout((char *)address.c_str()) == 0 )
         //    throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "cant use transparent addresses in private chain");
 
         if (setAddress.count(address))
@@ -5343,7 +5342,7 @@ int32_t ensure_CCrequirements()
 UniValue CCaddress(struct CCcontract_info *cp,char *name,std::vector<unsigned char> &pubkey)
 {
     UniValue result(UniValue::VOBJ); char destaddr[64],str[64]; CPubKey pk;
-    pk = GetUnspendable(cp,0);
+    pk = GetUnspendable(cp, nullptr);
     GetCCaddress(cp,destaddr,pk);
     if ( strcmp(destaddr,cp->unspendableCCaddr) != 0 )
     {
@@ -5496,7 +5495,7 @@ UniValue pricesaddress(const UniValue& params, bool fHelp)
         pubkey = ParseHex(params[0].get_str().c_str());
     result = CCaddress(cp,(char *)"Prices",pubkey);
     mypk = pubkey2pk(Mypubkey());
-    pricespk = GetUnspendable(cp,0);
+    pricespk = GetUnspendable(cp, nullptr);
     GetCCaddress(assetscp,myaddr,mypk);
     GetCCaddress1of2(assetscp,houseaddr,pricespk,planpk);
     GetCCaddress1of2(assetscp,exposureaddr,pricespk,pricespk);

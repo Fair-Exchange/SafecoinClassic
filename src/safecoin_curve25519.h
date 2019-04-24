@@ -36,7 +36,7 @@ static inline bits320 fsum(bits320 output,bits320 in)
     int32_t i;
     for (i=0; i<5; i++)
         output.ulongs[i] += in.ulongs[i];
-    return(output);
+    return output;
 }
 
 static inline void fdifference_backwards(uint64_t *out,const uint64_t *in)
@@ -78,7 +78,7 @@ bits320 fexpand(bits256 basepoint)
     out.ulongs[2] = (load_limb(basepoint.bytes+12) >> 6) & 0x7ffffffffffffLL;
     out.ulongs[3] = (load_limb(basepoint.bytes+19) >> 1) & 0x7ffffffffffffLL;
     out.ulongs[4] = (load_limb(basepoint.bytes+24) >> 12) & 0x7ffffffffffffLL;
-    return(out);
+    return out;
 }
 
 #if __amd64__
@@ -97,7 +97,7 @@ static inline bits320 fscalar_product(const bits320 in,const uint64_t scalar)
         output.ulongs[i] = ((uint64_t)a) & 0x7ffffffffffffLL;
     }
     output.ulongs[0] += (a >> 51) * 19;
-    return(output);
+    return output;
 }
 
 // Multiply two numbers: output = in2 * in
@@ -127,7 +127,7 @@ bits320 fmul(const bits320 in2,const bits320 in)
     r1 +=   c;      c = r1 >> 51; r1 = r1 & 0x7ffffffffffffLL;
     r2 +=   c;
     out.ulongs[0] = r0, out.ulongs[1] = r1, out.ulongs[2] = r2, out.ulongs[3] = r3, out.ulongs[4] = r4;
-    return(out);
+    return out;
 }
 
 bits320 fsquare_times(const bits320 in,uint64_t count)
@@ -157,7 +157,7 @@ bits320 fsquare_times(const bits320 in,uint64_t count)
         r2 +=   c;
     } while( --count );
     out.ulongs[0] = r0, out.ulongs[1] = r1, out.ulongs[2] = r2, out.ulongs[3] = r3, out.ulongs[4] = r4;
-    return(out);
+    return out;
 }
 
 static inline void fcontract_iter(uint128_t t[5],int32_t flag)
@@ -189,7 +189,7 @@ bits256 fcontract(const bits320 input)
     store_limb(out.bytes+8,(t[1] >> 13) | (t[2] << 38));
     store_limb(out.bytes+16,(t[2] >> 26) | (t[3] << 25));
     store_limb(out.bytes+24,(t[3] >> 39) | (t[4] << 12));
-    return(out);
+    return out;
 }
 
 bits256 curve25519(bits256 mysecret,bits256 basepoint)
@@ -198,7 +198,7 @@ bits256 curve25519(bits256 mysecret,bits256 basepoint)
     mysecret.bytes[0] &= 0xf8, mysecret.bytes[31] &= 0x7f, mysecret.bytes[31] |= 0x40;
     bp = fexpand(basepoint);
     cmult(&x,&z,mysecret,bp);
-    return(fcontract(fmul(x,crecip(z))));
+    return fcontract(fmul(x,crecip(z)));
 }
 
 #else
@@ -210,9 +210,8 @@ typedef int64_t limb;
 /* Multiply a number by a scalar: output = in * scalar */
 static void fscalar_product32(limb *output, const limb *in, const limb scalar) {
     unsigned i;
-    for (i = 0; i < 10; ++i) {
+    for (i = 0; i < 10; ++i)
         output[i] = in[i] * scalar;
-    }
 }
 
 /* Multiply two numbers: output = in2 * in
@@ -773,11 +772,11 @@ bits320 fmul(const bits320 in,const bits320 in2)
 
 bits256 curve25519(bits256 mysecret,bits256 theirpublic)
 {
-    int32_t curve25519_donna(uint8_t *mypublic,const uint8_t *secret,const uint8_t *basepoint);
+    void curve25519_donna(uint8_t *mypublic,const uint8_t *secret,const uint8_t *basepoint);
     bits256 rawkey;
     mysecret.bytes[0] &= 0xf8, mysecret.bytes[31] &= 0x7f, mysecret.bytes[31] |= 0x40;
     curve25519_donna(&rawkey.bytes[0],&mysecret.bytes[0],&theirpublic.bytes[0]);
-    return(rawkey);
+    return rawkey;
 }
 
 #endif
@@ -898,7 +897,7 @@ bits256 rand256(int32_t privkeyflag)
     #endif
     if ( privkeyflag != 0 )
         randval.bytes[0] &= 0xf8, randval.bytes[31] &= 0x7f, randval.bytes[31] |= 0x40;
-    return(randval);
+    return randval;
 }
 
 bits256 curve25519_basepoint9()
@@ -906,7 +905,7 @@ bits256 curve25519_basepoint9()
     bits256 basepoint;
     memset(&basepoint,0,sizeof(basepoint));
     basepoint.bytes[0] = 9;
-    return(basepoint);
+    return basepoint;
 }
 
 bits256 curve25519_keypair(bits256 *pubkeyp)
@@ -915,7 +914,7 @@ bits256 curve25519_keypair(bits256 *pubkeyp)
     privkey = rand256(1);
     *pubkeyp = curve25519(privkey,curve25519_basepoint9());
     //printf("[%llx %llx] ",privkey.txid,(*pubkeyp).txid);
-    return(privkey);
+    return privkey;
 }
 
 bits256 curve25519_shared(bits256 privkey,bits256 otherpub)
@@ -925,37 +924,36 @@ bits256 curve25519_shared(bits256 privkey,bits256 otherpub)
     vcalc_sha256(0,hash.bytes,shared.bytes,sizeof(shared));
     //printf("priv.%llx pub.%llx shared.%llx -> hash.%llx\n",privkey.txid,pubkey.txid,shared.txid,hash.txid);
     //hash.bytes[0] &= 0xf8, hash.bytes[31] &= 0x7f, hash.bytes[31] |= 64;
-    return(hash);
+    return hash;
 }
 
-int32_t curve25519_donna(uint8_t *mypublic,const uint8_t *secret,const uint8_t *basepoint)
+void curve25519_donna(uint8_t *mypublic,const uint8_t *secret,const uint8_t *basepoint)
 {
     bits256 val,p,bp;
     memcpy(p.bytes,secret,sizeof(p));
     memcpy(bp.bytes,basepoint,sizeof(bp));
     val = curve25519(p,bp);
     memcpy(mypublic,val.bytes,sizeof(val));
-    return(0);
 }
 
 uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,uint8_t *pass,int32_t passlen)
 {
     static uint8_t basepoint[32] = {9};
     uint64_t addr; uint8_t hash[32];
-    if ( pass != 0 && passlen != 0 )
+    if ( pass != nullptr && passlen != 0 )
         vcalc_sha256(0,mysecret,pass,passlen);
     mysecret[0] &= 248, mysecret[31] &= 127, mysecret[31] |= 64;
     curve25519_donna(mypublic,mysecret,basepoint);
     vcalc_sha256(0,hash,mypublic,32);
     memcpy(&addr,hash,sizeof(addr));
-    return(addr);
+    return addr;
 }
 
 uint256 safecoin_kvprivkey(uint256 *pubkeyp,char *passphrase)
 {
     uint256 privkey;
     conv_NXTpassword((uint8_t *)&privkey,(uint8_t *)pubkeyp,(uint8_t *)passphrase,(int32_t)strlen(passphrase));
-    return(privkey);
+    return privkey;
 }
 
 uint256 safecoin_kvsig(uint8_t *buf,int32_t len,uint256 _privkey)
@@ -977,10 +975,10 @@ uint256 safecoin_kvsig(uint8_t *buf,int32_t len,uint256 _privkey)
         printf("%02x",((uint8_t *)&pubkey)[i]);
     printf(" pubkey\n");*/
     memcpy(&usig,&sig,sizeof(usig));
-    return(usig);
+    return usig;
 }
 
-int32_t safecoin_kvsigverify(uint8_t *buf,int32_t len,uint256 _pubkey,uint256 sig)
+int8_t safecoin_kvsigverify(uint8_t *buf,int32_t len,uint256 _pubkey,uint256 sig)
 {
     bits256 hash,checksig,pubkey; static uint256 zeroes;
     memcpy(&pubkey,&_pubkey,sizeof(pubkey));
@@ -1004,10 +1002,10 @@ int32_t safecoin_kvsigverify(uint8_t *buf,int32_t len,uint256 _pubkey,uint256 si
             printf("%02x",((uint8_t *)&checksig)[i]);
         printf(" checksig\n");*/
         if ( memcmp(&checksig,&sig,sizeof(sig)) != 0 )
-            return(-1);
+            return -1;
         //else printf("VALIDATED\n");
     }
-    return(0);
+    return 0;
 }
 
 #endif

@@ -75,12 +75,12 @@ CNode* FindNode(const CNetAddr& ip);
 CNode* FindNode(const CSubNet& subNet);
 CNode* FindNode(const std::string& addrName);
 CNode* FindNode(const CService& ip);
-CNode* ConnectNode(CAddress addrConnect, const char *pszDest = NULL);
-bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false);
+CNode* ConnectNode(CAddress addrConnect, const char *pszDest = nullptr);
+bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound = nullptr, const char *strDest = nullptr, bool fOneShot = false);
 unsigned short GetListenPort();
 bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
 void StartNode(boost::thread_group& threadGroup, CScheduler& scheduler);
-bool StopNode();
+void StopNode();
 void SocketSendData(CNode *pnode);
 SSL_CTX* create_context(bool server_side);
 EVP_PKEY *generate_key();
@@ -149,10 +149,10 @@ bool AddLocal(const CNetAddr& addr, int nScore = LOCAL_NONE);
 bool RemoveLocal(const CService& addr);
 bool SeenLocal(const CService& addr);
 bool IsLocal(const CService& addr);
-bool GetLocal(CService &addr, const CNetAddr *paddrPeer = NULL);
+bool GetLocal(CService &addr, const CNetAddr *paddrPeer = nullptr);
 bool IsReachable(enum Network net);
 bool IsReachable(const CNetAddr &addr);
-CAddress GetLocalAddress(const CNetAddr *paddrPeer = NULL);
+CAddress GetLocalAddress(const CNetAddr *paddrPeer = nullptr);
 
 
 extern bool fDiscover;
@@ -358,7 +358,7 @@ public:
     // Whether a ping is requested.
     bool fPingQueued;
 
-    CNode(SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false, SSL *sslIn = NULL);
+    CNode(SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false, SSL *sslIn = nullptr);
     ~CNode();
 
 private:
@@ -387,7 +387,7 @@ public:
     unsigned int GetTotalRecvSize()
     {
         unsigned int total = 0;
-        BOOST_FOREACH(const CNetMessage &msg, vRecvMsg)
+        for (const CNetMessage &msg : vRecvMsg)
             total += msg.vRecv.size() + 24;
         return total;
     }
@@ -399,19 +399,19 @@ public:
     void SetRecvVersion(int nVersionIn)
     {
         nRecvVersion = nVersionIn;
-        BOOST_FOREACH(CNetMessage &msg, vRecvMsg)
+        for (CNetMessage &msg : vRecvMsg)
             msg.SetVersion(nVersionIn);
     }
 
     CNode* AddRef()
     {
-        nRefCount++;
+        ++nRefCount;
         return this;
     }
 
     void Release()
     {
-        nRefCount--;
+        --nRefCount;
     }
 
 
@@ -427,11 +427,10 @@ public:
         // SendMessages will filter it again for knowns that were added
         // after addresses were pushed.
         if (addr.IsValid() && !addrKnown.contains(addr.GetKey())) {
-            if (vAddrToSend.size() >= MAX_ADDR_TO_SEND) {
+            if (vAddrToSend.size() >= MAX_ADDR_TO_SEND)
                 vAddrToSend[insecure_rand() % vAddrToSend.size()] = addr;
-            } else {
+            else
                 vAddrToSend.push_back(addr);
-            }
         }
     }
 

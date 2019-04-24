@@ -114,7 +114,7 @@ static void potential_deadlock_detected(const std::pair<void*, void*>& mismatch,
 
 static void push_lock(void* c, const CLockLocation& locklocation, bool fTry)
 {
-    if (lockstack.get() == NULL)
+    if (lockstack.get() == nullptr)
         lockstack.reset(new LockStack);
 
     dd_mutex.lock();
@@ -129,7 +129,7 @@ static void push_lock(void* c, const CLockLocation& locklocation, bool fTry)
             std::pair<void*, void*> p1 = std::make_pair(i.first, c);
             if (lockorders.count(p1))
                 continue;
-            lockorders[p1] = (*lockstack);
+            lockorders[p1] = *lockstack;
 
             std::pair<void*, void*> p2 = std::make_pair(c, i.first);
             if (lockorders.count(p2))

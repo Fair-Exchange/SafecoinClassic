@@ -52,7 +52,7 @@
 #define _BITS256
     union _bits256 { uint8_t bytes[32]; uint16_t ushorts[16]; uint32_t uints[8]; uint64_t ulongs[4]; uint64_t txid; };
     typedef union _bits256 bits256;
-#endif    
+#endif
 
 union _bits320 { uint8_t bytes[40]; uint16_t ushorts[20]; uint32_t uints[10]; uint64_t ulongs[5]; uint64_t txid; };
 typedef union _bits320 bits320;
@@ -79,7 +79,8 @@ struct pax_transaction
     UT_hash_handle hh;
     uint256 txid;
     uint64_t safecoinshis,fiatoshis,validated;
-    int32_t marked,height,otherheight,approved,didstats,ready;
+    int32_t marked,height,otherheight,approved;
+    bool ready,didstats;
     uint16_t vout;
     char symbol[SAFECOIN_ASSETCHAIN_MAXLEN],source[SAFECOIN_ASSETCHAIN_MAXLEN],coinaddr[64]; uint8_t rmd160[20],type,buf[35];
 };

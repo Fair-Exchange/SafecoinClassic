@@ -159,7 +159,8 @@ bool ConvertBits(const O& outfn, I it, I end) {
         ++it;
     }
     if (pad) {
-        if (bits) outfn((acc << (tobits - bits)) & maxv);
+        if (bits != 0)
+            outfn((acc << (tobits - bits)) & maxv);
     } else if (bits >= frombits || ((acc << (tobits - bits)) & maxv)) {
         return false;
     }

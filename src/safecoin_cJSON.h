@@ -1,16 +1,16 @@
 /*
  Copyright (c) 2009 Dave Gamble
- 
+
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
  in the Software without restriction, including without limitation the rights
  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  copies of the Software, and to permit persons to whom the Software is
  furnished to do so, subject to the following conditions:
- 
+
  The above copyright notice and this permission notice shall be included in
  all copies or substantial portions of the Software.
- 
+
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -49,11 +49,11 @@ extern "C"
 #define cJSON_AddBoolToObject(object,name,b)	cJSON_AddItemToObject(object, name, cJSON_CreateBool(b))
 #define cJSON_AddNumberToObject(object,name,n)	cJSON_AddItemToObject(object, name, cJSON_CreateNumber(n))
 #define cJSON_AddStringToObject(object,name,s)	cJSON_AddItemToObject(object, name, cJSON_CreateString(s))
-    
+
     struct destbuf { char buf[MAX_JSON_FIELD]; };
-    
+
 #define jfieldstr get_cJSON_fieldname
-    
+
     char *cJSON_str(cJSON *json);
     char *jstr(cJSON *json,char *field);
     char *jprint(cJSON *json,int32_t freeflag);
@@ -80,7 +80,7 @@ extern "C"
     void jdelete(cJSON *object,char *string);
     cJSON *jduplicate(cJSON *json);
     int32_t jnum(cJSON *obj,char *field);
- 
+
     bits256 jbits256(cJSON *json,char *field);
     bits256 jbits256i(cJSON *json,int32_t i);
     void jaddbits256(cJSON *json,char *field,bits256 hash);
@@ -96,7 +96,7 @@ extern "C"
     int64_t get_cJSON_int(cJSON *json,char *field);
     void add_satoshis_json(cJSON *json,char *field,uint64_t satoshis);
     uint64_t get_satoshi_obj(cJSON *json,char *field);
-    
+
     int32_t get_API_int(cJSON *obj,int32_t val);
     uint32_t get_API_uint(cJSON *obj,uint32_t val);
     uint64_t get_API_nxt64bits(cJSON *obj);

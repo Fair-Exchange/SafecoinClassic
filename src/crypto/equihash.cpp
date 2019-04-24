@@ -67,13 +67,13 @@ int Equihash<N,K>::InitialiseState(eh_HashState& base_state)
     else if (N==144 && K==5)
 		memcpy(personalization, "Safecoin", 8);
     else
-    memcpy(personalization, "ZcashPoW", 8);
+        memcpy(personalization, "ZcashPoW", 8);
     memcpy(personalization+8,  &le_N, 4);
     memcpy(personalization+12, &le_K, 4);
     return crypto_generichash_blake2b_init_salt_personal(&base_state,
-                                                         NULL, 0, // No key.
+                                                         nullptr, 0, // No key.
                                                          (512/N)*N/8,
-                                                         NULL,    // No salt.
+                                                         nullptr,    // No salt.
                                                          personalization);
 }
 
@@ -205,30 +205,28 @@ eh_index UntruncateIndex(const eh_trunc t, const eh_index r, const unsigned int 
 std::vector<eh_index> GetIndicesFromMinimal(std::vector<unsigned char> minimal,
                                             size_t cBitLen)
 {
-    assert(((cBitLen+1)+7)/8 <= sizeof(eh_index));
+    assert(cBitLen/8 < sizeof(eh_index));
     size_t lenIndices { 8*sizeof(eh_index)*minimal.size()/(cBitLen+1) };
-    size_t bytePad { sizeof(eh_index) - ((cBitLen+1)+7)/8 };
+    size_t bytePad { sizeof(eh_index) - cBitLen/8 - 1 };
     std::vector<unsigned char> array(lenIndices);
     ExpandArray(minimal.data(), minimal.size(),
                 array.data(), lenIndices, cBitLen+1, bytePad);
     std::vector<eh_index> ret;
-    for (int i = 0; i < lenIndices; i += sizeof(eh_index)) {
+    for (int i = 0; i < lenIndices; i += sizeof(eh_index))
         ret.push_back(ArrayToEhIndex(array.data()+i));
-    }
     return ret;
 }
 
 std::vector<unsigned char> GetMinimalFromIndices(std::vector<eh_index> indices,
                                                  size_t cBitLen)
 {
-    assert(((cBitLen+1)+7)/8 <= sizeof(eh_index));
+    assert(cBitLen/8 < sizeof(eh_index));
     size_t lenIndices { indices.size()*sizeof(eh_index) };
     size_t minLen { (cBitLen+1)*lenIndices/(8*sizeof(eh_index)) };
-    size_t bytePad { sizeof(eh_index) - ((cBitLen+1)+7)/8 };
+    size_t bytePad { sizeof(eh_index) - cBitLen/8 - 1 };
     std::vector<unsigned char> array(lenIndices);
-    for (int i = 0; i < indices.size(); i++) {
+    for (int i = 0; i < indices.size(); i++)
         EhIndexToArray(indices[i], array.data()+(i*sizeof(eh_index)));
-    }
     std::vector<unsigned char> ret(minLen);
     CompressArray(array.data(), lenIndices,
                   ret.data(), minLen, cBitLen+1, bytePad);
@@ -286,10 +284,9 @@ template<size_t WIDTH>
 bool StepRow<WIDTH>::IsZero(size_t len)
 {
     // This doesn't need to be constant time.
-    for (int i = 0; i < len; i++) {
+    for (int i = 0; i < len; i++)
         if (hash[i] != 0)
             return false;
-    }
     return true;
 }
 
@@ -297,9 +294,9 @@ template<size_t WIDTH>
 std::vector<unsigned char> FullStepRow<WIDTH>::GetIndices(size_t len, size_t lenIndices,
                                                           size_t cBitLen) const
 {
-    assert(((cBitLen+1)+7)/8 <= sizeof(eh_index));
+    assert(cBitLen/8 < sizeof(eh_index));
     size_t minLen { (cBitLen+1)*lenIndices/(8*sizeof(eh_index)) };
-    size_t bytePad { sizeof(eh_index) - ((cBitLen+1)+7)/8 };
+    size_t bytePad { sizeof(eh_index) - cBitLen/8 - 1 };
     std::vector<unsigned char> ret(minLen);
     CompressArray(hash+len, lenIndices, ret.data(), minLen, cBitLen+1, bytePad);
     return ret;
@@ -309,10 +306,9 @@ template<size_t WIDTH>
 bool HasCollision(StepRow<WIDTH>& a, StepRow<WIDTH>& b, int l)
 {
     // This doesn't need to be constant time.
-    for (int j = 0; j < l; j++) {
+    for (int j = 0; j < l; j++)
         if (a.hash[j] != b.hash[j])
             return false;
-    }
     return true;
 }
 
@@ -374,10 +370,9 @@ bool Equihash<N,K>::BasicSolve(const eh_HashState& base_state,
     unsigned char tmpHash[HashOutput];
     for (eh_index g = 0; X.size() < init_size; g++) {
         GenerateHash(base_state, g, tmpHash, HashOutput);
-        for (eh_index i = 0; i < IndicesPerHashOutput && X.size() < init_size; i++) {
+        for (eh_index i = 0; i < IndicesPerHashOutput && X.size() < init_size; i++)
             X.emplace_back(tmpHash+(i*N/8), N/8, HashLength,
                            CollisionBitLength, (g*IndicesPerHashOutput)+i);
-        }
         if (cancelled(ListGeneration)) throw solver_cancelled;
     }
 
@@ -402,16 +397,13 @@ bool Equihash<N,K>::BasicSolve(const eh_HashState& base_state,
             }
 
             // 2c) Calculate tuples (X_i ^ X_j, (i, j))
-            for (int l = 0; l < j - 1; l++) {
-                for (int m = l + 1; m < j; m++) {
-                    if (DistinctIndices(X[i+l], X[i+m], hashLen, lenIndices)) {
+            for (int l = 0; l < j - 1; l++)
+                for (int m = l + 1; m < j; m++)
+                    if (DistinctIndices(X[i+l], X[i+m], hashLen, lenIndices))
                         Xc.emplace_back(X[i+l], X[i+m], hashLen, lenIndices, CollisionByteLength);
-                    }
-                }
-            }
 
             // 2d) Store tuples on the table in-place if possible
-            while (posFree < i+j && Xc.size() > 0) {
+            while (posFree < i+j && !Xc.empty()) {
                 X[posFree++] = Xc.back();
                 Xc.pop_back();
             }
@@ -421,12 +413,12 @@ bool Equihash<N,K>::BasicSolve(const eh_HashState& base_state,
         }
 
         // 2e) Handle edge case where final table entry has no collision
-        while (posFree < X.size() && Xc.size() > 0) {
+        while (posFree < X.size() && !Xc.empty()) {
             X[posFree++] = Xc.back();
             Xc.pop_back();
         }
 
-        if (Xc.size() > 0) {
+        if (!Xc.empty()) {
             // 2f) Add overflow to end of table
             X.insert(X.end(), Xc.begin(), Xc.end());
         } else if (posFree < X.size()) {
@@ -450,10 +442,8 @@ bool Equihash<N,K>::BasicSolve(const eh_HashState& base_state,
         int i = 0;
         while (i < X.size() - 1) {
             int j = 1;
-            while (i+j < X.size() &&
-                    HasCollision(X[i], X[i+j], hashLen)) {
+            while (i+j < X.size() && HasCollision(X[i], X[i+j], hashLen))
                 j++;
-            }
 
             for (int l = 0; l < j - 1; l++) {
                 for (int m = l + 1; m < j; m++) {
@@ -461,9 +451,8 @@ bool Equihash<N,K>::BasicSolve(const eh_HashState& base_state,
                     if (DistinctIndices(X[i+l], X[i+m], hashLen, lenIndices)) {
                         auto soln = res.GetIndices(hashLen, 2*lenIndices, CollisionBitLength);
                         assert(soln.size() == equihash_solution_size(N, K));
-                        if (validBlock(soln)) {
+                        if (validBlock(soln))
                             return true;
-                        }
                     }
                 }
             }
@@ -486,26 +475,23 @@ void CollideBranches(std::vector<FullStepRow<WIDTH>>& X, const size_t hlen, cons
     while (i < X.size() - 1) {
         // 2b) Find next set of unordered pairs with collisions on the next n/(k+1) bits
         int j = 1;
-        while (i+j < X.size() &&
-                HasCollision(X[i], X[i+j], clen)) {
+        while (i+j < X.size() && HasCollision(X[i], X[i+j], clen))
             j++;
-        }
 
         // 2c) Calculate tuples (X_i ^ X_j, (i, j))
         for (int l = 0; l < j - 1; l++) {
             for (int m = l + 1; m < j; m++) {
                 if (DistinctIndices(X[i+l], X[i+m], hlen, lenIndices)) {
-                    if (IsValidBranch(X[i+l], hlen, ilen, lt) && IsValidBranch(X[i+m], hlen, ilen, rt)) {
+                    if (IsValidBranch(X[i+l], hlen, ilen, lt) && IsValidBranch(X[i+m], hlen, ilen, rt))
                         Xc.emplace_back(X[i+l], X[i+m], hlen, lenIndices, clen);
-                    } else if (IsValidBranch(X[i+m], hlen, ilen, lt) && IsValidBranch(X[i+l], hlen, ilen, rt)) {
+                    else if (IsValidBranch(X[i+m], hlen, ilen, lt) && IsValidBranch(X[i+l], hlen, ilen, rt))
                         Xc.emplace_back(X[i+m], X[i+l], hlen, lenIndices, clen);
-                    }
                 }
             }
         }
 
         // 2d) Store tuples on the table in-place if possible
-        while (posFree < i+j && Xc.size() > 0) {
+        while (posFree < i+j && !Xc.empty()) {
             X[posFree++] = Xc.back();
             Xc.pop_back();
         }
@@ -514,12 +500,12 @@ void CollideBranches(std::vector<FullStepRow<WIDTH>>& X, const size_t hlen, cons
     }
 
     // 2e) Handle edge case where final table entry has no collision
-    while (posFree < X.size() && Xc.size() > 0) {
+    while (posFree < X.size() && !Xc.empty()) {
         X[posFree++] = Xc.back();
         Xc.pop_back();
     }
 
-    if (Xc.size() > 0) {
+    if (!Xc.empty()) {
         // 2f) Add overflow to end of table
         X.insert(X.end(), Xc.begin(), Xc.end());
     } else if (posFree < X.size()) {
@@ -553,10 +539,8 @@ bool Equihash<N,K>::OptimisedSolve(const eh_HashState& base_state,
         unsigned char tmpHash[HashOutput];
         for (eh_index g = 0; Xt.size() < init_size; g++) {
             GenerateHash(base_state, g, tmpHash, HashOutput);
-            for (eh_index i = 0; i < IndicesPerHashOutput && Xt.size() < init_size; i++) {
-                Xt.emplace_back(tmpHash+(i*N/8), N/8, HashLength, CollisionBitLength,
-                                (g*IndicesPerHashOutput)+i, CollisionBitLength + 1);
-            }
+            for (eh_index i = 0; i < IndicesPerHashOutput && Xt.size() < init_size; i++)
+                Xt.emplace_back(tmpHash+i*N/8, N/8, HashLength, CollisionBitLength,g*IndicesPerHashOutput+i, CollisionBitLength + 1);
             if (cancelled(ListGeneration)) throw solver_cancelled;
         }
 
@@ -588,16 +572,13 @@ bool Equihash<N,K>::OptimisedSolve(const eh_HashState& base_state,
                         TruncatedStepRow<TruncatedWidth> Xi {Xt[i+l], Xt[i+m],
                                                              hashLen, lenIndices,
                                                              CollisionByteLength};
-                        if (!(Xi.IsZero(hashLen-CollisionByteLength) &&
-                              IsProbablyDuplicate<soln_size>(Xi.GetTruncatedIndices(hashLen-CollisionByteLength, 2*lenIndices),
-                                                             2*lenIndices))) {
+                        if (!Xi.IsZero(hashLen-CollisionByteLength) || !IsProbablyDuplicate<soln_size>(Xi.GetTruncatedIndices(hashLen-CollisionByteLength, 2*lenIndices), 2*lenIndices))
                             Xc.emplace_back(Xi);
-                        }
                     }
                 }
 
                 // 2d) Store tuples on the table in-place if possible
-                while (posFree < i+j && Xc.size() > 0) {
+                while (posFree < i+j && !Xc.empty()) {
                     Xt[posFree++] = Xc.back();
                     Xc.pop_back();
                 }
@@ -607,12 +588,12 @@ bool Equihash<N,K>::OptimisedSolve(const eh_HashState& base_state,
             }
 
             // 2e) Handle edge case where final table entry has no collision
-            while (posFree < Xt.size() && Xc.size() > 0) {
+            while (posFree < Xt.size() && !Xc.empty()) {
                 Xt[posFree++] = Xc.back();
                 Xc.pop_back();
             }
 
-            if (Xc.size() > 0) {
+            if (!Xc.empty()) {
                 // 2f) Add overflow to end of table
                 Xt.insert(Xt.end(), Xc.begin(), Xc.end());
             } else if (posFree < Xt.size()) {
@@ -636,19 +617,16 @@ bool Equihash<N,K>::OptimisedSolve(const eh_HashState& base_state,
             int i = 0;
             while (i < Xt.size() - 1) {
                 int j = 1;
-                while (i+j < Xt.size() &&
-                        HasCollision(Xt[i], Xt[i+j], hashLen)) {
+                while (i+j < Xt.size() && HasCollision(Xt[i], Xt[i+j], hashLen))
                     j++;
-                }
 
                 for (int l = 0; l < j - 1; l++) {
                     for (int m = l + 1; m < j; m++) {
                         TruncatedStepRow<FinalTruncatedWidth> res(Xt[i+l], Xt[i+m],
                                                                   hashLen, lenIndices, 0);
                         auto soln = res.GetTruncatedIndices(hashLen, 2*lenIndices);
-                        if (!IsProbablyDuplicate<soln_size>(soln, 2*lenIndices)) {
+                        if (!IsProbablyDuplicate<soln_size>(soln, 2*lenIndices))
                             partialSolns.push_back(soln);
-                        }
                     }
                 }
 
@@ -679,10 +657,8 @@ bool Equihash<N,K>::OptimisedSolve(const eh_HashState& base_state,
             icv.reserve(recreate_size);
             for (eh_index j = 0; j < recreate_size; j++) {
                 eh_index newIndex { UntruncateIndex(partialSoln.get()[i], j, CollisionBitLength + 1) };
-                if (j == 0 || newIndex % IndicesPerHashOutput == 0) {
-                    GenerateHash(base_state, newIndex/IndicesPerHashOutput,
-                                 tmpHash, HashOutput);
-                }
+                if (j == 0 || newIndex % IndicesPerHashOutput == 0)
+                    GenerateHash(base_state, newIndex/IndicesPerHashOutput, tmpHash, HashOutput);
                 icv.emplace_back(tmpHash+((newIndex % IndicesPerHashOutput) * N/8),
                                  N/8, HashLength, CollisionBitLength, newIndex);
                 if (cancelled(PartialGeneration)) throw solver_cancelled;
@@ -709,7 +685,7 @@ bool Equihash<N,K>::OptimisedSolve(const eh_HashState& base_state,
                                         partialSoln.get()[lti], partialSoln.get()[rti]);
 
                         // 2d) Check if this has become an invalid solution
-                        if (ic->size() == 0)
+                        if (ic->empty())
                             goto invalidsolution;
 
                         X[r] = boost::none;
@@ -736,10 +712,9 @@ bool Equihash<N,K>::OptimisedSolve(const eh_HashState& base_state,
             assert(soln.size() == equihash_solution_size(N, K));
             solns.insert(soln);
         }
-        for (auto soln : solns) {
+        for (auto soln : solns)
             if (validBlock(soln))
                 return true;
-        }
         if (cancelled(PartialEnd)) throw solver_cancelled;
         continue;
 

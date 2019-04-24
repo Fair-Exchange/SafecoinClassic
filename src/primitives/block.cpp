@@ -100,7 +100,8 @@ uint256 BuildMerkleTree(bool* fMutated, const std::vector<uint256> leaves,
 uint256 CBlock::BuildMerkleTree(bool* fMutated) const
 {
     std::vector<uint256> leaves;
-    for (int i=0; i<vtx.size(); i++) leaves.push_back(vtx[i].GetHash());
+    for (auto tx : vtx)
+        leaves.push_back(tx.GetHash());
     return ::BuildMerkleTree(fMutated, leaves, vMerkleTree);
 }
 
@@ -155,9 +156,7 @@ std::string CBlock::ToString() const
         nTime, nBits, nNonce.ToString(),
         vtx.size());
     for (unsigned int i = 0; i < vtx.size(); i++)
-    {
         s << "  " << vtx[i].ToString() << "\n";
-    }
     s << "  vMerkleTree: ";
     for (unsigned int i = 0; i < vMerkleTree.size(); i++)
         s << " " << vMerkleTree[i].ToString();

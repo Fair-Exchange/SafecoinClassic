@@ -36,7 +36,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
   const CChainParams& chainParams = Params();
     unsigned int nProofOfWorkLimit = UintToArith256(params.powLimit).GetCompact();
     // Genesis block
-    if (pindexLast == NULL )
+    if (pindexLast == nullptr )
         return nProofOfWorkLimit;
 
 
@@ -56,17 +56,17 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
 
 
    // Reset the difficulty after the algo fork
-   if (pindexLast->GetHeight() > chainParams.eh_epoch_1_end() - 1
-   	&& pindexLast->GetHeight() < chainParams.eh_epoch_1_end() + params.nPowAveragingWindow) {
-         LogPrint("pow", "Reset the difficulty for the eh_epoch_2 algo change: %d\n", nProofOfWorkLimit);
+   if (pindexLast->GetHeight() > chainParams.eh_epoch_1_end() - 1 &&
+   	   pindexLast->GetHeight() < chainParams.eh_epoch_1_end() + params.nPowAveragingWindow) {
+        LogPrint("pow", "Reset the difficulty for the eh_epoch_2 algo change: %d\n", nProofOfWorkLimit);
         return nProofOfWorkLimit;
-       }
+    }
 
 
     // Find the first block in the averaging interval
     const CBlockIndex* pindexFirst = pindexLast;
     arith_uint256 bnTot {0};
-    for (int i = 0; pindexFirst && i < params.nPowAveragingWindow; i++) {
+    for (int i = 0; pindexFirst != nullptr && i < params.nPowAveragingWindow; i++) {
         arith_uint256 bnTmp;
         bnTmp.SetCompact(pindexFirst->nBits);
         bnTot += bnTmp;
@@ -74,7 +74,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     }
 
     // Check we have enough blocks
-    if (pindexFirst == NULL)
+    if (pindexFirst == nullptr)
         return nProofOfWorkLimit;
 
     arith_uint256 bnAvg {bnTot / params.nPowAveragingWindow};
@@ -95,7 +95,7 @@ unsigned int CalculateNextWorkRequired(arith_uint256 bnAvg,
 
     if (nActualTimespan < params.MinActualTimespan())
         nActualTimespan = params.MinActualTimespan();
-    if (nActualTimespan > params.MaxActualTimespan())
+    else if (nActualTimespan > params.MaxActualTimespan())
         nActualTimespan = params.MaxActualTimespan();
 
     // Retarget
@@ -124,10 +124,7 @@ unsigned int lwmaGetNextWorkRequired(const CBlockIndex* pindexLast, const CBlock
 unsigned int lwmaCalculateNextWorkRequired(const CBlockIndex* pindexLast, const Consensus::Params& params)
 {
     arith_uint256 nextTarget {0}, sumTarget {0}, bnTmp, bnLimit;
-    if (ASSETCHAINS_ALGO == ASSETCHAINS_EQUIHASH)
-        bnLimit = UintToArith256(params.powLimit);
-    else
-        bnLimit = UintToArith256(params.powAlternate);
+    bnLimit =  UintToArith256(ASSETCHAINS_ALGO == ASSETCHAINS_EQUIHASH ? params.powLimit : params.powAlternate);
 
     unsigned int nProofOfWorkLimit = bnLimit.GetCompact();
 
@@ -136,36 +133,35 @@ unsigned int lwmaCalculateNextWorkRequired(const CBlockIndex* pindexLast, const 
     const CBlockIndex* pindexNext;
     int64_t t = 0, solvetime, k = params.nLwmaAjustedWeight, N = params.nPowAveragingWindow;
 
-    for (int i = 0, j = N - 1; pindexFirst && i < N; i++, j--) {
-        pindexNext = pindexFirst;
-        pindexFirst = pindexFirst->pprev;
-        if (!pindexFirst)
-            break;
+    if (pindexFirst != nullptr) {
+        for (int i = 0, j = N - 1; i < N; i++, j--) {
+            pindexNext = pindexFirst;
+            pindexFirst = pindexFirst->pprev;
+            if (pindexFirst == nullptr)
+                break;
 
-        solvetime = pindexNext->GetBlockTime() - pindexFirst->GetBlockTime();
+            solvetime = pindexNext->GetBlockTime() - pindexFirst->GetBlockTime();
 
-        // weighted sum
-        t += solvetime * j;
+            // weighted sum
+            t += solvetime * j;
 
-        // Target sum divided by a factor, (k N^2).
-        // The factor is a part of the final equation. However we divide 
-        // here to avoid potential overflow.
-        bnTmp.SetCompact(pindexNext->nBits);
-        sumTarget += bnTmp / (k * N * N);
+            // Target sum divided by a factor, (k N^2).
+            // The factor is a part of the final equation. However we divide
+            // here to avoid potential overflow.
+            bnTmp.SetCompact(pindexNext->nBits);
+            sumTarget += bnTmp /  k / N / N;
+        }
     }
 
     // Check we have enough blocks
-    if (!pindexFirst)
+    if (pindexFirst == nullptr)
         return nProofOfWorkLimit;
 
     // Keep t reasonable in case strange solvetimes occurred.
-    if (t < N * k / 3)
-        t = N * k / 3;
+    t = std::max(t, N * k / 3);
 
     bnTmp = bnLimit;
-    nextTarget = t * sumTarget;
-    if (nextTarget > bnTmp)
-        nextTarget = bnTmp;
+    nextTarget = std::min<arith_uint256>(t * sumTarget, bnTmp);
 
     return nextTarget.GetCompact();
 }
@@ -176,9 +172,7 @@ bool DoesHashQualify(const CBlockIndex *pbindex)
     arith_uint256 hash = UintToArith256(pbindex->GetBlockHash());
     // to be considered POS, we first can't qualify as POW
     if (hash > hash.SetCompact(pbindex->nBits))
-    {
         return false;
-    }
     return true;
 }
 
@@ -215,7 +209,7 @@ uint32_t lwmaGetNextPOSRequired(const CBlockIndex* pindexLast, const Consensus::
     uint32_t nBits = nProofOfStakeLimit;
     for (int64_t i = 0; i < VERUS_NOPOS_THRESHHOLD; i++)
     {
-        if (!pindexFirst)
+        if (pindexFirst == nullptr)
             return nProofOfStakeLimit;
 
         CBlockHeader hdr = pindexFirst->GetBlockHeader();
@@ -237,17 +231,18 @@ uint32_t lwmaGetNextPOSRequired(const CBlockIndex* pindexLast, const Consensus::
         {
             pindexFirst = pindexFirst->pprev;
 
-            if (!pindexFirst)
+            if (pindexFirst == nullptr)
                 return nProofOfStakeLimit;
 
             CBlockHeader hdr = pindexFirst->GetBlockHeader();
 
         }
 
-        if (x)
+        // TODO: WTF?
+        if (x != 0)
         {
             idx[i].consecutive = false;
-            if (!memcmp(ASSETCHAINS_SYMBOL, "VRSC", 4) && pindexLast->GetHeight() < 67680)
+            if (memcmp(ASSETCHAINS_SYMBOL, "VRSC", 4) == 0 && pindexLast->GetHeight() < 67680)
             {
                 idx[i].solveTime = VERUS_BLOCK_POSUNITS * (x + 1);
             }
@@ -272,46 +267,40 @@ uint32_t lwmaGetNextPOSRequired(const CBlockIndex* pindexLast, const Consensus::
             uint32_t st = VERUS_BLOCK_POSUNITS;
             for (int64_t j = i; j < N; j++)
             {
-                if (idx[j].consecutive == true)
-                {
-                    idx[j].solveTime = st;
-                    if ((j - i) >= VERUS_CONSECUTIVE_POS_THRESHOLD)
-                    {
-                        // if this is real time, return zero
-                        if (j == (N - 1))
-                        {
-                            // target of 0 (virtually impossible), if we hit max consecutive POS blocks
-                            nextTarget.SetCompact(0);
-                            return nextTarget.GetCompact();
-                        }
-                    }
-                    st >>= 1;
-                }
-                else
+                if (!idx[j].consecutive)
                     break;
+                idx[j].solveTime = st;
+                if (j - i >= VERUS_CONSECUTIVE_POS_THRESHOLD)
+                {
+                    // if this is real time, return zero
+                    if (j == N - 1)
+                    {
+                        // target of 0 (virtually impossible), if we hit max consecutive POS blocks
+                        nextTarget.SetCompact(0);
+                        return nextTarget.GetCompact();
+                    }
+                }
+                st >>= 1;
             }
         }
     }
 
-    for (int64_t i = N - 1; i >= 0; i--) 
+    for (int64_t i = N - 1; i >= 0; i--)
     {
         // weighted sum
         t += idx[i].solveTime * i;
 
         // Target sum divided by a factor, (k N^2).
-        // The factor is a part of the final equation. However we divide 
+        // The factor is a part of the final equation. However we divide
         // here to avoid potential overflow.
         bnTmp.SetCompact(idx[i].nBits);
-        sumTarget += bnTmp / (k * N * N);
+        sumTarget += bnTmp / k / N / N;
     }
 
     // Keep t reasonable in case strange solvetimes occurred.
-    if (t < N * k / 3)
-        t = N * k / 3;
+    t = std::max(t, N * k / 3);
 
-    nextTarget = t * sumTarget;
-    if (nextTarget > bnLimit)
-        nextTarget = bnLimit;
+    nextTarget = std::min<arith_uint256>(t * sumTarget, bnLimit);
 
     return nextTarget.GetCompact();
 }
@@ -322,25 +311,25 @@ bool CheckEquihashSolution(const CBlockHeader *pblock, const CChainParams& param
     if (ASSETCHAINS_ALGO != ASSETCHAINS_EQUIHASH)
         return true;
 
-  //Set parameters N,K from solution size. Filtering of valid parameters
-  //for the givenblock height will be carried out in main.cpp/ContextualCheckBlockHeader
-  unsigned int n,k;
-  size_t nSolSize = pblock->nSolution.size();
-  switch (nSolSize){
-  case 1344: n=200; k=9; break;
-  case 400: n=192; k=7; break;
-  case 100:  n=144; k=5; break;
-  case 68:   n=96;  k=5; break;
-  case 36:   n=48;  k=5; break;
-  default: return error("CheckEquihashSolution: Unsupported solution size of %d", nSolSize);
-  }
+    //Set parameters N,K from solution size. Filtering of valid parameters
+    //for the givenblock height will be carried out in main.cpp/ContextualCheckBlockHeader
+    unsigned int n,k;
+    size_t nSolSize = pblock->nSolution.size();
+    switch (nSolSize){
+    case 1344: n=200; k=9; break;
+    case 400:  n=192; k=7; break;
+    case 100:  n=144; k=5; break;
+    case 68:   n=96;  k=5; break;
+    case 36:   n=48;  k=5; break;
+    default: return error("CheckEquihashSolution: Unsupported solution size of %d", nSolSize);
+    }
 
-  LogPrint("pow", "selected n,k : %d, %d \n", n,k);
+    LogPrint("pow", "selected n,k : %d, %d \n", n,k);
 
-  //need to put block height param switching code here
-  
+    //need to put block height param switching code here
+
     if ( Params().NetworkIDString() == "regtest" )
-        return(true);
+        return true;
     // Hash state
     crypto_generichash_blake2b_state state;
     EhInitialiseState(n, k, state);
@@ -364,16 +353,16 @@ bool CheckEquihashSolution(const CBlockHeader *pblock, const CChainParams& param
     return true;
 }
 
-int32_t safecoin_chosennotary(int32_t *notaryidp,int32_t height,uint8_t *pubkey33,uint32_t timestamp);
-int32_t safecoin_is_special(uint8_t pubkeys[66][33],int32_t mids[66],uint32_t blocktimes[66],int32_t height,uint8_t pubkey33[33],uint32_t blocktime);
+int8_t safecoin_chosennotary(int32_t *notaryidp,int32_t height,uint8_t *pubkey33,uint32_t timestamp);
+int8_t safecoin_is_special(uint8_t pubkeys[66][33],int32_t mids[66],uint32_t blocktimes[66],int32_t height,uint8_t pubkey33[33],uint32_t blocktime);
 int32_t safecoin_currentheight();
 void safecoin_index2pubkey33(uint8_t *pubkey33,CBlockIndex *pindex,int32_t height);
-extern int32_t SAFECOIN_CHOSEN_ONE;
+extern bool SAFECOIN_CHOSEN_ONE;
 extern char ASSETCHAINS_SYMBOL[SAFECOIN_ASSETCHAIN_MAXLEN];
 #define SAFECOIN_ELECTION_GAP 2000
 
-int32_t safecoin_eligiblenotary(uint8_t pubkeys[66][33],int32_t *mids,uint32_t blocktimes[66],int32_t *nonzpkeysp,int32_t height);
-int32_t SAFECOIN_LOADINGBLOCKS = 1;
+bool safecoin_eligiblenotary(uint8_t pubkeys[66][33],int32_t *mids,uint32_t blocktimes[66],int32_t *nonzpkeysp,int32_t height);
+bool SAFECOIN_LOADINGBLOCKS = true;
 
 extern std::string NOTARY_PUBKEY;
 
@@ -381,59 +370,54 @@ bool CheckProofOfWork(const CBlockHeader &blkHeader, uint8_t *pubkey33, int32_t 
 {
     extern int32_t SAFECOIN_REWIND;
     uint256 hash;
-    bool fNegative,fOverflow; uint8_t origpubkey33[33]; int32_t i,nonzpkeys=0,nonz=0,special=0,special2=0,notaryid=-1,flag = 0, mids[66]; uint32_t tiptime,blocktimes[66];
-    arith_uint256 bnTarget; uint8_t pubkeys[66][33];
+    bool fNegative,fOverflow; uint8_t i, origpubkey33[33]; int32_t nonzpkeys=0,nonz=0, notaryid=-1, mids[66]; int8_t special=0,special2=0; bool flag = false; uint32_t tiptime, blocktimes[66]; arith_uint256 bnTarget; uint8_t pubkeys[66][33];
     //for (i=31; i>=0; i--)
     //    fprintf(stderr,"%02x",((uint8_t *)&hash)[i]);
     //fprintf(stderr," checkpow\n");
-    memcpy(origpubkey33,pubkey33,33);
-    memset(blocktimes,0,sizeof(blocktimes));
+    memcpy(origpubkey33, pubkey33, 33);
+    memset(blocktimes, 0, sizeof(blocktimes));
     tiptime = safecoin_chainactive_timestamp();
     bnTarget.SetCompact(blkHeader.nBits, &fNegative, &fOverflow);
-    if ( height == 0 )
-    {
+    if (height == 0)
         height = safecoin_currentheight() + 1;
-        //fprintf(stderr,"set height to %d\n",height);
-    }
-    if ( height > 34000 && ASSETCHAINS_SYMBOL[0] == 0 ) // 0 -> non-special notary
+
+    if (height > 34000 && ASSETCHAINS_SYMBOL[0] == '\0') // 0 -> non-special notary
     {
-        special = safecoin_chosennotary(&notaryid,height,pubkey33,tiptime);
-        for (i=0; i<33; i++)
-        {
-            if ( pubkey33[i] != 0 )
-                nonz++;
-        }
-        if ( nonz == 0 )
+        special = safecoin_chosennotary(&notaryid, height, pubkey33, tiptime);
+        while (nonz < 33 && pubkey33[nonz] != 0)
+            ++nonz;
+        if (nonz == 0)
         {
             //fprintf(stderr,"ht.%d null pubkey checkproof return\n",height);
-            return(true); // will come back via different path with pubkey set
+            return true; // will come back via different path with pubkey set
         }
-        flag = safecoin_eligiblenotary(pubkeys,mids,blocktimes,&nonzpkeys,height);
-        special2 = safecoin_is_special(pubkeys,mids,blocktimes,height,pubkey33,blkHeader.nTime);
-        if ( notaryid >= 0 )
+        flag = safecoin_eligiblenotary(pubkeys, mids, blocktimes, &nonzpkeys, height);
+        special2 = safecoin_is_special(pubkeys, mids, blocktimes, height, pubkey33, blkHeader.nTime);
+        if (notaryid >= 0)
         {
             if ( height > 10000 && height < 80000 && (special != 0 || special2 > 0) )
-                flag = 1;
+                flag = true;
             else if ( height >= 80000 && height < 108000 && special2 > 0 )
-                flag = 1;
+                flag = true;
             else if ( height >= 108000 && special2 > 0 )
-                flag = (height > 1000000 || (height % SAFECOIN_ELECTION_GAP) > 64 || (height % SAFECOIN_ELECTION_GAP) == 0);
+                flag = height > 1000000 || (height % SAFECOIN_ELECTION_GAP) > 64 || (height % SAFECOIN_ELECTION_GAP) == 0;
             else if ( height == 790833 )
-                flag = 1;
-            else if ( special2 < 0 )
+                flag = true;
+            else if (special2 < 0)
             {
-                if ( height > 108800 )
-                    flag = 0;
-                else fprintf(stderr,"ht.%d notaryid.%d special.%d flag.%d special2.%d\n",height,notaryid,special,flag,special2);
+                if (height > 108800)
+                    flag = false;
+                else
+                    fprintf(stderr,"ht.%d notaryid.%d special.%d flag.%d special2.%d\n",height,notaryid,special,flag,special2);
             }
-            if ( (flag != 0 || special2 > 0) && special2 != -2 && (height % 2 != 0) )
+            if ((flag || special2 > 0) && special2 != -2 && height % 2 != 0)
             {
                 //fprintf(stderr,"EASY MINING ht.%d\n",height);
-                bnTarget.SetCompact(SAFECOIN_MINDIFF_NBITS,&fNegative,&fOverflow);
+                bnTarget.SetCompact(SAFECOIN_MINDIFF_NBITS, &fNegative, &fOverflow);
             }
         }
     }
-    arith_uint256 bnLimit = (height <= 1 || ASSETCHAINS_ALGO == ASSETCHAINS_EQUIHASH) ? UintToArith256(params.powLimit) : UintToArith256(params.powAlternate);
+    arith_uint256 bnLimit = UintToArith256(height <= 1 || ASSETCHAINS_ALGO == ASSETCHAINS_EQUIHASH ? params.powLimit : params.powAlternate);
     if (fNegative || bnTarget == 0 || fOverflow || bnTarget > bnLimit)
         return error("CheckProofOfWork(): nBits below minimum work");
     if ( ASSETCHAINS_STAKED != 0 )
@@ -444,9 +428,9 @@ bool CheckProofOfWork(const CBlockHeader &blkHeader, uint8_t *pubkey33, int32_t 
     // Check proof of work matches claimed amount
     if ( UintToArith256(hash = blkHeader.GetHash()) > bnTarget )
     {
-        if ( SAFECOIN_LOADINGBLOCKS != 0 )
+        if (SAFECOIN_LOADINGBLOCKS)
             return true;
-        if ( ASSETCHAINS_SYMBOL[0] != 0 || height > 108800 )
+        if ( ASSETCHAINS_SYMBOL[0] != '\0' || height > 108800 )
         {
             //if ( 0 && height > 108800 )
             if ( Params().NetworkIDString() != "regtest" )
@@ -496,15 +480,13 @@ int64_t GetBlockProofEquivalentTime(const CBlockIndex& to, const CBlockIndex& fr
 {
     arith_uint256 r;
     int sign = 1;
-    if (to.chainPower.chainWork > from.chainPower.chainWork) {
-        r = to.chainPower.chainWork - from.chainPower.chainWork;
-    } else {
-        r = from.chainPower.chainWork - to.chainPower.chainWork;
+    r = to.chainPower.chainWork - from.chainPower.chainWork;
+    if (r < 0) {
+        r = -r;
         sign = -1;
     }
-    r = r * arith_uint256(params.nPowTargetSpacing) / GetBlockProof(tip).chainWork;
-    if (r.bits() > 63) {
+    r *= arith_uint256(params.nPowTargetSpacing) / GetBlockProof(tip).chainWork;
+    if (r.bits() > 63)
         return sign * std::numeric_limits<int64_t>::max();
-    }
     return sign * r.GetLow64();
 }

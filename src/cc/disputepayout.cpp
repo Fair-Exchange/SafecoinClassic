@@ -24,7 +24,8 @@
  */
 bool Eval::DisputePayout(AppVM &vm, std::vector<uint8_t> params, const CTransaction &disputeTx, unsigned int nIn)
 {
-    if (disputeTx.vout.size() == 0) return Invalid("no-vouts");
+    if (disputeTx.vout.empty())
+        return Invalid("no-vouts");
 
     // get payouts hash
     uint256 payoutHash;
@@ -41,7 +42,7 @@ bool Eval::DisputePayout(AppVM &vm, std::vector<uint8_t> params, const CTransact
     {
         CTransaction sessionTx;
         CBlockIndex sessionBlock;
-        
+
         // if unconformed its too soon
         if (!GetTxConfirmed(disputeTx.vin[0].prevout.hash, sessionTx, sessionBlock))
             return Error("couldnt-get-parent");
@@ -61,8 +62,10 @@ bool Eval::DisputePayout(AppVM &vm, std::vector<uint8_t> params, const CTransact
     for (int i=1; i<spends.size(); i++)
     {
         std::vector<unsigned char> vmState;
-        if (spends[i].vout.size() == 0) continue;
-        if (!GetOpReturnData(spends[i].vout[0].scriptPubKey, vmState)) continue;
+        if (spends[i].vout.empty())
+            continue;
+        if (!GetOpReturnData(spends[i].vout[0].scriptPubKey, vmState))
+            continue;
         auto out = vm.evaluate(vmParams, vmState);
         uint256 resultHash = SerializeHash(out.second);
         if (out.first > maxLength) {
@@ -70,15 +73,14 @@ bool Eval::DisputePayout(AppVM &vm, std::vector<uint8_t> params, const CTransact
             bestPayout = resultHash;
         }
         // The below means that if for any reason there is a draw, the first dispute wins
-        else if (out.first == maxLength) {
-            if (bestPayout != payoutHash) {
-                fprintf(stderr, "WARNING: VM has multiple solutions of same length\n");
-                bestPayout = resultHash;
-            }
+        else if (out.first == maxLength && bestPayout != payoutHash) {
+            fprintf(stderr, "WARNING: VM has multiple solutions of same length\n");
+            bestPayout = resultHash;
         }
     }
 
-    if (maxLength == -1) return Invalid("no-evidence");
+    if (maxLength == -1)
+        return Invalid("no-evidence");
 
     return bestPayout == payoutHash ? Valid() : Invalid("wrong-payout");
 }

@@ -28,7 +28,7 @@
 #include "crosschain.h"
 
 
-Eval* EVAL_TEST = 0;
+Eval* EVAL_TEST = nullptr;
 struct CCcontract_info CCinfos[0x100];
 extern pthread_mutex_t SAFECOIN_CC_mutex;
 
@@ -41,7 +41,8 @@ bool RunCCEval(const CC *cond, const CTransaction &tx, unsigned int nIn)
     //fprintf(stderr,"out %d vs %d isValid\n",(int32_t)out,(int32_t)eval->state.IsValid());
     assert(eval->state.IsValid() == out);
 
-    if (eval->state.IsValid()) return true;
+    if (eval->state.IsValid())
+        return true;
 
     std::string lvl = eval->state.IsInvalid() ? "Invalid" : "Error!";
     fprintf(stderr, "CC Eval %s %s: %s spending tx %s\n",
@@ -49,7 +50,8 @@ bool RunCCEval(const CC *cond, const CTransaction &tx, unsigned int nIn)
             lvl.data(),
             eval->state.GetRejectReason().data(),
             tx.vin[nIn].prevout.hash.GetHex().data());
-    if (eval->state.IsError()) fprintf(stderr, "Culprit: %s\n", EncodeHexTx(tx).data());
+    if (eval->state.IsError())
+        fprintf(stderr, "Culprit: %s\n", EncodeHexTx(tx).data());
     return false;
 }
 
@@ -65,26 +67,22 @@ bool Eval::Dispatch(const CC *cond, const CTransaction &txTo, unsigned int nIn)
 
     uint8_t ecode = cond->code[0];
     cp = &CCinfos[(int32_t)ecode];
-    if ( cp->didinit == 0 )
+    if ( !cp->didinit )
     {
         CCinit(cp,ecode);
-        cp->didinit = 1;
+        cp->didinit = true;
     }
     std::vector<uint8_t> vparams(cond->code+1, cond->code+cond->codeLength);
     switch ( ecode )
     {
         case EVAL_IMPORTPAYOUT:
             return ImportPayout(vparams, txTo, nIn);
-            break;
-
         case EVAL_IMPORTCOIN:
             return ImportCoin(vparams, txTo, nIn);
-            break;
-
         default:
-            return(ProcessCC(cp,this, vparams, txTo, nIn));
-            break;
+            return ProcessCC(cp,this, vparams, txTo, nIn);
     }
+    //TODO: Never reached
     return Invalid("invalid-code, dont forget to add EVAL_NEWCC to Eval::Dispatch");
 }
 
@@ -98,7 +96,7 @@ bool Eval::GetSpendsConfirmed(uint256 hash, std::vector<CTransaction> &spends) c
 
 bool Eval::GetTxUnconfirmed(const uint256 &hash, CTransaction &txOut, uint256 &hashBlock) const
 {
-    return(myGetTransaction(hash, txOut,hashBlock));
+    return myGetTransaction(hash, txOut,hashBlock);
     /*if (!myGetTransaction(hash, txOut,hashBlock)) {
         return(GetTransaction(hash, txOut,hashBlock));
     } else return(true);*/
@@ -108,11 +106,8 @@ bool Eval::GetTxUnconfirmed(const uint256 &hash, CTransaction &txOut, uint256 &h
 bool Eval::GetTxConfirmed(const uint256 &hash, CTransaction &txOut, CBlockIndex &block) const
 {
     uint256 hashBlock;
-    if (!GetTxUnconfirmed(hash, txOut, hashBlock))
-        return false;
-    if (hashBlock.IsNull() || !GetBlock(hashBlock, block))
-        return false;
-    return true;
+    return GetTxUnconfirmed(hash, txOut, hashBlock) &&
+            !hashBlock.IsNull() && GetBlock(hashBlock, block);
 }
 
 unsigned int Eval::GetCurrentHeight() const
@@ -142,14 +137,14 @@ int32_t Eval::GetNotaries(uint8_t pubkeys[64][33], int32_t height, uint32_t time
 
 bool Eval::CheckNotaryInputs(const CTransaction &tx, uint32_t height, uint32_t timestamp) const
 {
-    if (tx.vin.size() < 11) return false;
+    if (tx.vin.size() < 11)
+        return false;
 
-    uint8_t seenNotaries[64] = {0};
+    bool seenNotaries[64] = {false};
     uint8_t notaries[64][33];
     int nNotaries = GetNotaries(notaries, height, timestamp);
 
-    BOOST_FOREACH(const CTxIn &txIn, tx.vin)
-    {
+    for (const CTxIn &txIn : tx.vin) {
         // Get notary pubkey
         CTransaction tx;
         uint256 hashBlock;
@@ -164,11 +159,9 @@ bool Eval::CheckNotaryInputs(const CTransaction &tx, uint32_t height, uint32_t t
 
         // Check it's a notary
         for (int i=0; i<nNotaries; i++) {
-            if (!seenNotaries[i]) {
-                if (memcmp(pk, notaries[i], 33) == 0) {
-                    seenNotaries[i] = 1;
-                    goto found;
-                }
+            if (!seenNotaries[i] && memcmp(pk, notaries[i], 33) == 0) {
+                seenNotaries[i] = true;
+                goto found;
             }
         }
         return false;
@@ -186,10 +179,9 @@ bool Eval::GetNotarisationData(const uint256 notaryHash, NotarisationData &data)
 {
     CTransaction notarisationTx;
     CBlockIndex block;
-    if (!GetTxConfirmed(notaryHash, notarisationTx, block)) return false;
-    if (!CheckNotaryInputs(notarisationTx, block.GetHeight(), block.nTime)) return false;
-    if (!ParseNotarisationOpReturn(notarisationTx, data)) return false;
-    return true;
+    return GetTxConfirmed(notaryHash, notarisationTx, block) &&
+            CheckNotaryInputs(notarisationTx, block.GetHeight(), block.nTime) &&
+            ParseNotarisationOpReturn(notarisationTx, data);
 }
 
 
@@ -210,11 +202,10 @@ std::string Eval::GetAssetchainsSymbol() const
  */
 bool ParseNotarisationOpReturn(const CTransaction &tx, NotarisationData &data)
 {
-    if (tx.vout.size() < 2) return false;
+    if (tx.vout.size() < 2)
+        return false;
     std::vector<unsigned char> vdata;
-    if (!GetOpReturnData(tx.vout[1].scriptPubKey, vdata)) return false;
-    bool out = E_UNMARSHAL(vdata, ss >> data);
-    return out;
+    return GetOpReturnData(tx.vout[1].scriptPubKey, vdata) && E_UNMARSHAL(vdata, ss >> data);
 }
 
 
@@ -235,17 +226,15 @@ uint256 SafeCheckMerkleBranch(uint256 hash, const std::vector<uint256>& vMerkleB
 {
     if (nIndex == -1)
         return uint256();
-    for (auto it(vMerkleBranch.begin()); it != vMerkleBranch.end(); ++it)
+    for (auto it : vMerkleBranch)
     {
         if (nIndex & 1) {
-            if (*it == hash) {
-                // non canonical. hash may be equal to node but never on the right.
+            if (it == hash) // non canonical. hash may be equal to node but never on the right.
                 return uint256();
-            }
-            hash = Hash(BEGIN(*it), END(*it), BEGIN(hash), END(hash));
+            hash = Hash(BEGIN(it), END(it), BEGIN(hash), END(hash));
         }
         else
-            hash = Hash(BEGIN(hash), END(hash), BEGIN(*it), END(*it));
+            hash = Hash(BEGIN(hash), END(hash), BEGIN(it), END(it));
         nIndex >>= 1;
     }
     return hash;

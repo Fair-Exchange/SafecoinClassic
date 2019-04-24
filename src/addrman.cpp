@@ -75,13 +75,13 @@ CAddrInfo* CAddrMan::Find(const CNetAddr& addr, int* pnId)
 {
     std::map<CNetAddr, int>::iterator it = mapAddr.find(addr);
     if (it == mapAddr.end())
-        return NULL;
+        return nullptr;
     if (pnId)
         *pnId = (*it).second;
     std::map<int, CAddrInfo>::iterator it2 = mapInfo.find((*it).second);
     if (it2 != mapInfo.end())
         return &(*it2).second;
-    return NULL;
+    return nullptr;
 }
 
 CAddrInfo* CAddrMan::Create(const CAddress& addr, const CNetAddr& addrSource, int* pnId)
@@ -139,9 +139,8 @@ void CAddrMan::ClearNew(int nUBucket, int nUBucketPos)
         assert(infoDelete.nRefCount > 0);
         infoDelete.nRefCount--;
         vvNew[nUBucket][nUBucketPos] = -1;
-        if (infoDelete.nRefCount == 0) {
+        if (infoDelete.nRefCount == 0)
             Delete(nIdDelete);
-        }
     }
 }
 
@@ -199,7 +198,7 @@ void CAddrMan::Good_(const CService& addr, int64_t nTime)
     CAddrInfo* pinfo = Find(addr, &nId);
 
     // if not found, bail out
-    if (!pinfo)
+    if (pinfo == nullptr)
         return;
 
     CAddrInfo& info = *pinfo;
@@ -251,18 +250,18 @@ bool CAddrMan::Add_(const CAddress& addr, const CNetAddr& source, int64_t nTimeP
     int nId;
     CAddrInfo* pinfo = Find(addr, &nId);
 
-    if (pinfo) {
+    if (pinfo != nullptr) {
         // periodically update nTime
         bool fCurrentlyOnline = (GetAdjustedTime() - addr.nTime < 24 * 60 * 60);
         int64_t nUpdateInterval = (fCurrentlyOnline ? 60 * 60 : 24 * 60 * 60);
-        if (addr.nTime && (!pinfo->nTime || pinfo->nTime < addr.nTime - nUpdateInterval - nTimePenalty))
+        if (addr.nTime && (pinfo->nTime == 0 || pinfo->nTime < addr.nTime - nUpdateInterval - nTimePenalty))
             pinfo->nTime = std::max((int64_t)0, addr.nTime - nTimePenalty);
 
         // add services
         pinfo->nServices |= addr.nServices;
 
         // do not update if no new information is present
-        if (!addr.nTime || (pinfo->nTime && addr.nTime <= pinfo->nTime))
+        if (addr.nTime == 0 || (pinfo->nTime && addr.nTime <= pinfo->nTime))
             return false;
 
         // do not update if the entry was already in the "tried" table
@@ -301,10 +300,8 @@ bool CAddrMan::Add_(const CAddress& addr, const CNetAddr& source, int64_t nTimeP
             ClearNew(nUBucket, nUBucketPos);
             pinfo->nRefCount++;
             vvNew[nUBucket][nUBucketPos] = nId;
-        } else {
-            if (pinfo->nRefCount == 0) {
+        } else if (pinfo->nRefCount == 0) {
                 Delete(nId);
-            }
         }
     }
     return fNew;
@@ -315,7 +312,7 @@ void CAddrMan::Attempt_(const CService& addr, int64_t nTime)
     CAddrInfo* pinfo = Find(addr);
 
     // if not found, bail out
-    if (!pinfo)
+    if (pinfo == nullptr)
         return;
 
     CAddrInfo& info = *pinfo;
@@ -343,11 +340,10 @@ CAddrInfo CAddrMan::Select_(bool newOnly)
         return CAddrInfo();
 
     // Use a 50% chance for choosing between tried and new table entries.
-    if (!newOnly &&
-       (nTried > 0 && (nNew == 0 || RandomInt(2) == 0))) { 
+    if (!newOnly && nTried > 0 && (nNew == 0 || RandomInt(2) == 0)) {
         // use a tried node
         double fChanceFactor = 1.0;
-        while (1) {
+        while (true) {
             int i = 0;
             int nKBucket = RandomInt(ADDRMAN_TRIED_BUCKET_COUNT);
             int nKBucketPos = RandomInt(ADDRMAN_BUCKET_SIZE);
@@ -369,7 +365,7 @@ CAddrInfo CAddrMan::Select_(bool newOnly)
     } else {
         // use a new node
         double fChanceFactor = 1.0;
-        while (1) {
+        while (true) {
             int i = 0;
             int nUBucket = RandomInt(ADDRMAN_NEW_BUCKET_COUNT);
             int nUBucketPos = RandomInt(ADDRMAN_BUCKET_SIZE);
@@ -389,7 +385,7 @@ CAddrInfo CAddrMan::Select_(bool newOnly)
             fChanceFactor *= 1.2;
         }
     }
-    
+
     return CAddrInfo();
 }
 
@@ -478,10 +474,7 @@ void CAddrMan::GetAddr_(std::vector<CAddress>& vAddr)
         nNodes = ADDRMAN_GETADDR_MAX;
 
     // gather a list of random nodes, skipping those of low quality
-    for (unsigned int n = 0; n < vRandom.size(); n++) {
-        if (vAddr.size() >= nNodes)
-            break;
-
+    for (unsigned int n = 0; n < vRandom.size() || vAddr.size() >= nNodes; n++) {
         int nRndPos = RandomInt(vRandom.size() - n) + n;
         SwapRandom(n, nRndPos);
         assert(mapInfo.count(vRandom[n]) == 1);
@@ -497,7 +490,7 @@ void CAddrMan::Connected_(const CService& addr, int64_t nTime)
     CAddrInfo* pinfo = Find(addr);
 
     // if not found, bail out
-    if (!pinfo)
+    if (pinfo == nullptr)
         return;
 
     CAddrInfo& info = *pinfo;

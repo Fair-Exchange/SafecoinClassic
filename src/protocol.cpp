@@ -121,12 +121,12 @@ CInv::CInv(const std::string& strType, const uint256& hashIn)
 
 bool operator<(const CInv& a, const CInv& b)
 {
-    return (a.type < b.type || (a.type == b.type && a.hash < b.hash));
+    return a.type < b.type || (a.type == b.type && a.hash < b.hash);
 }
 
 bool CInv::IsKnownType() const
 {
-    return (type >= 1 && type < (int)ARRAYLEN(ppszTypeName));
+    return type >= 1 && type < (int)ARRAYLEN(ppszTypeName);
 }
 
 const char* CInv::GetCommand() const

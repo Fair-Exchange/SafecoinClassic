@@ -32,13 +32,13 @@ public:
     enum MessageBoxFlags
     {
         ICON_INFORMATION    = 0,
-        ICON_WARNING        = (1U << 0),
-        ICON_ERROR          = (1U << 1),
+        ICON_WARNING        = 1U << 0,
+        ICON_ERROR          = 1U << 1,
         /**
          * Mask of all available icons in CClientUIInterface::MessageBoxFlags
          * This needs to be updated, when icons are changed there!
          */
-        ICON_MASK = (ICON_INFORMATION | ICON_WARNING | ICON_ERROR),
+        ICON_MASK = ICON_INFORMATION | ICON_WARNING | ICON_ERROR,
 
         /** These values are taken from qmessagebox.h "enum StandardButton" to be directly usable */
         BTN_OK      = 0x00000400U, // QMessageBox::Ok
@@ -57,8 +57,8 @@ public:
          * Mask of all available buttons in CClientUIInterface::MessageBoxFlags
          * This needs to be updated, when buttons are changed there!
          */
-        BTN_MASK = (BTN_OK | BTN_YES | BTN_NO | BTN_ABORT | BTN_RETRY | BTN_IGNORE |
-                    BTN_CLOSE | BTN_CANCEL | BTN_DISCARD | BTN_HELP | BTN_APPLY | BTN_RESET),
+        BTN_MASK = BTN_OK | BTN_YES | BTN_NO | BTN_ABORT | BTN_RETRY | BTN_IGNORE |
+                   BTN_CLOSE | BTN_CANCEL | BTN_DISCARD | BTN_HELP | BTN_APPLY | BTN_RESET,
 
         /** Force blocking, modal message box dialog (not just OS notification) */
         MODAL               = 0x10000000U,
@@ -68,8 +68,8 @@ public:
 
         /** Predefined combinations for certain default usage cases */
         MSG_INFORMATION = ICON_INFORMATION,
-        MSG_WARNING = (ICON_WARNING | BTN_OK | MODAL),
-        MSG_ERROR = (ICON_ERROR | BTN_OK | MODAL)
+        MSG_WARNING = ICON_WARNING | BTN_OK | MODAL,
+        MSG_ERROR = ICON_ERROR | BTN_OK | MODAL
     };
 
     /** Show message box. */

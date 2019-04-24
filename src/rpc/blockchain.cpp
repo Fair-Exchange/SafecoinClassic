@@ -873,7 +873,7 @@ UniValue kvsearch(const UniValue& params, bool fHelp)
     LOCK(cs_main);
     if ( (keylen= (int32_t)strlen(params[0].get_str().c_str())) > 0 )
     {
-        ret.push_back(Pair("coin",(char *)(ASSETCHAINS_SYMBOL[0] == 0 ? "SAFE" : ASSETCHAINS_SYMBOL)));
+        ret.push_back(Pair("coin",(char *)(ASSETCHAINS_SYMBOL[0] == '\0' ? "SAFE" : ASSETCHAINS_SYMBOL)));
         ret.push_back(Pair("currentheight", (int64_t)chainActive.LastTip()->GetHeight()));
         ret.push_back(Pair("key",params[0].get_str()));
         ret.push_back(Pair("keylen",keylen));
@@ -1015,7 +1015,7 @@ UniValue notaries(const UniValue& params, bool fHelp)
 }
 
 int32_t safecoin_pending_withdraws(char *opretstr);
-int32_t pax_fiatstatus(uint64_t *available,uint64_t *deposited,uint64_t *issued,uint64_t *withdrawn,uint64_t *approved,uint64_t *redeemed,char *base);
+int8_t pax_fiatstatus(uint64_t *available,uint64_t *deposited,uint64_t *issued,uint64_t *withdrawn,uint64_t *approved,uint64_t *redeemed,char *base);
 extern char CURRENCIES[][8];
 
 UniValue paxpending(const UniValue& params, bool fHelp)
@@ -1351,7 +1351,7 @@ UniValue getblockchaininfo(const UniValue& params, bool fHelp)
 
     LOCK(cs_main);
     double progress;
-    if ( ASSETCHAINS_SYMBOL[0] == 0 ) {
+    if ( ASSETCHAINS_SYMBOL[0] == '\0' ) {
         progress = Checkpoints::GuessVerificationProgress(Params().Checkpoints(), chainActive.LastTip());
     } else {
         int32_t longestchain = SAFECOIN_LONGESTCHAIN;//safecoin_longestchain();
@@ -1419,7 +1419,7 @@ struct CompareBlocksByHeight
            equal. Use the pointers themselves to make a distinction. */
 
         if (a->GetHeight() != b->GetHeight())
-          return (a->GetHeight() > b->GetHeight());
+          return a->GetHeight() > b->GetHeight();
 
         return a < b;
     }
@@ -1465,29 +1465,29 @@ UniValue getchaintips(const UniValue& params, bool fHelp)
     /* Build up a list of chain tips.  We start with the list of all
        known blocks, and successively remove blocks that appear as pprev
        of another block.  */
-    /*static pthread_mutex_t mutex; static int32_t didinit;
-    if ( didinit == 0 )
+    /*static pthread_mutex_t mutex; static bool didinit;
+    if ( !didinit )
     {
         pthread_mutex_init(&mutex,NULL);
-        didinit = 1;
+        didinit = true;
     }
     pthread_mutex_lock(&mutex);*/
     std::set<const CBlockIndex*, CompareBlocksByHeight> setTips;
     int32_t n = 0;
-    BOOST_FOREACH(const PAIRTYPE(const uint256, CBlockIndex*)& item, mapBlockIndex)
+    for (const PAIRTYPE(const uint256, CBlockIndex*)& item : mapBlockIndex)
     {
         n++;
         setTips.insert(item.second);
     }
     fprintf(stderr,"iterations getchaintips %d\n",n);
     n = 0;
-    BOOST_FOREACH(const PAIRTYPE(const uint256, CBlockIndex*)& item, mapBlockIndex)
+    for (const PAIRTYPE(const uint256, CBlockIndex*)& item : mapBlockIndex)
     {
-        const CBlockIndex* pprev=0;
+        const CBlockIndex* pprev = nullptr;
         n++;
         if ( item.second != 0 )
             pprev = item.second->pprev;
-        if (pprev)
+        if (pprev != nullptr)
             setTips.erase(pprev);
     }
     fprintf(stderr,"iterations getchaintips %d\n",n);
@@ -1498,9 +1498,8 @@ UniValue getchaintips(const UniValue& params, bool fHelp)
 
     /* Construct the output array.  */
     UniValue res(UniValue::VARR); const CBlockIndex *forked;
-    BOOST_FOREACH(const CBlockIndex* block, setTips)
-    BOOST_FOREACH(const CBlockIndex* block, setTips)
-        {
+    for (const CBlockIndex* block : setTips) {
+        for (const CBlockIndex* block : setTips) {
             UniValue obj(UniValue::VOBJ);
             obj.push_back(Pair("height", block->GetHeight()));
             obj.push_back(Pair("hash", block->phashBlock->GetHex()));
@@ -1534,6 +1533,7 @@ UniValue getchaintips(const UniValue& params, bool fHelp)
             }
             res.push_back(obj);
         }
+    }
 
     return res;
 }

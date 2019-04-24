@@ -63,11 +63,11 @@ public:
 };
 static CBaseUnitTestParams unitTestParams;
 
-static CBaseChainParams* pCurrentBaseParams = 0;
+static CBaseChainParams* pCurrentBaseParams = nullptr;
 
 const CBaseChainParams& BaseParams()
 {
-    if ( pCurrentBaseParams == 0 )
+    if ( pCurrentBaseParams == nullptr )
         pCurrentBaseParams = &mainParams;
     assert(pCurrentBaseParams);
     return *pCurrentBaseParams;
@@ -87,7 +87,6 @@ void SelectBaseParams(CBaseChainParams::Network network)
         break;
     default:
         assert(false && "Unimplemented network");
-        return;
     }
 }
 
@@ -117,5 +116,5 @@ bool SelectBaseParamsFromCommandLine()
 
 bool AreBaseParamsConfigured()
 {
-    return pCurrentBaseParams != NULL;
+    return pCurrentBaseParams != nullptr;
 }

@@ -36,7 +36,7 @@ void CCoins::CalcMaskSize(unsigned int &nBytes, unsigned int &nNonzeroBytes) con
     nBytes += nLastUsedByte;
 }
 
-bool CCoins::Spend(uint32_t nPos) 
+bool CCoins::Spend(uint32_t nPos)
 {
     if (nPos >= vout.size() || vout[nPos].IsNull())
         return false;
@@ -130,9 +130,8 @@ bool CCoinsViewCache::GetSproutAnchorAt(const uint256 &rt, SproutMerkleTree &tre
         }
     }
 
-    if (!base->GetSproutAnchorAt(rt, tree)) {
+    if (!base->GetSproutAnchorAt(rt, tree))
         return false;
-    }
 
     CAnchorsSproutMap::iterator ret = cacheSproutAnchors.insert(std::make_pair(rt, CAnchorsSproutCacheEntry())).first;
     ret->second.entered = true;
@@ -153,9 +152,8 @@ bool CCoinsViewCache::GetSaplingAnchorAt(const uint256 &rt, SaplingMerkleTree &t
         }
     }
 
-    if (!base->GetSaplingAnchorAt(rt, tree)) {
+    if (!base->GetSaplingAnchorAt(rt, tree))
         return false;
-    }
 
     CAnchorsSaplingMap::iterator ret = cacheSaplingAnchors.insert(std::make_pair(rt, CAnchorsSaplingCacheEntry())).first;
     ret->second.entered = true;
@@ -365,10 +363,9 @@ CCoinsModifier CCoinsViewCache::ModifyCoins(const uint256 &txid) {
 const CCoins* CCoinsViewCache::AccessCoins(const uint256 &txid) const {
     CCoinsMap::const_iterator it = FetchCoins(txid);
     if (it == cacheCoins.end()) {
-        return NULL;
-    } else {
-        return &it->second.coins;
+        return nullptr;
     }
+    return &it->second.coins;
 }
 
 bool CCoinsViewCache::HaveCoins(const uint256 &txid) const {
@@ -382,16 +379,7 @@ bool CCoinsViewCache::HaveCoins(const uint256 &txid) const {
 
 uint256 CCoinsViewCache::GetBestBlock() const {
     if (hashBlock.IsNull())
-    {
-        if (base)
-        {
-            hashBlock = base->GetBestBlock();
-        }
-        else
-        {
-            hashBlock = uint256();
-        }
-    }
+        hashBlock = base != nullptr ? base->GetBestBlock() : uint256();
     return hashBlock;
 }
 
@@ -402,12 +390,10 @@ uint256 CCoinsViewCache::GetBestAnchor(ShieldedType type) const {
             if (hashSproutAnchor.IsNull())
                 hashSproutAnchor = base->GetBestAnchor(type);
             return hashSproutAnchor;
-            break;
         case SAPLING:
             if (hashSaplingAnchor.IsNull())
                 hashSaplingAnchor = base->GetBestAnchor(type);
             return hashSaplingAnchor;
-            break;
         default:
             throw std::runtime_error("Unknown shielded type");
     }
@@ -581,18 +567,18 @@ const CScript &CCoinsViewCache::GetSpendFor(const CTxIn& input) const
 CAmount CCoinsViewCache::GetValueIn(int32_t nHeight,int64_t *interestp,const CTransaction& tx,uint32_t tiptime) const
 {
     CAmount value,nResult = 0;
-    if ( interestp != 0 )
+    if ( interestp != nullptr )
         *interestp = 0;
     if ( tx.IsCoinImport() )
         return GetCoinImportValue(tx);
-    if ( tx.IsCoinBase() != 0 )
+    if ( tx.IsCoinBase() )
         return 0;
     for (unsigned int i = 0; i < tx.vin.size(); i++)
     {
         value = GetOutputFor(tx.vin[i]).nValue;
         nResult += value;
 #ifdef SAFECOIN_ENABLE_INTEREST
-        if ( ASSETCHAINS_SYMBOL[0] == 0 && nHeight >= 60000 )
+        if ( ASSETCHAINS_SYMBOL[0] == '\0' && nHeight >= 60000 )
         {
             if ( value >= 10*COIN )
             {
@@ -601,7 +587,7 @@ CAmount CCoinsViewCache::GetValueIn(int32_t nHeight,int64_t *interestp,const CTr
                 //printf("nResult %.8f += val %.8f interest %.8f ht.%d lock.%u tip.%u\n",(double)nResult/COIN,(double)value/COIN,(double)interest/COIN,txheight,locktime,tiptime);
                 //fprintf(stderr,"nResult %.8f += val %.8f interest %.8f ht.%d lock.%u tip.%u\n",(double)nResult/COIN,(double)value/COIN,(double)interest/COIN,txheight,locktime,tiptime);
                 nResult += interest;
-                (*interestp) += interest;
+                *interestp += interest;
             }
         }
 #endif
@@ -616,9 +602,9 @@ bool CCoinsViewCache::HaveJoinSplitRequirements(const CTransaction& tx) const
 {
     boost::unordered_map<uint256, SproutMerkleTree, CCoinsKeyHasher> intermediates;
 
-    BOOST_FOREACH(const JSDescription &joinsplit, tx.vjoinsplit)
+    for (const JSDescription &joinsplit : tx.vjoinsplit)
     {
-        BOOST_FOREACH(const uint256& nullifier, joinsplit.nullifiers)
+        for (const uint256& nullifier : joinsplit.nullifiers)
         {
             if (GetNullifier(nullifier, SPROUT)) {
                 // If the nullifier is set, this transaction
@@ -635,10 +621,8 @@ bool CCoinsViewCache::HaveJoinSplitRequirements(const CTransaction& tx) const
             return false;
         }
 
-        BOOST_FOREACH(const uint256& commitment, joinsplit.commitments)
-        {
+        for (const uint256& commitment : joinsplit.commitments)
             tree.append(commitment);
-        }
 
         intermediates.insert(std::make_pair(tree.root(), tree));
     }
@@ -648,9 +632,8 @@ bool CCoinsViewCache::HaveJoinSplitRequirements(const CTransaction& tx) const
             return false;
 
         SaplingMerkleTree tree;
-        if (!GetSaplingAnchorAt(spendDescription.anchor, tree)) {
+        if (!GetSaplingAnchorAt(spendDescription.anchor, tree))
             return false;
-        }
     }
 
     return true;
@@ -659,10 +642,10 @@ bool CCoinsViewCache::HaveJoinSplitRequirements(const CTransaction& tx) const
 bool CCoinsViewCache::HaveInputs(const CTransaction& tx) const
 {
     if (!tx.IsMint()) {
-        for (unsigned int i = 0; i < tx.vin.size(); i++) {
-            const COutPoint &prevout = tx.vin[i].prevout;
+        for (auto txvin : tx.vin) {
+            const COutPoint &prevout = txvin.prevout;
             const CCoins* coins = AccessCoins(prevout.hash);
-            if (!coins || !coins->IsAvailable(prevout.n)) {
+            if (coins == nullptr || !coins->IsAvailable(prevout.n)) {
                 //fprintf(stderr,"HaveInputs missing input %s/v%d\n",prevout.hash.ToString().c_str(),prevout.n);
                 return false;
             }
@@ -687,14 +670,13 @@ double CCoinsViewCache::GetPriority(const CTransaction &tx, int nHeight) const
 
     // FIXME: this logic is partially duplicated between here and CreateNewBlock in miner.cpp.
     double dResult = 0.0;
-    BOOST_FOREACH(const CTxIn& txin, tx.vin)
+    for(const CTxIn& txin : tx.vin)
     {
         const CCoins* coins = AccessCoins(txin.prevout.hash);
-        assert(coins);
+        assert(coins != nullptr);
         if (!coins->IsAvailable(txin.prevout.n)) continue;
-        if (coins->nHeight < nHeight) {
+        if (coins->nHeight < nHeight)
             dResult += coins->vout[txin.prevout.n].nValue * (nHeight-coins->nHeight);
-        }
     }
 
     return tx.ComputePriority(dResult);

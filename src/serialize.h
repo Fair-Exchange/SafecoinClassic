@@ -63,7 +63,7 @@ inline T* NCONST_PTR(const T* val)
     return const_cast<T*>(val);
 }
 
-/** 
+/**
  * Get begin pointer of vector (non-const version).
  * @note These functions avoid the undefined case of indexing into an empty
  * vector, as well as that of indexing after the end of the vector.
@@ -187,19 +187,19 @@ class CSizeComputer;
 enum
 {
     // primary actions
-    SER_NETWORK         = (1 << 0),
-    SER_DISK            = (1 << 1),
-    SER_GETHASH         = (1 << 2),
+    SER_NETWORK         = 1 << 0,
+    SER_DISK            = 1 << 1,
+    SER_GETHASH         = 1 << 2,
 };
 
 #define READWRITE(obj)      (::SerReadWrite(s, (obj), ser_action))
 #define READWRITEMANY(...)      (::SerReadWriteMany(s, ser_action, __VA_ARGS__))
 
-/** 
+/**
  * Implement three methods for serializable objects. These are actually wrappers over
  * "SerializationOp" template, which implements the body of each class' serialization
  * code. Adding "ADD_SERIALIZE_METHODS" in the body of the class causes these wrappers to be
- * added as members. 
+ * added as members.
  */
 #define ADD_SERIALIZE_METHODS                                         \
     template<typename Stream>                                         \
@@ -237,10 +237,6 @@ template<typename Stream> inline void Unserialize(Stream& s, double& a  ) { a = 
 
 template<typename Stream> inline void Serialize(Stream& s, bool a)    { char f=a; ser_writedata8(s, f); }
 template<typename Stream> inline void Unserialize(Stream& s, bool& a) { char f=ser_readdata8(s); a=f; }
-
-
-
-
 
 
 /**
@@ -322,16 +318,16 @@ uint64_t ReadCompactSize(Stream& is)
  * sure the encoding is one-to-one, one is subtracted from all but the last digit.
  * Thus, the byte sequence a[] with length len, where all but the last byte
  * has bit 128 set, encodes the number:
- * 
+ *
  *  (a[len-1] & 0x7F) + sum(i=1..len-1, 128^i*((a[len-i-1] & 0x7F)+1))
- * 
+ *
  * Properties:
  * * Very small (0-127: 1 byte, 128-16511: 2 bytes, 16512-2113663: 3 bytes)
  * * Every integer has exactly one encoding
  * * Encoding does not depend on size of original integer type
  * * No redundancy: every (infinite) byte sequence corresponds to a list
  *   of encoded integers.
- * 
+ *
  * 0:         [0x00]  256:        [0x81 0x00]
  * 1:         [0x01]  16383:      [0xFE 0x7F]
  * 127:       [0x7F]  16384:      [0xFF 0x00]
@@ -344,8 +340,8 @@ template<typename I>
 inline unsigned int GetSizeOfVarInt(I n)
 {
     int nRet = 0;
-    while(true) {
-        nRet++;
+    while (true) {
+        ++nRet;
         if (n <= 0x7F)
             break;
         n = (n >> 7) - 1;
@@ -360,13 +356,13 @@ template<typename Stream, typename I>
 void WriteVarInt(Stream& os, I n)
 {
     unsigned char tmp[(sizeof(n)*8+6)/7];
-    int len=0;
-    while(true) {
+    int len = 0;
+    while (true) {
         tmp[len] = (n & 0x7F) | (len ? 0x80 : 0x00);
         if (n <= 0x7F)
             break;
         n = (n >> 7) - 1;
-        len++;
+        ++len;
     }
     do {
         ser_writedata8(os, tmp[len]);
@@ -377,13 +373,12 @@ template<typename Stream, typename I>
 I ReadVarInt(Stream& is)
 {
     I n = 0;
-    while(true) {
+    while (true) {
         unsigned char chData = ser_readdata8(is);
         n = (n << 7) | (chData & 0x7F);
-        if (chData & 0x80)
-            n++;
-        else
+        if (chData & 0x80 == 0)
             return n;
+        n++;
     }
 }
 
@@ -392,7 +387,7 @@ I ReadVarInt(Stream& is)
 #define COMPACTSIZE(obj) REF(CCompactSize(REF(obj)))
 #define LIMITED_STRING(obj,n) REF(LimitedString< n >(REF(obj)))
 
-/** 
+/**
  * Wrapper for serializing arrays and POD.
  */
 class CFlatData
@@ -481,9 +476,8 @@ public:
     void Unserialize(Stream& s)
     {
         size_t size = ReadCompactSize(s);
-        if (size > Limit) {
+        if (size > Limit)
             throw std::ios_base::failure("String length limit exceeded");
-        }
         string.resize(size);
         if (size != 0)
             s.read((char*)&string[0], size);
@@ -600,8 +594,6 @@ inline void Unserialize(Stream& is, T& a)
 
 
 
-
-
 /**
  * string
  */
@@ -679,8 +671,8 @@ void Unserialize_impl(Stream& is, prevector<N, T>& v, const V&)
         if (nMid > nSize)
             nMid = nSize;
         v.resize(nMid);
-        for (; i < nMid; i++)
-            Unserialize(is, v[i]);
+        while (i < nMid)
+            Unserialize(is, v[i++]);
     }
 }
 
@@ -803,17 +795,15 @@ void Unserialize(Stream& is, boost::optional<T>& item)
 template<typename Stream, typename T, std::size_t N>
 void Serialize(Stream& os, const std::array<T, N>& item)
 {
-    for (size_t i = 0; i < N; i++) {
+    for (size_t i = 0; i < N; i++)
         Serialize(os, item[i]);
-    }
 }
 
 template<typename Stream, typename T, std::size_t N>
 void Unserialize(Stream& is, std::array<T, N>& item)
 {
-    for (size_t i = 0; i < N; i++) {
+    for (size_t i = 0; i < N; i++)
         Unserialize(is, item[i]);
-    }
 }
 
 

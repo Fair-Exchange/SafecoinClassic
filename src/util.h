@@ -62,7 +62,7 @@ extern CTranslationInterface translationInterface;
 inline std::string _(const char* psz)
 {
     boost::optional<std::string> rv = translationInterface.Translate(psz);
-    return rv ? (*rv) : psz;
+    return rv ? *rv : psz;
 }
 
 void SetupEnvironment();
@@ -103,8 +103,7 @@ TINYFORMAT_FOREACH_ARGNUM(MAKE_ERROR_AND_LOG_FUNC)
  */
 static inline int LogPrint(const char* category, const char* format)
 {
-    if(!LogAcceptCategory(category)) return 0;
-    return LogPrintStr(format);
+    return LogAcceptCategory(category) ? LogPrintStr(format) : 0;
 }
 static inline bool error(const char* format)
 {
@@ -130,9 +129,9 @@ boost::filesystem::path GetConfigFile();
 boost::filesystem::path GetPidFile();
 void CreatePidFile(const boost::filesystem::path &path, pid_t pid);
 #endif
-class missing_zcash_conf : public std::runtime_error {
+class missing_safecoin_conf : public std::runtime_error {
 public:
-    missing_zcash_conf() : std::runtime_error("Missing safecoin.conf") { }
+    missing_safecoin_conf() : std::runtime_error("Missing safecoin.conf") { }
 };
 void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet, std::map<std::string, std::vector<std::string> >& mapMultiSettingsRet);
 #ifdef _WIN32
@@ -265,7 +264,7 @@ template <typename Callable> void TraceThread(const char* name,  Callable func)
         throw;
     }
     catch (...) {
-        PrintExceptionContinue(NULL, name);
+        PrintExceptionContinue(nullptr, name);
         throw;
     }
 }

@@ -72,7 +72,7 @@ void test_tree(
     ASSERT_TRUE(tree.root() == Tree::empty_root());
 
     // The tree doesn't have a 'last' element added since it's blank.
-    ASSERT_THROW(tree.last(), std::runtime_error);
+    ASSERT_THROW(tree.last(), runtime_error);
 
     // The tree is empty.
     ASSERT_TRUE(tree.size() == 0);
@@ -110,8 +110,8 @@ void test_tree(
             wit.append(test_commitment);
 
             if (first) {
-                ASSERT_THROW(wit.path(), std::runtime_error);
-                ASSERT_THROW(wit.element(), std::runtime_error);
+                ASSERT_THROW(wit.path(), runtime_error);
+                ASSERT_THROW(wit.element(), runtime_error);
             } else {
                 auto path = wit.path();
                 expect_test_vector(path_tests[path_i++], path);
@@ -133,10 +133,10 @@ void test_tree(
                     authvars.generate_r1cs_constraints();
                     auth.generate_r1cs_constraints();
 
-                    std::vector<bool> commitment_bv;
+                    vector<bool> commitment_bv;
                     {
                         uint256 witnessed_commitment = wit.element();
-                        std::vector<unsigned char> commitment_v(witnessed_commitment.begin(), witnessed_commitment.end());
+                        vector<unsigned char> commitment_v(witnessed_commitment.begin(), witnessed_commitment.end());
                         commitment_bv = convertBytesVectorToVector(commitment_v);
                     }
 
@@ -148,10 +148,10 @@ void test_tree(
                     authvars.generate_r1cs_witness(path_index, path.authentication_path);
                     auth.generate_r1cs_witness();
 
-                    std::vector<bool> root_bv;
+                    vector<bool> root_bv;
                     {
                         uint256 witroot = wit.root();
-                        std::vector<unsigned char> root_v(witroot.begin(), witroot.end());
+                        vector<unsigned char> root_v(witroot.begin(), witroot.end());
                         root_bv = convertBytesVectorToVector(root_v);
                     }
 
@@ -177,16 +177,16 @@ void test_tree(
 
     {
         // Tree should be full now
-        ASSERT_THROW(tree.append(uint256()), std::runtime_error);
+        ASSERT_THROW(tree.append(uint256()), runtime_error);
 
         BOOST_FOREACH(Witness& wit, witnesses)
         {
-            ASSERT_THROW(wit.append(uint256()), std::runtime_error);
+            ASSERT_THROW(wit.append(uint256()), runtime_error);
         }
     }
 }
 
-#define MAKE_STRING(x) std::string((x), (x)+sizeof(x))
+#define MAKE_STRING(x) string((x), (x)+sizeof(x))
 
 TEST(merkletree, vectors) {
     UniValue root_tests = read_json(MAKE_STRING(json_tests::merkle_roots));
@@ -281,7 +281,7 @@ TEST(merkletree, deserializeInvalid) {
     ss << newTree;
 
     SproutTestingMerkleTree newTreeSmall;
-    ASSERT_THROW({ss >> newTreeSmall;}, std::ios_base::failure);
+    ASSERT_THROW({ss >> newTreeSmall;}, ios_base::failure);
 }
 
 TEST(merkletree, deserializeInvalid2) {
@@ -293,7 +293,7 @@ TEST(merkletree, deserializeInvalid2) {
     );
 
     SproutMerkleTree tree;
-    ASSERT_THROW(ss >> tree, std::ios_base::failure);
+    ASSERT_THROW(ss >> tree, ios_base::failure);
 }
 
 TEST(merkletree, deserializeInvalid3) {
@@ -305,7 +305,7 @@ TEST(merkletree, deserializeInvalid3) {
     );
 
     SproutMerkleTree tree;
-    ASSERT_THROW(ss >> tree, std::ios_base::failure);
+    ASSERT_THROW(ss >> tree, ios_base::failure);
 }
 
 TEST(merkletree, deserializeInvalid4) {
@@ -317,7 +317,7 @@ TEST(merkletree, deserializeInvalid4) {
     );
 
     SproutMerkleTree tree;
-    ASSERT_THROW(ss >> tree, std::ios_base::failure);
+    ASSERT_THROW(ss >> tree, ios_base::failure);
 }
 
 TEST(merkletree, testZeroElements) {

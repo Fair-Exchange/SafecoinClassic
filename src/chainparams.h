@@ -102,7 +102,7 @@ public:
     unsigned long eh_epoch_2_start() const { return eh_epoch_2_startblock; }
     unsigned long eh_epoch_2_end() const { return eh_epoch_2_endblock; }
     unsigned long eh_epoch_3_start() const { return eh_epoch_3_startblock; }
-    
+
     std::string CurrencyUnits() const { return strCurrencyUnits; }
     uint32_t BIP44CoinType() const { return bip44CoinType; }
     /** Make miner stop after a block is found. In RPC, don't return until nGenProcLimit blocks are generated */
@@ -150,7 +150,7 @@ protected:
     unsigned long eh_epoch_2_startblock = 140000;
     unsigned long eh_epoch_2_endblock = 170000;
     unsigned long eh_epoch_3_startblock = 160000;
-    
+
     std::vector<CDNSSeedData> vSeeds;
     std::vector<unsigned char> base58Prefixes[MAX_BASE58_TYPES];
     std::string bech32HRPs[MAX_BECH32_TYPES];

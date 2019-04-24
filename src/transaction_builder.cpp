@@ -35,11 +35,8 @@ bool TransactionBuilder::AddSaplingSpend(
     SaplingWitness witness)
 {
     // Consistency check: all anchors must equal the first one
-    if (!spends.empty()) {
-        if (spends[0].anchor != anchor) {
-            return false;
-        }
-    }
+    if (!spends.empty() && spends[0].anchor != anchor)
+        return false;
 
     spends.emplace_back(expsk, note, anchor, witness);
     mtx.valueBalance += note.value();
@@ -59,12 +56,8 @@ void TransactionBuilder::AddSaplingOutput(
 
 void TransactionBuilder::AddTransparentInput(COutPoint utxo, CScript scriptPubKey, CAmount value, uint32_t _nSequence)
 {
-    if (keystore == nullptr) {
-        if (!scriptPubKey.IsPayToCryptoCondition())
-        {
-            throw std::runtime_error("Cannot add transparent inputs to a TransactionBuilder without a keystore, except with crypto conditions");
-        }
-    }
+    if (keystore == nullptr && !scriptPubKey.IsPayToCryptoCondition())
+        throw std::runtime_error("Cannot add transparent inputs to a TransactionBuilder without a keystore, except with crypto conditions");
 
     mtx.vin.emplace_back(utxo);
     mtx.vin[mtx.vin.size() - 1].nSequence = _nSequence;
@@ -73,9 +66,8 @@ void TransactionBuilder::AddTransparentInput(COutPoint utxo, CScript scriptPubKe
 
 bool TransactionBuilder::AddTransparentOutput(CTxDestination& to, CAmount value)
 {
-    if (!IsValidDestination(to)) {
+    if (!IsValidDestination(to))
         return false;
-    }
 
     CScript scriptPubKey = GetScriptForDestination(to);
     CTxOut out(value, scriptPubKey);
@@ -113,9 +105,8 @@ void TransactionBuilder::SendChangeTo(libzcash::SaplingPaymentAddress changeAddr
 
 bool TransactionBuilder::SendChangeTo(CTxDestination& changeAddr)
 {
-    if (!IsValidDestination(changeAddr)) {
+    if (!IsValidDestination(changeAddr))
         return false;
-    }
 
     tChangeAddr = changeAddr;
     zChangeAddr = boost::none;
@@ -131,15 +122,12 @@ boost::optional<CTransaction> TransactionBuilder::Build()
 
     // Valid change
     CAmount change = mtx.valueBalance - fee;
-    for (auto tIn : tIns) {
+    for (auto tIn : tIns)
         change += tIn.value;
-    }
-    for (auto tOut : mtx.vout) {
+    for (auto tOut : mtx.vout)
         change -= tOut.nValue;
-    }
-    if (change < 0) {
+    if (change < 0)
         return boost::none;
-    }
 
     //
     // Change output
@@ -174,7 +162,7 @@ boost::optional<CTransaction> TransactionBuilder::Build()
         auto cm = spend.note.cm();
         auto nf = spend.note.nullifier(
             spend.expsk.full_viewing_key(), spend.witness.position());
-        if (!(cm && nf)) {
+        if (!cm || !nf) {
             librustzcash_sapling_proving_ctx_free(ctx);
             return boost::none;
         }
@@ -296,11 +284,9 @@ boost::optional<CTransaction> TransactionBuilder::Build()
                 keystore, &txNewConst, nIn, tIn.value, SIGHASH_ALL),
             tIn.scriptPubKey, sigdata, consensusBranchId);
 
-        if (!signSuccess) {
+        if (!signSuccess)
             return boost::none;
-        } else {
-            UpdateTransaction(mtx, nIn, sigdata);
-        }
+        UpdateTransaction(mtx, nIn, sigdata);
     }
 
     return CTransaction(mtx);

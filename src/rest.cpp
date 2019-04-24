@@ -100,7 +100,7 @@ static string AvailableDataFormatsString()
 
 static bool ParseHashStr(const string& strReq, uint256& v)
 {
-    if (!IsHex(strReq) || (strReq.size() != 64))
+    if (!IsHex(strReq) || strReq.size() != 64)
         return false;
 
     v.SetHex(strReq);
@@ -109,14 +109,14 @@ static bool ParseHashStr(const string& strReq, uint256& v)
 
 static bool CheckWarmup(HTTPRequest* req)
 {
-    std::string statusmessage;
+    string statusmessage;
     if (RPCIsInWarmup(&statusmessage))
          return RESTERR(req, HTTP_SERVICE_UNAVAILABLE, "Service temporarily unavailable: " + statusmessage);
     return true;
 }
 
 static bool rest_headers(HTTPRequest* req,
-                         const std::string& strURIPart)
+                         const string& strURIPart)
 {
     if (!CheckWarmup(req))
         return false;
@@ -128,7 +128,7 @@ static bool rest_headers(HTTPRequest* req,
     if (path.size() != 2)
         return RESTERR(req, HTTP_BAD_REQUEST, "No header count specified. Use /rest/headers/<count>/<hash>.<ext>.");
 
-    long count = strtol(path[0].c_str(), NULL, 10);
+    long count = strtol(path[0].c_str(), nullptr, 10);
     if (count < 1 || count > 2000)
         return RESTERR(req, HTTP_BAD_REQUEST, "Header count out of range: " + path[0]);
 
@@ -137,13 +137,13 @@ static bool rest_headers(HTTPRequest* req,
     if (!ParseHashStr(hashStr, hash))
         return RESTERR(req, HTTP_BAD_REQUEST, "Invalid hash: " + hashStr);
 
-    std::vector<const CBlockIndex *> headers;
+    vector<const CBlockIndex *> headers;
     headers.reserve(count);
     {
         LOCK(cs_main);
         BlockMap::const_iterator it = mapBlockIndex.find(hash);
-        const CBlockIndex *pindex = (it != mapBlockIndex.end()) ? it->second : NULL;
-        while (pindex != NULL && chainActive.Contains(pindex)) {
+        const CBlockIndex *pindex = it != mapBlockIndex.end() ? it->second : nullptr;
+        while (pindex != nullptr && chainActive.Contains(pindex)) {
             headers.push_back(pindex);
             if (headers.size() == (unsigned long)count)
                 break;
@@ -190,7 +190,7 @@ static bool rest_headers(HTTPRequest* req,
 }
 
 static bool rest_block(HTTPRequest* req,
-                       const std::string& strURIPart,
+                       const string& strURIPart,
                        bool showTxDetails)
 {
     if (!CheckWarmup(req))
@@ -204,7 +204,7 @@ static bool rest_block(HTTPRequest* req,
         return RESTERR(req, HTTP_BAD_REQUEST, "Invalid hash: " + hashStr);
 
     CBlock block;
-    CBlockIndex* pblockindex = NULL;
+    CBlockIndex* pblockindex = nullptr;
     {
         LOCK(cs_main);
         if (mapBlockIndex.count(hash) == 0)
@@ -253,12 +253,12 @@ static bool rest_block(HTTPRequest* req,
     return true; // continue to process further HTTP reqs on this cxn
 }
 
-static bool rest_block_extended(HTTPRequest* req, const std::string& strURIPart)
+static bool rest_block_extended(HTTPRequest* req, const string& strURIPart)
 {
     return rest_block(req, strURIPart, true);
 }
 
-static bool rest_block_notxdetails(HTTPRequest* req, const std::string& strURIPart)
+static bool rest_block_notxdetails(HTTPRequest* req, const string& strURIPart)
 {
     return rest_block(req, strURIPart, false);
 }
@@ -266,7 +266,7 @@ static bool rest_block_notxdetails(HTTPRequest* req, const std::string& strURIPa
 // A bit of a hack - dependency on a function defined in rpc/blockchain.cpp
 UniValue getblockchaininfo(const UniValue& params, bool fHelp);
 
-static bool rest_chaininfo(HTTPRequest* req, const std::string& strURIPart)
+static bool rest_chaininfo(HTTPRequest* req, const string& strURIPart)
 {
     if (!CheckWarmup(req))
         return false;
@@ -291,7 +291,7 @@ static bool rest_chaininfo(HTTPRequest* req, const std::string& strURIPart)
     return true; // continue to process further HTTP reqs on this cxn
 }
 
-static bool rest_mempool_info(HTTPRequest* req, const std::string& strURIPart)
+static bool rest_mempool_info(HTTPRequest* req, const string& strURIPart)
 {
     if (!CheckWarmup(req))
         return false;
@@ -316,7 +316,7 @@ static bool rest_mempool_info(HTTPRequest* req, const std::string& strURIPart)
     return true; // continue to process further HTTP reqs on this cxn
 }
 
-static bool rest_mempool_contents(HTTPRequest* req, const std::string& strURIPart)
+static bool rest_mempool_contents(HTTPRequest* req, const string& strURIPart)
 {
     if (!CheckWarmup(req))
         return false;
@@ -341,7 +341,7 @@ static bool rest_mempool_contents(HTTPRequest* req, const std::string& strURIPar
     return true; // continue to process further HTTP reqs on this cxn
 }
 
-static bool rest_tx(HTTPRequest* req, const std::string& strURIPart)
+static bool rest_tx(HTTPRequest* req, const string& strURIPart)
 {
     if (!CheckWarmup(req))
         return false;
@@ -394,7 +394,7 @@ static bool rest_tx(HTTPRequest* req, const std::string& strURIPart)
     return true; // continue to process further HTTP reqs on this cxn
 }
 
-static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
+static bool rest_getutxos(HTTPRequest* req, const string& strURIPart)
 {
     if (!CheckWarmup(req))
         return false;
@@ -404,12 +404,12 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
     vector<string> uriParts;
     if (params.size() > 0 && params[0].length() > 1)
     {
-        std::string strUriParams = params[0].substr(1);
+        string strUriParams = params[0].substr(1);
         boost::split(uriParts, strUriParams, boost::is_any_of("/"));
     }
 
     // throw exception in case of an empty request
-    std::string strRequestMutable = req->ReadBody();
+    string strRequestMutable = req->ReadBody();
     if (strRequestMutable.length() == 0 && uriParts.size() == 0)
         return RESTERR(req, HTTP_INTERNAL_SERVER_ERROR, "Error: empty request");
 
@@ -431,8 +431,8 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
         {
             uint256 txid;
             int32_t nOutput;
-            std::string strTxid = uriParts[i].substr(0, uriParts[i].find("-"));
-            std::string strOutput = uriParts[i].substr(uriParts[i].find("-")+1);
+            string strTxid = uriParts[i].substr(0, uriParts[i].find("-"));
+            string strOutput = uriParts[i].substr(uriParts[i].find("-")+1);
 
             if (!ParseInt32(strOutput, &nOutput) || !IsHex(strTxid))
                 return RESTERR(req, HTTP_INTERNAL_SERVER_ERROR, "Parse error");
@@ -450,7 +450,7 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
     switch (rf) {
     case RF_HEX: {
         // convert hex to bin, continue then with bin part
-        std::vector<unsigned char> strRequestV = ParseHex(strRequestMutable);
+        vector<unsigned char> strRequestV = ParseHex(strRequestMutable);
         strRequestMutable.assign(strRequestV.begin(), strRequestV.end());
     }
 
@@ -467,7 +467,7 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
                 oss >> fCheckMemPool;
                 oss >> vOutPoints;
             }
-        } catch (const std::ios_base::failure& e) {
+        } catch (const ios_base::failure& e) {
             // abort in case of unreadable binary data
             return RESTERR(req, HTTP_INTERNAL_SERVER_ERROR, "Parse error");
         }
@@ -491,7 +491,7 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
     // check spentness and form a bitmap (as well as a JSON capable human-readable string representation)
     vector<unsigned char> bitmap;
     vector<CCoin> outs;
-    std::string bitmapStringRepresentation;
+    string bitmapStringRepresentation;
     boost::dynamic_bitset<unsigned char> hits(vOutPoints.size());
     {
         LOCK2(cs_main, mempool.cs);
@@ -526,7 +526,7 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
             bitmapStringRepresentation.append(hits[i] ? "1" : "0"); // form a binary string representation (human-readable for json output)
         }
     }
-    boost::to_block_range(hits, std::back_inserter(bitmap));
+    boost::to_block_range(hits, back_inserter(bitmap));
 
     switch (rf) {
     case RF_BINARY: {
@@ -592,7 +592,7 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
 
 static const struct {
     const char* prefix;
-    bool (*handler)(HTTPRequest* req, const std::string& strReq);
+    bool (*handler)(HTTPRequest* req, const string& strReq);
 } uri_prefixes[] = {
       {"/rest/tx/", rest_tx},
       {"/rest/block/notxdetails/", rest_block_notxdetails},

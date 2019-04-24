@@ -28,10 +28,10 @@ using namespace std;
 namespace safe
 {
 typedef struct _NODE_ADDR {
-    std::string ipAddr;
+    string ipAddr;
     int64_t time; // time in msec, of an attempt to connect via TLS
 
-    _NODE_ADDR(std::string _ipAddr, int64_t _time = 0) : ipAddr(_ipAddr), time(_time) {}
+    _NODE_ADDR(string _ipAddr, int64_t _time = 0) : ipAddr(_ipAddr), time(_time) {}
 bool operator==(const _NODE_ADDR b) const
 {
     return (ipAddr == b.ipAddr);
@@ -51,12 +51,12 @@ public:
         TLSContextType ctxType,
         const boost::filesystem::path& privateKeyFile,
         const boost::filesystem::path& certificateFile,
-        const std::vector<boost::filesystem::path>& trustedDirs);
+        const vector<boost::filesystem::path>& trustedDirs);
 
      bool prepareCredentials();
      SSL* accept(SOCKET hSocket, const CAddress& addr);
      bool isNonTLSAddr(const string& strAddr, const vector<NODE_ADDR>& vPool, CCriticalSection& cs);
-     void cleanNonTLSPool(std::vector<NODE_ADDR>& vPool, CCriticalSection& cs);
+     void cleanNonTLSPool(vector<NODE_ADDR>& vPool, CCriticalSection& cs);
      int threadSocketHandler(CNode* pnode, fd_set& fdsetRecv, fd_set& fdsetSend, fd_set& fdsetError);
      bool initialize();
 };

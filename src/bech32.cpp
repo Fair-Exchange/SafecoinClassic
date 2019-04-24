@@ -150,9 +150,8 @@ std::string Encode(const std::string& hrp, const data& values) {
     std::string ret = hrp + '1';
     ret.reserve(ret.size() + combined.size());
     for (auto c : combined) {
-        if (c >= 32) {
+        if (c >= 32)
             return "";
-        }
         ret += CHARSET[c];
     }
     return ret;
@@ -161,33 +160,27 @@ std::string Encode(const std::string& hrp, const data& values) {
 /** Decode a Bech32 string. */
 std::pair<std::string, data> Decode(const std::string& str) {
     bool lower = false, upper = false;
-    for (size_t i = 0; i < str.size(); ++i) {
-        unsigned char c = str[i];
+    for (char c : str) {
         if (c < 33 || c > 126) return {};
         if (c >= 'a' && c <= 'z') lower = true;
-        if (c >= 'A' && c <= 'Z') upper = true;
+        else if (c >= 'A' && c <= 'Z') upper = true;
     }
     if (lower && upper) return {};
     size_t pos = str.rfind('1');
-    if (str.size() > 1023 || pos == str.npos || pos == 0 || pos + 7 > str.size()) {
+    if (str.size() > 1023 || pos == str.npos || pos == 0 || pos + 7 > str.size())
         return {};
-    }
     data values(str.size() - 1 - pos);
     for (size_t i = 0; i < str.size() - 1 - pos; ++i) {
         unsigned char c = str[i + pos + 1];
-        int8_t rev = (c < 33 || c > 126) ? -1 : CHARSET_REV[c];
-        if (rev == -1) {
+        if (c < 33 || c > 126)
             return {};
-        }
-        values[i] = rev;
+        values[i] = CHARSET_REV[c];
     }
     std::string hrp;
-    for (size_t i = 0; i < pos; ++i) {
+    for (size_t i = 0; i < pos; ++i)
         hrp += LowerCase(str[i]);
-    }
-    if (!VerifyChecksum(hrp, values)) {
+    if (!VerifyChecksum(hrp, values))
         return {};
-    }
     return {hrp, data(values.begin(), values.end() - 6)};
 }
 

@@ -33,13 +33,13 @@ using namespace std;
 
 static bool fRPCRunning = false;
 static bool fRPCInWarmup = true;
-static std::string rpcWarmupStatus("RPC server started");
+static string rpcWarmupStatus("RPC server started");
 static CCriticalSection cs_rpcWarmup;
 /* Timer-creating functions */
-static std::vector<RPCTimerInterface*> timerInterfaces;
+static vector<RPCTimerInterface*> timerInterfaces;
 /* Map of name to timer.
- * @note Can be changed to std::unique_ptr when C++11 */
-static std::map<std::string, boost::shared_ptr<RPCTimerBase> > deadlineTimers;
+ * @note Can be changed to unique_ptr when C++11 */
+static map<string, boost::shared_ptr<RPCTimerBase> > deadlineTimers;
 
 static struct CRPCSignals
 {
@@ -164,7 +164,7 @@ vector<unsigned char> ParseHexO(const UniValue& o, string strKey)
  * Note: This interface may still be subject to change.
  */
 
-std::string CRPCTable::help(const std::string& strCommand) const
+string CRPCTable::help(const string& strCommand) const
 {
     string strRet;
     string category;
@@ -191,7 +191,7 @@ std::string CRPCTable::help(const std::string& strCommand) const
             if (setDone.insert(pfn).second)
                 (*pfn)(params, true);
         }
-        catch (const std::exception& e)
+        catch (const exception& e)
         {
             // Help text is returned in an exception
             string strHelp = string(e.what());
@@ -264,7 +264,7 @@ UniValue stop(const UniValue& params, bool fHelp)
 
     // Shutdown will take long enough that the response should get back
     StartShutdown();
-    sprintf(buf,"%s server stopping",ASSETCHAINS_SYMBOL[0] != 0 ? ASSETCHAINS_SYMBOL : "Safecoin");
+    sprintf(buf,"%s server stopping",ASSETCHAINS_SYMBOL[0] != '\0' ? ASSETCHAINS_SYMBOL : "Safecoin");
     return buf;
 }
 
@@ -583,22 +583,21 @@ CRPCTable::CRPCTable()
     }
 }
 
-const CRPCCommand *CRPCTable::operator[](const std::string &name) const
+const CRPCCommand *CRPCTable::operator[](const string &name) const
 {
     map<string, const CRPCCommand*>::const_iterator it = mapCommands.find(name);
     if (it == mapCommands.end())
-        return NULL;
-    return (*it).second;
+        return nullptr;
+    return it->second;
 }
 
-bool CRPCTable::appendCommand(const std::string& name, const CRPCCommand* pcmd)
+bool CRPCTable::appendCommand(const string& name, const CRPCCommand* pcmd)
 {
     if (IsRPCRunning())
         return false;
 
     // don't allow overwriting for now
-    map<string, const CRPCCommand*>::const_iterator it = mapCommands.find(name);
-    if (it != mapCommands.end())
+    if (mapCommands.count(name))
         return false;
 
     mapCommands[name] = pcmd;
@@ -651,7 +650,7 @@ bool IsRPCRunning()
     return fRPCRunning;
 }
 
-void SetRPCWarmupStatus(const std::string& newStatus)
+void SetRPCWarmupStatus(const string& newStatus)
 {
     LOCK(cs_rpcWarmup);
     rpcWarmupStatus = newStatus;
@@ -664,10 +663,10 @@ void SetRPCWarmupFinished()
     fRPCInWarmup = false;
 }
 
-bool RPCIsInWarmup(std::string *outStatus)
+bool RPCIsInWarmup(string *outStatus)
 {
     LOCK(cs_rpcWarmup);
-    if (outStatus)
+    if (outStatus != nullptr)
         *outStatus = rpcWarmupStatus;
     return fRPCInWarmup;
 }
@@ -717,7 +716,7 @@ static UniValue JSONRPCExecOne(const UniValue& req)
     {
         rpc_result = JSONRPCReplyObj(NullUniValue, objError, jreq.id);
     }
-    catch (const std::exception& e)
+    catch (const exception& e)
     {
         rpc_result = JSONRPCReplyObj(NullUniValue,
                                      JSONRPCError(RPC_PARSE_ERROR, e.what()), jreq.id);
@@ -726,7 +725,7 @@ static UniValue JSONRPCExecOne(const UniValue& req)
     return rpc_result;
 }
 
-std::string JSONRPCExecBatch(const UniValue& vReq)
+string JSONRPCExecBatch(const UniValue& vReq)
 {
     UniValue ret(UniValue::VARR);
     for (size_t reqIdx = 0; reqIdx < vReq.size(); reqIdx++)
@@ -735,7 +734,7 @@ std::string JSONRPCExecBatch(const UniValue& vReq)
     return ret.write() + "\n";
 }
 
-UniValue CRPCTable::execute(const std::string &strMethod, const UniValue &params) const
+UniValue CRPCTable::execute(const string &strMethod, const UniValue &params) const
 {
     // Return immediately if in warmup
     {
@@ -758,7 +757,7 @@ UniValue CRPCTable::execute(const std::string &strMethod, const UniValue &params
         // Execute
         return pcmd->actor(params, false);
     }
-    catch (const std::exception& e)
+    catch (const exception& e)
     {
         throw JSONRPCError(RPC_MISC_ERROR, e.what());
     }
@@ -766,12 +765,12 @@ UniValue CRPCTable::execute(const std::string &strMethod, const UniValue &params
     g_rpcSignals.PostCommand(*pcmd);
 }
 
-std::string HelpExampleCli(const std::string& methodname, const std::string& args)
+string HelpExampleCli(const string& methodname, const string& args)
 {
     return "> safecoin-cli " + methodname + " " + args + "\n";
 }
 
-std::string HelpExampleRpc(const std::string& methodname, const std::string& args)
+string HelpExampleRpc(const string& methodname, const string& args)
 {
     return "> curl --user myusername --data-binary '{\"jsonrpc\": \"1.0\", \"id\":\"curltest\", "
         "\"method\": \"" + methodname + "\", \"params\": [" + args + "] }' -H 'content-type: text/plain;' http://127.0.0.1:8771/\n";
@@ -794,25 +793,25 @@ void RPCRegisterTimerInterface(RPCTimerInterface *iface)
 
 void RPCUnregisterTimerInterface(RPCTimerInterface *iface)
 {
-    std::vector<RPCTimerInterface*>::iterator i = std::find(timerInterfaces.begin(), timerInterfaces.end(), iface);
+    vector<RPCTimerInterface*>::iterator i = find(timerInterfaces.begin(), timerInterfaces.end(), iface);
     assert(i != timerInterfaces.end());
     timerInterfaces.erase(i);
 }
 
-void RPCRunLater(const std::string& name, boost::function<void(void)> func, int64_t nSeconds)
+void RPCRunLater(const string& name, boost::function<void(void)> func, int64_t nSeconds)
 {
     if (timerInterfaces.empty())
         throw JSONRPCError(RPC_INTERNAL_ERROR, "No timer handler registered for RPC");
     deadlineTimers.erase(name);
     RPCTimerInterface* timerInterface = timerInterfaces[0];
     LogPrint("rpc", "queue run of timer %s in %i seconds (using %s)\n", name, nSeconds, timerInterface->Name());
-    deadlineTimers.insert(std::make_pair(name, boost::shared_ptr<RPCTimerBase>(timerInterface->NewTimer(func, nSeconds*1000))));
+    deadlineTimers.insert(make_pair(name, boost::shared_ptr<RPCTimerBase>(timerInterface->NewTimer(func, nSeconds*1000))));
 }
 
 CRPCTable tableRPC;
 
 // Return async rpc queue
-std::shared_ptr<AsyncRPCQueue> getAsyncRPCQueue()
+shared_ptr<AsyncRPCQueue> getAsyncRPCQueue()
 {
     return AsyncRPCQueue::sharedInstance();
 }

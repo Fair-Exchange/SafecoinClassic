@@ -12,7 +12,7 @@ using namespace std;
  */
 void CChain::SetTip(CBlockIndex *pindex) {
     lastTip = pindex;
-    if (pindex == NULL) {
+    if (pindex == nullptr) {
         vChain.clear();
         return;
     }
@@ -25,18 +25,18 @@ void CChain::SetTip(CBlockIndex *pindex) {
 
 CBlockLocator CChain::GetLocator(const CBlockIndex *pindex) const {
     int nStep = 1;
-    std::vector<uint256> vHave;
+    vector<uint256> vHave;
     vHave.reserve(32);
 
-    if (!pindex)
+    if (pindex == nullptr)
         pindex = Tip();
-    while (pindex) {
+    while (pindex != nullptr) {
         vHave.push_back(pindex->GetBlockHash());
         // Stop when we have added the genesis block.
         if (pindex->GetHeight() == 0)
             break;
         // Exponentially larger steps back, plus the genesis block.
-        int nHeight = std::max(pindex->GetHeight() - nStep, 0);
+        int nHeight = max(pindex->GetHeight() - nStep, 0);
         if (Contains(pindex)) {
             // Use O(1) CChain index if possible.
             pindex = (*this)[nHeight];
@@ -52,11 +52,11 @@ CBlockLocator CChain::GetLocator(const CBlockIndex *pindex) const {
 }
 
 const CBlockIndex *CChain::FindFork(const CBlockIndex *pindex) const {
-    if ( pindex == 0 )
-        return(0);
+    if ( pindex == nullptr )
+        return nullptr;
     if (pindex->GetHeight() > Height())
         pindex = pindex->GetAncestor(Height());
-    while (pindex && !Contains(pindex))
+    while (pindex != nullptr && !Contains(pindex))
         pindex = pindex->pprev;
     return pindex;
 }
@@ -128,15 +128,15 @@ int static inline GetSkipHeight(int height) {
 CBlockIndex* CBlockIndex::GetAncestor(int height)
 {
     if (height > GetHeight() || height < 0)
-        return NULL;
+        return nullptr;
 
     CBlockIndex* pindexWalk = this;
     int heightWalk = GetHeight();
-    while ( heightWalk > height && pindexWalk != 0 )
+    while ( heightWalk > height && pindexWalk != nullptr )
     {
         int heightSkip = GetSkipHeight(heightWalk);
         int heightSkipPrev = GetSkipHeight(heightWalk - 1);
-        if (pindexWalk->pskip != NULL &&
+        if (pindexWalk->pskip != nullptr &&
             (heightSkip == height ||
              (heightSkip > height && !(heightSkipPrev < heightSkip - 2 &&
                                        heightSkipPrev >= height)))) {

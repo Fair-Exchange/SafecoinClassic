@@ -27,13 +27,12 @@ uint256 safecoin_calcMoM(int32_t height,int32_t MoMdepth)
     bool fMutated;
     MoMdepth &= 0xffff;  // In case it includes the ccid
     if ( MoMdepth >= height )
-        return(zero);
+        return zero;
     for (i=0; i<MoMdepth; i++)
     {
-        if ( (pindex= safecoin_chainactive(height - i)) != 0 )
-            leaves.push_back(pindex->hashMerkleRoot);
-        else
-            return(zero);
+        if ( (pindex= safecoin_chainactive(height - i)) == nullptr )
+            return zero;
+        leaves.push_back(pindex->hashMerkleRoot);
     }
     return BuildMerkleTree(&fMutated, leaves, tree);
 }
@@ -57,8 +56,7 @@ struct safecoin_ccdata_entry *safecoin_allMoMs(int32_t *nump,uint256 *MoMoMp,int
             allMoMs[num].notarized_height = ccdata->MoMdata.notarized_height;
             allMoMs[num].safeheight = ccdata->MoMdata.height;
             allMoMs[num].txi = ccdata->MoMdata.txi;
-            strcpy(allMoMs[num].symbol,ccdata->symbol);
-            num++;
+            strcpy(allMoMs[num++].symbol,ccdata->symbol);
         }
         if ( ccdata->MoMdata.height < safestarti )
             break;
@@ -73,39 +71,38 @@ struct safecoin_ccdata_entry *safecoin_allMoMs(int32_t *nump,uint256 *MoMoMp,int
     else
     {
         free(allMoMs);
-        allMoMs = 0;
+        allMoMs = nullptr;
     }
-    return(allMoMs);
+    return allMoMs;
 }
 
 int32_t safecoin_addpair(struct safecoin_ccdataMoMoM *mdata,int32_t notarized_height,int32_t offset,int32_t maxpairs)
 {
-    if ( maxpairs >= 0) {
-        if ( mdata->numpairs >= maxpairs )
-        {
-            maxpairs += 100;
-            mdata->pairs = (struct safecoin_ccdatapair *)realloc(mdata->pairs,sizeof(*mdata->pairs)*maxpairs);
-            //fprintf(stderr,"pairs reallocated to %p num.%d\n",mdata->pairs,mdata->numpairs);
-        }
-    } else {
+    if ( maxpairs < 0) {
         fprintf(stderr,"safecoin_addpair.maxpairs %d must be >= 0\n",(int32_t)maxpairs);
-        return(-1);
+        return -1;
+    }
+    if ( mdata->numpairs >= maxpairs )
+    {
+        maxpairs += 100;
+        mdata->pairs = (struct safecoin_ccdatapair *)realloc(mdata->pairs,sizeof(*mdata->pairs)*maxpairs);
+        //fprintf(stderr,"pairs reallocated to %p num.%d\n",mdata->pairs,mdata->numpairs);
     }
     mdata->pairs[mdata->numpairs].notarized_height = notarized_height;
     mdata->pairs[mdata->numpairs].MoMoMoffset = offset;
     mdata->numpairs++;
-    return(maxpairs);
+    return maxpairs;
 }
 
-int32_t safecoin_MoMoMdata(char *hexstr,int32_t hexsize,struct safecoin_ccdataMoMoM *mdata,char *symbol,int32_t safeheight,int32_t notarized_height)
+int8_t safecoin_MoMoMdata(char *hexstr,int32_t hexsize,struct safecoin_ccdataMoMoM *mdata,char *symbol,int32_t safeheight,int32_t notarized_height)
 {
     uint8_t hexdata[8192]; struct safecoin_ccdata *ccdata,*tmpptr; int32_t len,maxpairs,i,retval=-1,depth,starti,endi,CCid=0; struct safecoin_ccdata_entry *allMoMs;
     starti = endi = depth = len = maxpairs = 0;
-    hexstr[0] = 0;
+    hexstr[0] = '\0';
     if ( sizeof(hexdata)*2+1 > hexsize )
     {
         fprintf(stderr,"hexsize.%d too small for %d\n",hexsize,(int32_t)sizeof(hexdata));
-        return(-1);
+        return -1;
     }
     memset(mdata,0,sizeof(*mdata));
     portable_mutex_lock(&SAFECOIN_CC_mutex);
@@ -137,7 +134,7 @@ int32_t safecoin_MoMoMdata(char *hexstr,int32_t hexsize,struct safecoin_ccdataMo
     mdata->safeendi = endi;
     if ( starti != 0 && endi != 0 && endi >= starti )
     {
-        if ( (allMoMs= safecoin_allMoMs(&depth,&mdata->MoMoM,starti,endi)) != 0 )
+        if ( (allMoMs= safecoin_allMoMs(&depth,&mdata->MoMoM,starti,endi)) != nullptr )
         {
             mdata->MoMoMdepth = depth;
             for (i=0; i<depth; i++)
@@ -173,37 +170,36 @@ int32_t safecoin_MoMoMdata(char *hexstr,int32_t hexsize,struct safecoin_ccdataMo
             free(allMoMs);
         }
     }
-    return(retval);
+    return retval;
 }
 
 void safecoin_purge_ccdata(int32_t height)
 {
     struct safecoin_ccdata *ccdata,*tmpptr;
-    if ( ASSETCHAINS_SYMBOL[0] == 0 )
+    if ( ASSETCHAINS_SYMBOL[0] == '\0' )
     {
         portable_mutex_lock(&SAFECOIN_CC_mutex);
         DL_FOREACH_SAFE(CC_data,ccdata,tmpptr)
         {
-            if ( ccdata->MoMdata.height >= height )
-            {
-                printf("PURGE %s notarized.%d\n",ccdata->symbol,ccdata->MoMdata.notarized_height);
-                DL_DELETE(CC_data,ccdata);
-                free(ccdata);
-            } else break;
+            if ( ccdata->MoMdata.height < height )
+                break;
+            printf("PURGE %s notarized.%d\n",ccdata->symbol,ccdata->MoMdata.notarized_height);
+            DL_DELETE(CC_data,ccdata);
+            free(ccdata);
         }
         portable_mutex_unlock(&SAFECOIN_CC_mutex);
     }
-    else
-    {
-        // purge notarized data
-    }
+    // else
+    // {
+    //     // purge notarized data
+    // }
 }
 
 // this is just a demo of ccdata processing to create example data for the MoMoM and allMoMs calls
-int32_t safecoin_rwccdata(char *thischain,int32_t rwflag,struct safecoin_ccdata *ccdata,struct safecoin_ccdataMoMoM *MoMoMdata)
+bool safecoin_rwccdata(char *thischain,int32_t rwflag,struct safecoin_ccdata *ccdata,struct safecoin_ccdataMoMoM *MoMoMdata)
 {
     uint256 hash,zero; bits256 tmp; int32_t i,nonz; struct safecoin_ccdata *ptr; struct notarized_checkpoint *np;
-    return(0); // disable this path as libscott method is much better
+    return false; // disable this path as libscott method is much better
     if ( rwflag == 0 )
     {
         // load from disk
@@ -217,18 +213,16 @@ int32_t safecoin_rwccdata(char *thischain,int32_t rwflag,struct safecoin_ccdata 
     for (nonz=i=0; i<32; i++)
     {
         if ( (tmp.bytes[i]= ((uint8_t *)&ccdata->MoMdata.MoM)[31-i]) != 0 )
-            nonz++;
+            ++nonz;
     }
     if ( nonz == 0 )
-        return(0);
+        return false;
     memcpy(&hash,&tmp,sizeof(hash));
     //fprintf(stderr,"[%s] ccdata.%s id.%d notarized_ht.%d MoM.%s height.%d/t%d\n",ASSETCHAINS_SYMBOL,ccdata->symbol,ccdata->CCid,ccdata->MoMdata.notarized_height,hash.ToString().c_str(),ccdata->MoMdata.height,ccdata->MoMdata.txi);
-    if ( ASSETCHAINS_SYMBOL[0] == 0 )
+    if ( ASSETCHAINS_SYMBOL[0] == '\0' )
     {
-        if ( CC_data != 0 && (CC_data->MoMdata.height > ccdata->MoMdata.height || (CC_data->MoMdata.height == ccdata->MoMdata.height && CC_data->MoMdata.txi >= ccdata->MoMdata.txi)) )
-        {
+        if ( CC_data != nullptr && (CC_data->MoMdata.height > ccdata->MoMdata.height || (CC_data->MoMdata.height == ccdata->MoMdata.height && CC_data->MoMdata.txi >= ccdata->MoMdata.txi)) )
             printf("out of order detected? SKIP CC_data ht.%d/txi.%d vs ht.%d/txi.%d\n",CC_data->MoMdata.height,CC_data->MoMdata.txi,ccdata->MoMdata.height,ccdata->MoMdata.txi);
-        }
         else
         {
             ptr = (struct safecoin_ccdata *)calloc(1,sizeof(*ptr));
@@ -240,11 +234,11 @@ int32_t safecoin_rwccdata(char *thischain,int32_t rwflag,struct safecoin_ccdata 
     }
     else
     {
-        if ( MoMoMdata != 0 && MoMoMdata->pairs != 0 )
+        if ( MoMoMdata != nullptr && MoMoMdata->pairs != nullptr )
         {
             for (i=0; i<MoMoMdata->numpairs; i++)
             {
-                if ( (np= safecoin_npptr(MoMoMdata->pairs[i].notarized_height)) != 0 )
+                if ( (np= safecoin_npptr(MoMoMdata->pairs[i].notarized_height)) != nullptr )
                 {
                     memset(&zero,0,sizeof(zero));
                     if ( memcmp(&np->MoMoM,&zero,sizeof(np->MoMoM)) == 0 )
@@ -263,7 +257,7 @@ int32_t safecoin_rwccdata(char *thischain,int32_t rwflag,struct safecoin_ccdata 
             }
         }
     }
-    return(1);
+    return true;
 }
 
 #endif

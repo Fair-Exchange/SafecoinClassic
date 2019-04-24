@@ -44,18 +44,13 @@ PaymentDisclosure::PaymentDisclosure(const uint256 &joinSplitPubKey, const Payme
     memcpy(&bufferKeyPair[32], joinSplitPubKey.begin(), 32);
 
     // Compute payload signature member variable
-    if (!(crypto_sign_detached(payloadSig.data(), NULL,
-                               dataToBeSigned.begin(), 32,
-                               &bufferKeyPair[0]
-                               ) == 0))
+    if (crypto_sign_detached(payloadSig.data(), nullptr, dataToBeSigned.begin(), 32, &bufferKeyPair[0]) != 0)
     {
         throw std::runtime_error("crypto_sign_detached failed");
     }
 
     // Sanity check
-    if (!(crypto_sign_verify_detached(payloadSig.data(),
-                                      dataToBeSigned.begin(), 32,
-                                      joinSplitPubKey.begin()) == 0))
+    if (crypto_sign_verify_detached(payloadSig.data(), dataToBeSigned.begin(), 32, joinSplitPubKey.begin()) != 0)
     {
         throw std::runtime_error("crypto_sign_verify_detached failed");
     }

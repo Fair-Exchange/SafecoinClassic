@@ -18,7 +18,7 @@ static boost::filesystem::path emptyPath;
  */
 shared_ptr<PaymentDisclosureDB> PaymentDisclosureDB::sharedInstance() {
     // Thread-safe in C++11 and gcc 4.3
-    static shared_ptr<PaymentDisclosureDB> ptr = std::make_shared<PaymentDisclosureDB>();
+    static shared_ptr<PaymentDisclosureDB> ptr = make_shared<PaymentDisclosureDB>();
     return ptr;
 }
 
@@ -43,18 +43,16 @@ PaymentDisclosureDB::PaymentDisclosureDB(const boost::filesystem::path& dbPath) 
 }
 
 PaymentDisclosureDB::~PaymentDisclosureDB() {
-    if (db != nullptr) {
+    if (db != nullptr)
         delete db;
-    }
 }
 
 bool PaymentDisclosureDB::Put(const PaymentDisclosureKey& key, const PaymentDisclosureInfo& info)
 {
-    if (db == nullptr) {
+    if (db == nullptr)
         return false;
-    }
 
-    std::lock_guard<std::mutex> guard(lock_);
+    lock_guard<mutex> guard(lock_);
 
     CDataStream ssValue(SER_DISK, CLIENT_VERSION);
     ssValue.reserve(GetSerializeSize(ssValue, info));
@@ -68,13 +66,12 @@ bool PaymentDisclosureDB::Put(const PaymentDisclosureKey& key, const PaymentDisc
 
 bool PaymentDisclosureDB::Get(const PaymentDisclosureKey& key, PaymentDisclosureInfo& info)
 {
-    if (db == nullptr) {
+    if (db == nullptr)
         return false;
-    }
 
-    std::lock_guard<std::mutex> guard(lock_);
+    lock_guard<mutex> guard(lock_);
 
-    std::string strValue;
+    string strValue;
     leveldb::Status status = db->Get(readOptions, key.ToString(), &strValue);
     if (!status.ok()) {
         if (status.IsNotFound())
@@ -86,7 +83,7 @@ bool PaymentDisclosureDB::Get(const PaymentDisclosureKey& key, PaymentDisclosure
     try {
         CDataStream ssValue(strValue.data(), strValue.data() + strValue.size(), SER_DISK, CLIENT_VERSION);
         ssValue >> info;
-    } catch (const std::exception&) {
+    } catch (const exception&) {
         return false;
     }
     return true;

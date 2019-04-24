@@ -38,7 +38,7 @@ public:
     {
         // Serialize to this stream
         ::Serialize(*this, obj);
-        return (*this);
+        return *this;
     }
 
     template<typename T>
@@ -46,7 +46,7 @@ public:
     {
         // Unserialize from this stream
         ::Unserialize(*this, obj);
-        return (*this);
+        return *this;
     }
 
     void write(const char* pch, size_t nSize)
@@ -152,12 +152,12 @@ public:
     {
         CBaseDataStream ret = a;
         ret += b;
-        return (ret);
+        return ret;
     }
 
     std::string str() const
     {
-        return (std::string(begin(), end()));
+        return std::string(begin(), end());
     }
 
 
@@ -180,7 +180,8 @@ public:
 
     void insert(iterator it, std::vector<char>::const_iterator first, std::vector<char>::const_iterator last)
     {
-        if (last == first) return;
+        if (last == first)
+            return;
         assert(last - first > 0);
         if (it == vch.begin() + nReadPos && (unsigned int)(last - first) <= nReadPos)
         {
@@ -195,7 +196,8 @@ public:
 #if !defined(_MSC_VER) || _MSC_VER >= 1300
     void insert(iterator it, const char* first, const char* last)
     {
-        if (last == first) return;
+        if (last == first)
+            return;
         assert(last - first > 0);
         if (it == vch.begin() + nReadPos && (unsigned int)(last - first) <= nReadPos)
         {
@@ -221,8 +223,7 @@ public:
             }
             return vch.begin() + nReadPos;
         }
-        else
-            return vch.erase(it);
+        return vch.erase(it);
     }
 
     iterator erase(iterator first, iterator last)
@@ -241,8 +242,7 @@ public:
                 return last;
             }
         }
-        else
-            return vch.erase(first, last);
+        return vch.erase(first, last);
     }
 
     inline void Compact()
@@ -277,18 +277,15 @@ public:
     {
         if (nSize == 0) return;
 
-        if (pch == nullptr) {
+        if (pch == nullptr)
             throw std::ios_base::failure("CBaseDataStream::read(): cannot read from null pointer");
-        }
 
         // Read from the beginning of the buffer
         unsigned int nReadPosNext = nReadPos + nSize;
         if (nReadPosNext >= vch.size())
         {
             if (nReadPosNext > vch.size())
-            {
                 throw std::ios_base::failure("CBaseDataStream::read(): end of data");
-            }
             memcpy(pch, &vch[nReadPos], nSize);
             nReadPos = 0;
             vch.clear();
@@ -301,9 +298,8 @@ public:
     void ignore(int nSize)
     {
         // Ignore from the beginning of the buffer
-        if (nSize < 0) {
+        if (nSize < 0)
             throw std::ios_base::failure("CDataStream::ignore(): nSize negative");
-        }
         unsigned int nReadPosNext = nReadPos + nSize;
         if (nReadPosNext >= vch.size())
         {
@@ -335,7 +331,7 @@ public:
     {
         // Serialize to this stream
         ::Serialize(*this, obj);
-        return (*this);
+        return *this;
     }
 
     template<typename T>
@@ -343,7 +339,7 @@ public:
     {
         // Unserialize from this stream
         ::Unserialize(*this, obj);
-        return (*this);
+        return *this;
     }
 
     void GetAndClear(CSerializeData &d) {
@@ -382,13 +378,6 @@ public:
 
 
 
-
-
-
-
-
-
-
 /** Non-refcounted RAII wrapper for FILE*
  *
  * Will automatically close the file when it goes out of scope if not null.
@@ -405,7 +394,7 @@ private:
     const int nType;
     const int nVersion;
 
-    FILE* file;	
+    FILE* file;
 
 public:
     CAutoFile(FILE* filenew, int nTypeIn, int nVersionIn) : nType(nTypeIn), nVersion(nVersionIn)
@@ -420,9 +409,9 @@ public:
 
     void fclose()
     {
-        if (file) {
+        if (file != nullptr) {
             ::fclose(file);
-            file = NULL;
+            file = nullptr;
         }
     }
 
@@ -430,7 +419,7 @@ public:
      * @note This will invalidate the CAutoFile object, and makes it the responsibility of the caller
      * of this function to clean up the returned FILE*.
      */
-    FILE* release()             { FILE* ret = file; file = NULL; return ret; }
+    FILE* release()             { FILE* ret = file; file = nullptr; return ret; }
 
     /** Get wrapped FILE* without transfer of ownership.
      * @note Ownership of the FILE* will remain with this class. Use this only if the scope of the
@@ -440,7 +429,7 @@ public:
 
     /** Return true if the wrapped FILE* is NULL, false otherwise.
      */
-    bool IsNull() const         { return (file == NULL); }
+    bool IsNull() const         { return file == nullptr; }
 
     //
     // Stream subset
@@ -450,7 +439,7 @@ public:
 
     void read(char* pch, size_t nSize)
     {
-        if (!file)
+        if (file == nullptr)
             throw std::ios_base::failure("CAutoFile::read: file handle is NULL");
         if (fread(pch, 1, nSize, file) != nSize)
             throw std::ios_base::failure(feof(file) ? "CAutoFile::read: end of file" : "CAutoFile::read: fread failed");
@@ -458,7 +447,7 @@ public:
 
     void ignore(size_t nSize)
     {
-        if (!file)
+        if (file == nullptr)
             throw std::ios_base::failure("CAutoFile::ignore: file handle is NULL");
         unsigned char data[4096];
         while (nSize > 0) {
@@ -471,7 +460,7 @@ public:
 
     void write(const char* pch, size_t nSize)
     {
-        if (!file)
+        if (file == nullptr)
             throw std::ios_base::failure("CAutoFile::write: file handle is NULL");
         if (fwrite(pch, 1, nSize, file) != nSize)
             throw std::ios_base::failure("CAutoFile::write: write failed");
@@ -481,20 +470,20 @@ public:
     CAutoFile& operator<<(const T& obj)
     {
         // Serialize to this stream
-        if (!file)
+        if (file == nullptr)
             throw std::ios_base::failure("CAutoFile::operator<<: file handle is NULL");
         ::Serialize(*this, obj);
-        return (*this);
+        return *this;
     }
 
     template<typename T>
     CAutoFile& operator>>(T& obj)
     {
         // Unserialize from this stream
-        if (!file)
+        if (file == nullptr)
             throw std::ios_base::failure("CAutoFile::operator>>: file handle is NULL");
         ::Unserialize(*this, obj);
-        return (*this);
+        return *this;
     }
 };
 
@@ -557,9 +546,9 @@ public:
 
     void fclose()
     {
-        if (src) {
+        if (src != nullptr) {
             ::fclose(src);
-            src = NULL;
+            src = nullptr;
         }
     }
 
@@ -572,9 +561,8 @@ public:
     void read(char *pch, size_t nSize) {
         if (nSize == 0) return;
 
-        if (pch == nullptr) {
+        if (pch == nullptr)
             throw std::ios_base::failure("CBufferedFile::read(): cannot read from null pointer");
-        }
 
         if (nSize + nReadPos > nReadLimit)
             throw std::ios_base::failure("Read attempted past buffer limit");
@@ -610,9 +598,8 @@ public:
         } else if (nReadPos > nSrcPos) {
             nReadPos = nSrcPos;
             return false;
-        } else {
-            return true;
         }
+        return true;
     }
 
     bool Seek(uint64_t nPos) {
@@ -640,7 +627,7 @@ public:
     CBufferedFile& operator>>(T& obj) {
         // Unserialize from this stream
         ::Unserialize(*this, obj);
-        return (*this);
+        return *this;
     }
 
     // search for a given byte in the stream, and remain positioned on it
@@ -650,7 +637,7 @@ public:
                 Fill();
             if (vchBuf[nReadPos % vchBuf.size()] == ch)
                 break;
-            nReadPos++;
+            ++nReadPos;
         }
     }
 };

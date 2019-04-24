@@ -34,9 +34,7 @@
 #endif
 #endif
 
-#include <boost/algorithm/string/case_conv.hpp> // for to_lower()
-#include <boost/foreach.hpp>
-#include <boost/scoped_ptr.hpp>
+#include <boost/algorithm/string/predicate.hpp> // for starts_with()
 
 /** HTTP request work item */
 class HTTPWorkItem : public HTTPClosure
@@ -82,12 +80,12 @@ private:
         ThreadCounter(WorkQueue &w): wq(w)
         {
             boost::lock_guard<boost::mutex> lock(wq.cs);
-            wq.numThreads += 1;
+            wq.numThreads++;
         }
         ~ThreadCounter()
         {
             boost::lock_guard<boost::mutex> lock(wq.cs);
-            wq.numThreads -= 1;
+            wq.numThreads--;
             wq.cond.notify_all();
         }
     };
@@ -112,9 +110,8 @@ public:
     bool Enqueue(WorkItem* item)
     {
         boost::unique_lock<boost::mutex> lock(cs);
-        if (queue.size() >= maxDepth) {
+        if (queue.size() >= maxDepth)
             return false;
-        }
         queue.push_back(item);
         cond.notify_one();
         return true;
@@ -124,7 +121,7 @@ public:
     {
         ThreadCounter count(*this);
         while (running) {
-            WorkItem* i = 0;
+            WorkItem* i = nullptr;
             {
                 boost::unique_lock<boost::mutex> lock(cs);
                 while (running && queue.empty())
@@ -176,13 +173,13 @@ struct HTTPPathHandler
 /** HTTP module state */
 
 //! libevent event loop
-static struct event_base* eventBase = 0;
+static struct event_base* eventBase = nullptr;
 //! HTTP server
-struct evhttp* eventHTTP = 0;
+struct evhttp* eventHTTP = nullptr;
 //! List of subnets to allow RPC connections from
 static std::vector<CSubNet> rpc_allow_subnets;
 //! Work queue for handling longer requests off the event loop thread
-static WorkQueue<HTTPClosure>* workQueue = 0;
+static WorkQueue<HTTPClosure>* workQueue = nullptr;
 //! Handlers for (sub)paths
 std::vector<HTTPPathHandler> pathHandlers;
 //! Bound listening sockets
@@ -193,7 +190,7 @@ static bool ClientAllowed(const CNetAddr& netaddr)
 {
     if (!netaddr.IsValid())
         return false;
-    BOOST_FOREACH (const CSubNet& subnet, rpc_allow_subnets)
+    for (const CSubNet& subnet : rpc_allow_subnets)
         if (subnet.Match(netaddr))
             return true;
     return false;
@@ -207,7 +204,7 @@ static bool InitHTTPAllowList()
     rpc_allow_subnets.push_back(CSubNet("::1"));         // always allow IPv6 localhost
     if (mapMultiArgs.count("-rpcallowip")) {
         const std::vector<std::string>& vAllow = mapMultiArgs["-rpcallowip"];
-        BOOST_FOREACH (std::string strAllow, vAllow) {
+        for (std::string strAllow : vAllow) {
             CSubNet subnet(strAllow);
             if (!subnet.IsValid()) {
                 uiInterface.ThreadSafeMessageBox(
@@ -219,7 +216,7 @@ static bool InitHTTPAllowList()
         }
     }
     std::string strAllowed;
-    BOOST_FOREACH (const CSubNet& subnet, rpc_allow_subnets)
+    for (const CSubNet& subnet : rpc_allow_subnets)
         strAllowed += subnet.ToString() + " ";
     LogPrint("http", "Allowing HTTP connections from: %s\n", strAllowed);
     return true;
@@ -231,16 +228,12 @@ static std::string RequestMethodString(HTTPRequest::RequestMethod m)
     switch (m) {
     case HTTPRequest::GET:
         return "GET";
-        break;
     case HTTPRequest::POST:
         return "POST";
-        break;
     case HTTPRequest::HEAD:
         return "HEAD";
-        break;
     case HTTPRequest::PUT:
         return "PUT";
-        break;
     default:
         return "unknown";
     }
@@ -272,11 +265,8 @@ static void http_request_cb(struct evhttp_request* req, void* arg)
     std::vector<HTTPPathHandler>::const_iterator i = pathHandlers.begin();
     std::vector<HTTPPathHandler>::const_iterator iend = pathHandlers.end();
     for (; i != iend; ++i) {
-        bool match = false;
-        if (i->exactMatch)
-            match = (strURI == i->prefix);
-        else
-            match = (strURI.substr(0, i->prefix.size()) == i->prefix);
+        bool match = i->exactMatch ? strURI == i->prefix :
+                                     strURI.substr(0, i->prefix.size()) == i->prefix;
         if (match) {
             path = strURI.substr(i->prefix.size());
             break;
@@ -300,7 +290,7 @@ static void http_request_cb(struct evhttp_request* req, void* arg)
 static void http_reject_request_cb(struct evhttp_request* req, void*)
 {
     LogPrint("http", "Rejecting request while shutting down\n");
-    evhttp_send_error(req, HTTP_SERVUNAVAIL, NULL);
+    evhttp_send_error(req, HTTP_SERVUNAVAIL, nullptr);
 }
 
 /** Event dispatcher thread */
@@ -323,15 +313,14 @@ static bool HTTPBindAddresses(struct evhttp* http)
     if (!mapArgs.count("-rpcallowip")) { // Default to loopback if not allowing external IPs
         endpoints.push_back(std::make_pair("::1", defaultPort));
         endpoints.push_back(std::make_pair("127.0.0.1", defaultPort));
-        if (mapArgs.count("-rpcbind")) {
+        if (mapArgs.count("-rpcbind"))
             LogPrintf("WARNING: option -rpcbind was ignored because -rpcallowip was not specified, refusing to allow everyone to connect\n");
-        }
     } else if (mapArgs.count("-rpcbind")) { // Specific bind address
         const std::vector<std::string>& vbind = mapMultiArgs["-rpcbind"];
-        for (std::vector<std::string>::const_iterator i = vbind.begin(); i != vbind.end(); ++i) {
+        for (auto i : vbind) {
             int port = defaultPort;
             std::string host;
-            SplitHostPort(*i, port, host);
+            SplitHostPort(i, port, host);
             endpoints.push_back(std::make_pair(host, port));
         }
     } else { // No specific bind address specified, bind to any
@@ -340,14 +329,13 @@ static bool HTTPBindAddresses(struct evhttp* http)
     }
 
     // Bind addresses
-    for (std::vector<std::pair<std::string, uint16_t> >::iterator i = endpoints.begin(); i != endpoints.end(); ++i) {
-        LogPrint("http", "Binding RPC on address %s port %i\n", i->first, i->second);
-        evhttp_bound_socket *bind_handle = evhttp_bind_socket_with_handle(http, i->first.empty() ? NULL : i->first.c_str(), i->second);
-        if (bind_handle) {
+    for (auto i : endpoints) {
+        LogPrint("http", "Binding RPC on address %s port %i\n", i.first, i.second);
+        evhttp_bound_socket *bind_handle = evhttp_bind_socket_with_handle(http, i.first.empty() ? nullptr : i.first.c_str(), i.second);
+        if (bind_handle != nullptr)
             boundSockets.push_back(bind_handle);
-        } else {
-            LogPrintf("Binding RPC on address %s port %i failed.\n", i->first, i->second);
-        }
+        else
+            LogPrintf("Binding RPC on address %s port %i failed.\n", i.first, i.second);
     }
     return !boundSockets.empty();
 }
@@ -374,8 +362,8 @@ static void libevent_log_cb(int severity, const char *msg)
 
 bool InitHTTPServer()
 {
-    struct evhttp* http = 0;
-    struct event_base* base = 0;
+    struct evhttp* http = nullptr;
+    struct event_base* base = nullptr;
 
     if (!InitHTTPAllowList())
         return false;
@@ -392,10 +380,7 @@ bool InitHTTPServer()
 #if LIBEVENT_VERSION_NUMBER >= 0x02010100
     // If -debug=libevent, set full libevent debugging.
     // Otherwise, disable all libevent debugging.
-    if (LogAcceptCategory("libevent"))
-        event_enable_debug_logging(EVENT_DBG_ALL);
-    else
-        event_enable_debug_logging(EVENT_DBG_NONE);
+    event_enable_debug_logging(LogAcceptCategory("libevent") ? EVENT_DBG_ALL : EVENT_DBG_NONE);
 #endif
 #ifdef WIN32
     evthread_use_windows_threads();
@@ -404,14 +389,14 @@ bool InitHTTPServer()
 #endif
 
     base = event_base_new(); // XXX RAII
-    if (!base) {
+    if (base == nullptr) {
         LogPrintf("Couldn't create an event_base: exiting\n");
         return false;
     }
 
     /* Create a new evhttp object to handle requests. */
     http = evhttp_new(base); // XXX RAII
-    if (!http) {
+    if (http == nullptr) {
         LogPrintf("couldn't create evhttp. Exiting.\n");
         event_base_free(base);
         return false;
@@ -419,7 +404,7 @@ bool InitHTTPServer()
 
     evhttp_set_timeout(http, GetArg("-rpcservertimeout", DEFAULT_HTTP_SERVER_TIMEOUT));
     evhttp_set_max_body_size(http, MAX_SIZE);
-    evhttp_set_gencb(http, http_request_cb, NULL);
+    evhttp_set_gencb(http, http_request_cb, nullptr);
 
     if (!HTTPBindAddresses(http)) {
         LogPrintf("Unable to bind any endpoint for RPC server\n");
@@ -457,30 +442,30 @@ bool StartHTTPServer()
 void InterruptHTTPServer()
 {
     LogPrint("http", "Interrupting HTTP server\n");
-    if (eventHTTP) {
+    if (eventHTTP != nullptr) {
         // Unlisten sockets
-        BOOST_FOREACH (evhttp_bound_socket *socket, boundSockets) {
+        for (evhttp_bound_socket *socket : boundSockets)
             evhttp_del_accept_socket(eventHTTP, socket);
-        }
         // Reject requests on current connections
-        evhttp_set_gencb(eventHTTP, http_reject_request_cb, NULL);
+        evhttp_set_gencb(eventHTTP, http_reject_request_cb, nullptr);
     }
-    if (workQueue)
+    if (workQueue != nullptr)
         workQueue->Interrupt();
 }
 
 void StopHTTPServer()
 {
     LogPrint("http", "Stopping HTTP server\n");
-    if (workQueue) {
+    if (workQueue != nullptr) {
         LogPrint("http", "Waiting for HTTP worker threads to exit\n");
         workQueue->WaitExit();
         delete workQueue;
+        workQueue = nullptr;
     }
-    if (eventBase) {
+    if (eventBase != nullptr) {
         LogPrint("http", "Waiting for HTTP event thread to exit\n");
         // Exit the event loop as soon as there are no active events.
-        event_base_loopexit(eventBase, nullptr);
+        event_base_loopexit(eventBase, 0);
         // Give event loop a few seconds to exit (to send back last RPC responses), then break it
         // Before this was solved with event_base_loopexit, but that didn't work as expected in
         // at least libevent 2.0.21 and always introduced a delay. In libevent
@@ -493,13 +478,13 @@ void StopHTTPServer()
             threadHTTP.join();
         }
     }
-    if (eventHTTP) {
+    if (eventHTTP != nullptr) {
         evhttp_free(eventHTTP);
-        eventHTTP = 0;
+        eventHTTP = nullptr;
     }
-    if (eventBase) {
+    if (eventBase != nullptr) {
         event_base_free(eventBase);
-        eventBase = 0;
+        eventBase = nullptr;
     }
     LogPrint("http", "Stopped HTTP server\n");
 }
@@ -522,7 +507,7 @@ HTTPEvent::HTTPEvent(struct event_base* base, bool deleteWhenTriggered, const bo
     deleteWhenTriggered(deleteWhenTriggered), handler(handler)
 {
     ev = event_new(base, -1, 0, httpevent_callback_fn, this);
-    assert(ev);
+    assert(ev != nullptr);
 }
 HTTPEvent::~HTTPEvent()
 {
@@ -530,7 +515,7 @@ HTTPEvent::~HTTPEvent()
 }
 void HTTPEvent::trigger(struct timeval* tv)
 {
-    if (tv == NULL)
+    if (tv == 0)
         event_active(ev, 0, 0); // immediately trigger event in main thread
     else
         evtimer_add(ev, tv); // trigger after timeval passed
@@ -552,18 +537,17 @@ HTTPRequest::~HTTPRequest()
 std::pair<bool, std::string> HTTPRequest::GetHeader(const std::string& hdr)
 {
     const struct evkeyvalq* headers = evhttp_request_get_input_headers(req);
-    assert(headers);
+    assert(headers != nullptr);
     const char* val = evhttp_find_header(headers, hdr.c_str());
-    if (val)
+    if (val != nullptr)
         return std::make_pair(true, val);
-    else
-        return std::make_pair(false, "");
+    return std::make_pair(false, "");
 }
 
 std::string HTTPRequest::ReadBody()
 {
     struct evbuffer* buf = evhttp_request_get_input_buffer(req);
-    if (!buf)
+    if (buf == nullptr)
         return "";
     size_t size = evbuffer_get_length(buf);
     /** Trivial implementation: if this is ever a performance bottleneck,
@@ -573,7 +557,7 @@ std::string HTTPRequest::ReadBody()
      * abstraction to consume the evbuffer on the fly in the parsing algorithm.
      */
     const char* data = (const char*)evbuffer_pullup(buf, size);
-    if (!data) // returns NULL in case of empty buffer
+    if (data == nullptr) // returns empty string in case of empty buffer
         return "";
     std::string rv(data, size);
     evbuffer_drain(buf, size);
@@ -583,7 +567,7 @@ std::string HTTPRequest::ReadBody()
 void HTTPRequest::WriteHeader(const std::string& hdr, const std::string& value)
 {
     struct evkeyvalq* headers = evhttp_request_get_output_headers(req);
-    assert(headers);
+    assert(headers != nullptr);
     evhttp_add_header(headers, hdr.c_str(), value.c_str());
 }
 
@@ -594,23 +578,22 @@ void HTTPRequest::WriteHeader(const std::string& hdr, const std::string& value)
  */
 void HTTPRequest::WriteReply(int nStatus, const std::string& strReply)
 {
-    assert(!replySent && req);
+    assert(!replySent && req != nullptr);
     // Send event to main http thread to send reply message
     struct evbuffer* evb = evhttp_request_get_output_buffer(req);
-    assert(evb);
+    assert(evb != nullptr);
     evbuffer_add(evb, strReply.data(), strReply.size());
-    HTTPEvent* ev = new HTTPEvent(eventBase, true,
-        boost::bind(evhttp_send_reply, req, nStatus, (const char*)NULL, (struct evbuffer *)NULL));
+    HTTPEvent* ev = new HTTPEvent(eventBase, true, boost::bind(evhttp_send_reply, req, nStatus, nullptr, nullptr));
     ev->trigger(0);
     replySent = true;
-    req = 0; // transferred back to main thread
+    req = nullptr; // transferred back to main thread
 }
 
 CService HTTPRequest::GetPeer()
 {
     evhttp_connection* con = evhttp_request_get_connection(req);
     CService peer;
-    if (con) {
+    if (con != nullptr) {
         // evhttp retains ownership over returned address string
         const char* address = "";
         uint16_t port = 0;
@@ -630,19 +613,14 @@ HTTPRequest::RequestMethod HTTPRequest::GetRequestMethod()
     switch (evhttp_request_get_command(req)) {
     case EVHTTP_REQ_GET:
         return GET;
-        break;
     case EVHTTP_REQ_POST:
         return POST;
-        break;
     case EVHTTP_REQ_HEAD:
         return HEAD;
-        break;
     case EVHTTP_REQ_PUT:
         return PUT;
-        break;
     default:
         return UNKNOWN;
-        break;
     }
 }
 
@@ -654,12 +632,11 @@ void RegisterHTTPHandler(const std::string &prefix, bool exactMatch, const HTTPR
 
 void UnregisterHTTPHandler(const std::string &prefix, bool exactMatch)
 {
-    std::vector<HTTPPathHandler>::iterator i = pathHandlers.begin();
-    std::vector<HTTPPathHandler>::iterator iend = pathHandlers.end();
-    for (; i != iend; ++i)
+    std::vector<HTTPPathHandler>::iterator i;
+    for (i = pathHandlers.begin(); i != pathHandlers.end(); ++i)
         if (i->prefix == prefix && i->exactMatch == exactMatch)
             break;
-    if (i != iend)
+    if (i != pathHandlers.end())
     {
         LogPrint("http", "Unregistering HTTP handler for %s (exactmatch %d)\n", prefix, exactMatch);
         pathHandlers.erase(i);

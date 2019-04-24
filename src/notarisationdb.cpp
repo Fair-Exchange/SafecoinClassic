@@ -4,8 +4,6 @@
 #include "cc/eval.h"
 #include "main.h"
 
-#include <boost/foreach.hpp>
-
 
 NotarisationDB *pnotarisations;
 
@@ -22,12 +20,10 @@ NotarisationsInBlock ScanBlockNotarisations(const CBlock &block, int nHeight)
         CTransaction tx = block.vtx[i];
 
         // Special case for TXSCL. Should prob be removed at some point.
-        bool isTxscl = 0;
+        bool isTxscl = false;
         {
             NotarisationData data;
-            if (ParseNotarisationOpReturn(tx, data))
-                if (IsTXSCL(data.symbol))
-                    isTxscl = 1;
+            isTxscl = ParseNotarisationOpReturn(tx, data) && IsTXSCL(data.symbol);
         }
 
         if (isTxscl || eval->CheckNotaryInputs(tx, nHeight, block.nTime)) {
@@ -70,11 +66,11 @@ bool GetBackNotarisation(uint256 notarisationHash, Notarisation &n)
 void WriteBackNotarisations(const NotarisationsInBlock notarisations, CDBBatch &batch)
 {
     int wrote = 0;
-    BOOST_FOREACH(const Notarisation &n, notarisations)
+    for (const Notarisation &n : notarisations)
     {
         if (!n.second.txHash.IsNull()) {
             batch.Write(n.second.txHash, n);
-            wrote++;
+            ++wrote;
         }
     }
 }
@@ -82,11 +78,9 @@ void WriteBackNotarisations(const NotarisationsInBlock notarisations, CDBBatch &
 
 void EraseBackNotarisations(const NotarisationsInBlock notarisations, CDBBatch &batch)
 {
-    BOOST_FOREACH(const Notarisation &n, notarisations)
-    {
+    for (const Notarisation &n : notarisations)
         if (!n.second.txHash.IsNull())
             batch.Erase(n.second.txHash);
-    }
 }
 
 /*
@@ -105,7 +99,7 @@ int ScanNotarisationsDB(int height, std::string symbol, int scanLimitBlocks, Not
         if (!GetBlockNotarisations(blockHash, notarisations))
             continue;
 
-        BOOST_FOREACH(Notarisation& nota, notarisations) {
+        for (Notarisation& nota : notarisations) {
             if (strcmp(nota.second.symbol, symbol.data()) == 0) {
                 out = nota;
                 return height-i;

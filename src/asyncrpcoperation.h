@@ -21,13 +21,13 @@ using namespace std;
 
 /**
  * AsyncRPCOperation objects are submitted to the AsyncRPCQueue for processing.
- * 
+ *
  * To subclass AsyncRPCOperation, implement the main() method.
  * Update the operation status as work is underway and completes.
  * If main() can be interrupted, implement the cancel() method.
  */
 
-typedef std::string AsyncRPCOperationId;
+typedef string AsyncRPCOperationId;
 
 typedef enum class operationStateEnum {
     READY = 0,
@@ -47,17 +47,17 @@ public:
 
     // Override this method if you can interrupt execution of main() in your subclass.
     void cancel();
-    
+
     // Getters and setters
 
     OperationStatus getState() const {
         return state_.load();
     }
-        
+
     AsyncRPCOperationId getId() const {
         return id_;
     }
-   
+
     int64_t getCreationTime() const {
         return creation_time_;
     }
@@ -66,18 +66,18 @@ public:
     virtual UniValue getStatus() const;
 
     UniValue getError() const;
-    
+
     UniValue getResult() const;
 
-    std::string getStateAsString() const;
-    
+    string getStateAsString() const;
+
     int getErrorCode() const {
-        std::lock_guard<std::mutex> guard(lock_);
+        lock_guard<mutex> guard(lock_);
         return error_code_;
     }
 
-    std::string getErrorMessage() const {
-        std::lock_guard<std::mutex> guard(lock_);
+    string getErrorMessage() const {
+        lock_guard<mutex> guard(lock_);
         return error_message_;
     }
 
@@ -96,7 +96,7 @@ public:
     bool isFailed() const {
         return OperationStatus::FAILED == getState();
     }
-    
+
     bool isSuccess() const {
         return OperationStatus::SUCCESS == getState();
     }
@@ -109,12 +109,12 @@ protected:
     // allow subclasses of AsyncRPCOperation the ability to access and update
     // internal state.  Currently, all operations are executed in a single-thread
     // by a single worker.
-    mutable std::mutex lock_;   // lock on this when read/writing non-atomics
+    mutable mutex lock_;   // lock on this when read/writing non-atomics
     UniValue result_;
     int error_code_;
-    std::string error_message_;
-    std::atomic<OperationStatus> state_;
-    std::chrono::time_point<std::chrono::system_clock> start_time_, end_time_;  
+    string error_message_;
+    atomic<OperationStatus> state_;
+    chrono::time_point<chrono::system_clock> start_time_, end_time_;
 
     void start_execution_clock();
     void stop_execution_clock();
@@ -124,20 +124,20 @@ protected:
     }
 
     void set_error_code(int errorCode) {
-        std::lock_guard<std::mutex> guard(lock_);
+        lock_guard<mutex> guard(lock_);
         this->error_code_ = errorCode;
     }
 
-    void set_error_message(std::string errorMessage) {
-        std::lock_guard<std::mutex> guard(lock_);
+    void set_error_message(string errorMessage) {
+        lock_guard<mutex> guard(lock_);
         this->error_message_ = errorMessage;
     }
-    
+
     void set_result(UniValue v) {
-        std::lock_guard<std::mutex> guard(lock_);
+        lock_guard<mutex> guard(lock_);
         this->result_ = v;
     }
-    
+
 private:
 
     // Derived classes should write their own copy constructor and assignment operators

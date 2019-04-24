@@ -22,7 +22,7 @@
 
 using namespace std;
 
-CScript ParseScript(const std::string& s)
+CScript ParseScript(const string& s)
 {
     CScript result;
 
@@ -50,7 +50,7 @@ CScript ParseScript(const std::string& s)
     vector<string> words;
     boost::algorithm::split(words, s, boost::algorithm::is_any_of(" \t\n"), boost::algorithm::token_compress_on);
 
-    for (std::vector<std::string>::const_iterator w = words.begin(); w != words.end(); ++w)
+    for (vector<string>::const_iterator w = words.begin(); w != words.end(); ++w)
     {
         if (w->empty())
         {
@@ -66,14 +66,14 @@ CScript ParseScript(const std::string& s)
         else if (boost::algorithm::starts_with(*w, "0x") && (w->begin()+2 != w->end()) && IsHex(string(w->begin()+2, w->end())))
         {
             // Raw hex data, inserted NOT pushed onto stack:
-            std::vector<unsigned char> raw = ParseHex(string(w->begin()+2, w->end()));
+            vector<unsigned char> raw = ParseHex(string(w->begin()+2, w->end()));
             result.insert(result.end(), raw.begin(), raw.end());
         }
         else if (w->size() >= 2 && boost::algorithm::starts_with(*w, "'") && boost::algorithm::ends_with(*w, "'"))
         {
             // Single-quoted string, pushed as data. NOTE: this is poor-man's
             // parsing, spaces/tabs/newlines in single-quoted strings won't work.
-            std::vector<unsigned char> value(w->begin()+1, w->end()-1);
+            vector<unsigned char> value(w->begin()+1, w->end()-1);
             result << value;
         }
         else if (mapOpNames.count(*w))
@@ -90,7 +90,7 @@ CScript ParseScript(const std::string& s)
     return result;
 }
 
-bool DecodeHexTx(CTransaction& tx, const std::string& strHexTx)
+bool DecodeHexTx(CTransaction& tx, const string& strHexTx)
 {
     if (!IsHex(strHexTx))
         return false;
@@ -100,24 +100,24 @@ bool DecodeHexTx(CTransaction& tx, const std::string& strHexTx)
     try {
         ssData >> tx;
     }
-    catch (const std::exception&) {
+    catch (const exception&) {
         return false;
     }
 
     return true;
 }
 
-bool DecodeHexBlk(CBlock& block, const std::string& strHexBlk)
+bool DecodeHexBlk(CBlock& block, const string& strHexBlk)
 {
     if (!IsHex(strHexBlk))
         return false;
 
-    std::vector<unsigned char> blockData(ParseHex(strHexBlk));
+    vector<unsigned char> blockData(ParseHex(strHexBlk));
     CDataStream ssBlock(blockData, SER_NETWORK, PROTOCOL_VERSION);
     try {
         ssBlock >> block;
     }
-    catch (const std::exception&) {
+    catch (const exception&) {
         return false;
     }
 
@@ -132,7 +132,7 @@ uint256 ParseHashUV(const UniValue& v, const string& strName)
     return ParseHashStr(strHex, strName);  // Note: ParseHashStr("") throws a runtime_error
 }
 
-uint256 ParseHashStr(const std::string& strHex, const std::string& strName)
+uint256 ParseHashStr(const string& strHex, const string& strName)
 {
     if (!IsHex(strHex)) // Note: IsHex("") is false
         throw runtime_error(strName+" must be hexadecimal string (not '"+strHex+"')");

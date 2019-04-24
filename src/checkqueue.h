@@ -16,7 +16,7 @@
 template <typename T>
 class CCheckQueueControl;
 
-/** 
+/**
  * Queue for verifications that have to be performed.
   * The verifications are represented by a type T, which must provide an
   * operator(), returning a bool.
@@ -119,9 +119,11 @@ private:
                 fOk = fAllOk;
             }
             // execute work
-            BOOST_FOREACH (T& check, vChecks)
+            for (T& check : vChecks)
                 if (fOk)
                     fOk = check();
+                else
+                    break;
             vChecks.clear();
         } while (true);
     }
@@ -146,7 +148,7 @@ public:
     void Add(std::vector<T>& vChecks)
     {
         boost::unique_lock<boost::mutex> lock(mutex);
-        BOOST_FOREACH (T& check, vChecks) {
+        for (T& check : vChecks) {
             queue.push_back(T());
             check.swap(queue.back());
         }
@@ -169,7 +171,7 @@ public:
 
 };
 
-/** 
+/**
  * RAII-style controller object for a CCheckQueue that guarantees the passed
  * queue is finished before continuing.
  */
@@ -183,8 +185,8 @@ private:
 public:
     CCheckQueueControl(CCheckQueue<T>* pqueueIn) : pqueue(pqueueIn), fDone(false)
     {
-        // passed queue is supposed to be unused, or NULL
-        if (pqueue != NULL) {
+        // passed queue is supposed to be unused, or nullptr
+        if (pqueue != nullptr) {
             bool isIdle = pqueue->IsIdle();
             assert(isIdle);
         }
@@ -192,7 +194,7 @@ public:
 
     bool Wait()
     {
-        if (pqueue == NULL)
+        if (pqueue == nullptr)
             return true;
         bool fRet = pqueue->Wait();
         fDone = true;
@@ -201,7 +203,7 @@ public:
 
     void Add(std::vector<T>& vChecks)
     {
-        if (pqueue != NULL)
+        if (pqueue != nullptr)
             pqueue->Add(vChecks);
     }
 

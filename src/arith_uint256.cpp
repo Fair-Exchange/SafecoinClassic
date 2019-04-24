@@ -178,10 +178,9 @@ unsigned int base_uint<BITS>::bits() const
 {
     for (int pos = WIDTH - 1; pos >= 0; pos--) {
         if (pn[pos]) {
-            for (int bits = 31; bits > 0; bits--) {
+            for (int bits = 31; bits > 0; bits--)
                 if (pn[pos] & 1 << bits)
                     return 32 * pos + bits + 1;
-            }
             return 32 * pos + 1;
         }
     }

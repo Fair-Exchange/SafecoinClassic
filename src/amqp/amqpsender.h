@@ -14,7 +14,7 @@
 
 class AMQPSender : public proton::messaging_handler {
   private:
-    std::deque<proton::message> messages_; 
+    std::deque<proton::message> messages_;
     proton::url url_;
     proton::connection conn_;
     proton::sender sender_;
@@ -33,7 +33,7 @@ class AMQPSender : public proton::messaging_handler {
         sender_ = conn_.open_sender(url_.path());
     }
 
-    // Remote end signals when the local end can send (i.e. has credit) 
+    // Remote end signals when the local end can send (i.e. has credit)
     void on_sendable(proton::sender &s) override {
         dispatch();
     }
@@ -54,22 +54,19 @@ class AMQPSender : public proton::messaging_handler {
     void dispatch() {
         std::lock_guard<std::mutex> guard(lock_);
 
-        if (isTerminated()) {
+        if (isTerminated())
             throw std::runtime_error("amqp connection was terminated");
-        }
 
-        if (!conn_.active()) {
+        if (!conn_.active())
             throw std::runtime_error("amqp connection is not active");
-        }
 
-        while (messages_.size() > 0) {
-            if (sender_.credit()) {
-                const proton::message& m = messages_.front();
-                sender_.send(m);
-                messages_.pop_front();
-            } else {
-                break;
-            }
+        while (!messages_.empty()) {
+            if (!sender_.credit())
+                break
+
+            const proton::message& m = messages_.front();
+            sender_.send(m);
+            messages_.pop_front();
         }
     }
 

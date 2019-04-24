@@ -194,9 +194,8 @@ private:
 public:
     void assign(size_type n, const T& val) {
         clear();
-        if (capacity() < n) {
+        if (capacity() < n)
             change_capacity(n);
-        }
         while (size() < n) {
             _size++;
             new(static_cast<void*>(item_ptr(size() - 1))) T(val);
@@ -207,9 +206,8 @@ public:
     void assign(InputIterator first, InputIterator last) {
         size_type n = last - first;
         clear();
-        if (capacity() < n) {
+        if (capacity() < n)
             change_capacity(n);
-        }
         while (first != last) {
             _size++;
             new(static_cast<void*>(item_ptr(size() - 1))) T(*first);
@@ -253,9 +251,8 @@ public:
     }
 
     prevector& operator=(const prevector<N, T, Size, Diff>& other) {
-        if (&other == this) {
+        if (&other == this)
             return *this;
-        }
         resize(0);
         change_capacity(other.size());
         const_iterator it = other.begin();
@@ -286,11 +283,9 @@ public:
     const_reverse_iterator rend() const { return const_reverse_iterator(item_ptr(-1)); }
 
     size_t capacity() const {
-        if (is_direct()) {
+        if (is_direct())
             return N;
-        } else {
-            return _union.capacity;
-        }
+        return _union.capacity;
     }
 
     T& operator[](size_type pos) {
@@ -306,9 +301,8 @@ public:
             item_ptr(size() - 1)->~T();
             _size--;
         }
-        if (new_size > capacity()) {
+        if (new_size > capacity())
             change_capacity(new_size);
-        }
         while (size() < new_size) {
             _size++;
             new(static_cast<void*>(item_ptr(size() - 1))) T();
@@ -316,9 +310,8 @@ public:
     }
 
     void reserve(size_type new_capacity) {
-        if (new_capacity > capacity()) {
+        if (new_capacity > capacity())
             change_capacity(new_capacity);
-        }
     }
 
     void shrink_to_fit() {
@@ -332,9 +325,8 @@ public:
     iterator insert(iterator pos, const T& value) {
         size_type p = pos - begin();
         size_type new_size = size() + 1;
-        if (capacity() < new_size) {
+        if (capacity() < new_size)
             change_capacity(new_size + (new_size >> 1));
-        }
         memmove(item_ptr(p + 1), item_ptr(p), (size() - p) * sizeof(T));
         _size++;
         new(static_cast<void*>(item_ptr(p))) T(value);
@@ -344,14 +336,12 @@ public:
     void insert(iterator pos, size_type count, const T& value) {
         size_type p = pos - begin();
         size_type new_size = size() + count;
-        if (capacity() < new_size) {
+        if (capacity() < new_size)
             change_capacity(new_size + (new_size >> 1));
-        }
         memmove(item_ptr(p + count), item_ptr(p), (size() - p) * sizeof(T));
         _size += count;
-        for (size_type i = 0; i < count; i++) {
+        for (size_type i = 0; i < count; i++)
             new(static_cast<void*>(item_ptr(p + i))) T(value);
-        }
     }
 
     template<typename InputIterator>
@@ -359,9 +349,8 @@ public:
         size_type p = pos - begin();
         difference_type count = last - first;
         size_type new_size = size() + count;
-        if (capacity() < new_size) {
+        if (capacity() < new_size)
             change_capacity(new_size + (new_size >> 1));
-        }
         memmove(item_ptr(p + count), item_ptr(p), (size() - p) * sizeof(T));
         _size += count;
         while (first != last) {
@@ -392,9 +381,8 @@ public:
 
     void push_back(const T& value) {
         size_type new_size = size() + 1;
-        if (capacity() < new_size) {
+        if (capacity() < new_size)
             change_capacity(new_size + (new_size >> 1));
-        }
         new(item_ptr(size())) T(value);
         _size++;
     }
@@ -445,9 +433,8 @@ public:
         const_iterator b2 = other.begin();
         const_iterator e1 = end();
         while (b1 != e1) {
-            if ((*b1) != (*b2)) {
+            if (*b1 != *b2)
                 return false;
-            }
             ++b1;
             ++b2;
         }
@@ -459,22 +446,17 @@ public:
     }
 
     bool operator<(const prevector<N, T, Size, Diff>& other) const {
-        if (size() < other.size()) {
+        if (size() < other.size())
             return true;
-        }
-        if (size() > other.size()) {
+        if (size() > other.size())
             return false;
-        }
         const_iterator b1 = begin();
         const_iterator b2 = other.begin();
         const_iterator e1 = end();
         while (b1 != e1) {
-            if ((*b1) < (*b2)) {
+            if (*b1 != *b2)
+                return* b1 < *b2;
                 return true;
-            }
-            if ((*b2) < (*b1)) {
-                return false;
-            }
             ++b1;
             ++b2;
         }
@@ -482,11 +464,9 @@ public:
     }
 
     size_t allocated_memory() const {
-        if (is_direct()) {
+        if (is_direct())
             return 0;
-        } else {
-            return ((size_t)(sizeof(T))) * _union.capacity;
-        }
+        return (size_t)sizeof(T) * _union.capacity;
     }
 };
 #pragma pack(pop)

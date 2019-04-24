@@ -77,14 +77,14 @@ void SplitHostPort(std::string in, int &portOut, std::string &hostOut) {
     bool fHaveColon = colon != in.npos;
     bool fBracketed = fHaveColon && (in[0]=='[' && in[colon-1]==']'); // if there is a colon, and in[0]=='[', colon is not 0, so in[colon-1] is safe
     bool fMultiColon = fHaveColon && (in.find_last_of(':',colon-1) != in.npos);
-    if (fHaveColon && (colon==0 || fBracketed || !fMultiColon)) {
-        int32_t n;
+    if (fHaveColon && (colon == 0 || fBracketed || !fMultiColon)) {
+        int32_t n = 0;
         if (ParseInt32(in.substr(colon + 1), &n) && n > 0 && n < 0x10000) {
             in = in.substr(0, colon);
             portOut = n;
         }
     }
-    if (in.size()>0 && in[0] == '[' && in[in.size()-1] == ']')
+    if (!in.empty() && in.front() == '[' && in.back() == ']')
         hostOut = in.substr(1, in.size()-2);
     else
         hostOut = in;
@@ -135,14 +135,14 @@ bool static LookupIntern(const char *pszName, std::vector<CNetAddr>& vIP, unsign
     aiHint.ai_flags = fAllowLookup ? AI_ADDRCONFIG : AI_NUMERICHOST;
 #endif
 
-    struct addrinfo *aiRes = NULL;
+    struct addrinfo *aiRes = nullptr;
 #ifdef HAVE_GETADDRINFO_A
     struct gaicb gcb, *query = &gcb;
     memset(query, 0, sizeof(struct gaicb));
     gcb.ar_name = pszName;
     gcb.ar_request = &aiHint;
-    int nErr = getaddrinfo_a(GAI_NOWAIT, &query, 1, NULL);
-    if (nErr)
+    int nErr = getaddrinfo_a(GAI_NOWAIT, &query, 1, nullptr);
+    if (nErr != 0)
         return false;
 
     do {
@@ -155,17 +155,17 @@ bool static LookupIntern(const char *pszName, std::vector<CNetAddr>& vIP, unsign
         boost::this_thread::interruption_point();
 
         nErr = gai_error(query);
-        if (0 == nErr)
+        if (nErr == 0)
             aiRes = query->ar_result;
     } while (nErr == EAI_INPROGRESS);
 #else
-    int nErr = getaddrinfo(pszName, NULL, &aiHint, &aiRes);
+    int nErr = getaddrinfo(pszName, nullptr, &aiHint, &aiRes);
 #endif
-    if (nErr)
+    if (nErr != 0)
         return false;
 
     struct addrinfo *aiTrav = aiRes;
-    while (aiTrav != NULL && (nMaxSolutions == 0 || vIP.size() < nMaxSolutions))
+    while (aiTrav != nullptr && (nMaxSolutions == 0 || vIP.size() < nMaxSolutions))
     {
         if (aiTrav->ai_family == AF_INET)
         {
@@ -184,7 +184,7 @@ bool static LookupIntern(const char *pszName, std::vector<CNetAddr>& vIP, unsign
 
     freeaddrinfo(aiRes);
 
-    return (vIP.size() > 0);
+    return vIP.size() > 0;
 }
 
 bool LookupHost(const char *pszName, std::vector<CNetAddr>& vIP, unsigned int nMaxSolutions, bool fAllowLookup)
@@ -192,17 +192,15 @@ bool LookupHost(const char *pszName, std::vector<CNetAddr>& vIP, unsigned int nM
     std::string strHost(pszName);
     if (strHost.empty())
         return false;
-    if (boost::algorithm::starts_with(strHost, "[") && boost::algorithm::ends_with(strHost, "]"))
-    {
+    if (strHost.front() == '[' && strHost.back() == ']')
         strHost = strHost.substr(1, strHost.size() - 2);
-    }
 
     return LookupIntern(strHost.c_str(), vIP, nMaxSolutions, fAllowLookup);
 }
 
 bool Lookup(const char *pszName, std::vector<CService>& vAddr, int portDefault, bool fAllowLookup, unsigned int nMaxSolutions)
 {
-    if (pszName[0] == 0)
+    if (pszName[0] == '\0')
         return false;
     int port = portDefault;
     std::string hostname = "";
@@ -268,21 +266,17 @@ bool static InterruptibleRecv(char* data, size_t len, int timeout, SOCKET& hSock
             return false;
         } else { // Other error or blocking
             int nErr = WSAGetLastError();
-            if (nErr == WSAEINPROGRESS || nErr == WSAEWOULDBLOCK || nErr == WSAEINVAL) {
-                if (!IsSelectableSocket(hSocket)) {
-                    return false;
-                }
-                struct timeval tval = MillisToTimeval(std::min(endTime - curTime, maxWait));
-                fd_set fdset;
-                FD_ZERO(&fdset);
-                FD_SET(hSocket, &fdset);
-                int nRet = select(hSocket + 1, &fdset, NULL, NULL, &tval);
-                if (nRet == SOCKET_ERROR) {
-                    return false;
-                }
-            } else {
+            if (nErr != WSAEINPROGRESS && nErr != WSAEWOULDBLOCK && nErr != WSAEINVAL)
                 return false;
-            }
+            if (!IsSelectableSocket(hSocket))
+                return false;
+            struct timeval tval = MillisToTimeval(std::min(endTime - curTime, maxWait));
+            fd_set fdset;
+            FD_ZERO(&fdset);
+            FD_SET(hSocket, &fdset);
+            int nRet = select(hSocket + 1, &fdset, nullptr, nullptr, &tval);
+            if (nRet == SOCKET_ERROR)
+                return false;
         }
         boost::this_thread::interruption_point();
         curTime = GetTimeMillis();
@@ -474,7 +468,7 @@ bool static ConnectSocketDirectly(const CService &addrConnect, SOCKET& hSocketRe
             fd_set fdset;
             FD_ZERO(&fdset);
             FD_SET(hSocket, &fdset);
-            int nRet = select(hSocket + 1, NULL, &fdset, NULL, &timeout);
+            int nRet = select(hSocket + 1, nullptr, &fdset, nullptr, &timeout);
             if (nRet == 0)
             {
                 LogPrint("net", "connection to %s timeout\n", addrConnect.ToString());
@@ -562,10 +556,9 @@ bool HaveNameProxy() {
 
 bool IsProxy(const CNetAddr &addr) {
     LOCK(cs_proxyInfos);
-    for (int i = 0; i < NET_MAX; i++) {
+    for (int i = 0; i < NET_MAX; i++)
         if (addr == (CNetAddr)proxyInfo[i].proxy)
             return true;
-    }
     return false;
 }
 
@@ -574,7 +567,7 @@ static bool ConnectThroughProxy(const proxyType &proxy, const std::string& strDe
     SOCKET hSocket = INVALID_SOCKET;
     // first connect to proxy server
     if (!ConnectSocketDirectly(proxy.proxy, hSocket, nTimeout)) {
-        if (outProxyConnectionFailed)
+        if (outProxyConnectionFailed != nullptr)
             *outProxyConnectionFailed = true;
         return false;
     }
@@ -585,9 +578,8 @@ static bool ConnectThroughProxy(const proxyType &proxy, const std::string& strDe
         random_auth.password = strprintf("%i", insecure_rand());
         if (!Socks5(strDest, (unsigned short)port, &random_auth, hSocket))
             return false;
-    } else {
-        if (!Socks5(strDest, (unsigned short)port, 0, hSocket))
-            return false;
+    } else if (!Socks5(strDest, (unsigned short)port, 0, hSocket)) {
+        return false;
     }
 
     hSocketRet = hSocket;
@@ -597,13 +589,13 @@ static bool ConnectThroughProxy(const proxyType &proxy, const std::string& strDe
 bool ConnectSocket(const CService &addrDest, SOCKET& hSocketRet, int nTimeout, bool *outProxyConnectionFailed)
 {
     proxyType proxy;
-    if (outProxyConnectionFailed)
+    if (outProxyConnectionFailed != nullptr)
         *outProxyConnectionFailed = false;
 
     if (GetProxy(addrDest.GetNetwork(), proxy))
         return ConnectThroughProxy(proxy, addrDest.ToStringIP(), addrDest.GetPort(), hSocketRet, nTimeout, outProxyConnectionFailed);
-    else // no proxy needed (none set for target network)
-        return ConnectSocketDirectly(addrDest, hSocketRet, nTimeout);
+    // no proxy needed (none set for target network)
+    return ConnectSocketDirectly(addrDest, hSocketRet, nTimeout);
 }
 
 bool ConnectSocketByName(CService &addr, SOCKET& hSocketRet, const char *pszDest, int portDefault, int nTimeout, bool *outProxyConnectionFailed)
@@ -611,7 +603,7 @@ bool ConnectSocketByName(CService &addr, SOCKET& hSocketRet, const char *pszDest
     std::string strDest;
     int port = portDefault;
 
-    if (outProxyConnectionFailed)
+    if (outProxyConnectionFailed != nullptr)
         *outProxyConnectionFailed = false;
 
     SplitHostPort(std::string(pszDest), port, strDest);
@@ -660,14 +652,16 @@ void CNetAddr::SetRaw(Network network, const uint8_t *ip_in)
 
 static const unsigned char pchOnionCat[] = {0xFD,0x87,0xD8,0x7E,0xEB,0x43};
 
+//TODO: Implement Tor Hidden Services v3
 bool CNetAddr::SetSpecial(const std::string &strName)
 {
-    if (strName.size()>6 && strName.substr(strName.size() - 6, 6) == ".onion") {
+    if ((strName.size() == 22 || strName.size() == 62) && strName.substr(strName.size() - 6) == ".onion") {
+        assert(strName.size() == 22 && "Tor Hidden Service v3 is not supported yet!");
         std::vector<unsigned char> vchAddr = DecodeBase32(strName.substr(0, strName.size() - 6).c_str());
-        if (vchAddr.size() != 16-sizeof(pchOnionCat))
+        if (vchAddr.size() != strName.size()-6-sizeof(pchOnionCat))
             return false;
         memcpy(ip, pchOnionCat, sizeof(pchOnionCat));
-        for (unsigned int i=0; i<16-sizeof(pchOnionCat); i++)
+        for (unsigned int i=0; i<strName.size()-6-sizeof(pchOnionCat); i++)
             ip[i + sizeof(pchOnionCat)] = vchAddr[i];
         return true;
     }
@@ -712,12 +706,12 @@ unsigned int CNetAddr::GetByte(int n) const
 
 bool CNetAddr::IsIPv4() const
 {
-    return (memcmp(ip, pchIPv4, sizeof(pchIPv4)) == 0);
+    return memcmp(ip, pchIPv4, sizeof(pchIPv4)) == 0;
 }
 
 bool CNetAddr::IsIPv6() const
 {
-    return (!IsIPv4() && !IsTor());
+    return !IsIPv4() && !IsTor();
 }
 
 bool CNetAddr::IsRFC1918() const
@@ -757,45 +751,45 @@ bool CNetAddr::IsRFC3849() const
 
 bool CNetAddr::IsRFC3964() const
 {
-    return (GetByte(15) == 0x20 && GetByte(14) == 0x02);
+    return GetByte(15) == 0x20 && GetByte(14) == 0x02;
 }
 
 bool CNetAddr::IsRFC6052() const
 {
     static const unsigned char pchRFC6052[] = {0,0x64,0xFF,0x9B,0,0,0,0,0,0,0,0};
-    return (memcmp(ip, pchRFC6052, sizeof(pchRFC6052)) == 0);
+    return memcmp(ip, pchRFC6052, sizeof(pchRFC6052)) == 0;
 }
 
 bool CNetAddr::IsRFC4380() const
 {
-    return (GetByte(15) == 0x20 && GetByte(14) == 0x01 && GetByte(13) == 0 && GetByte(12) == 0);
+    return GetByte(15) == 0x20 && GetByte(14) == 0x01 && GetByte(13) == 0 && GetByte(12) == 0;
 }
 
 bool CNetAddr::IsRFC4862() const
 {
     static const unsigned char pchRFC4862[] = {0xFE,0x80,0,0,0,0,0,0};
-    return (memcmp(ip, pchRFC4862, sizeof(pchRFC4862)) == 0);
+    return memcmp(ip, pchRFC4862, sizeof(pchRFC4862)) == 0;
 }
 
 bool CNetAddr::IsRFC4193() const
 {
-    return ((GetByte(15) & 0xFE) == 0xFC);
+    return (GetByte(15) & 0xFE) == 0xFC;
 }
 
 bool CNetAddr::IsRFC6145() const
 {
     static const unsigned char pchRFC6145[] = {0,0,0,0,0,0,0,0,0xFF,0xFF,0,0};
-    return (memcmp(ip, pchRFC6145, sizeof(pchRFC6145)) == 0);
+    return memcmp(ip, pchRFC6145, sizeof(pchRFC6145)) == 0;
 }
 
 bool CNetAddr::IsRFC4843() const
 {
-    return (GetByte(15) == 0x20 && GetByte(14) == 0x01 && GetByte(13) == 0x00 && (GetByte(12) & 0xF0) == 0x10);
+    return GetByte(15) == 0x20 && GetByte(14) == 0x01 && GetByte(13) == 0x00 && (GetByte(12) & 0xF0) == 0x10;
 }
 
 bool CNetAddr::IsTor() const
 {
-    return (memcmp(ip, pchOnionCat, sizeof(pchOnionCat)) == 0);
+    return memcmp(ip, pchOnionCat, sizeof(pchOnionCat)) == 0;
 }
 
 bool CNetAddr::IsLocal() const
@@ -814,8 +808,7 @@ bool CNetAddr::IsLocal() const
 
 bool CNetAddr::IsMulticast() const
 {
-    return    (IsIPv4() && (GetByte(3) & 0xF0) == 0xE0)
-           || (GetByte(15) == 0xFF);
+    return (IsIPv4() && (GetByte(3) & 0xF0) == 0xE0) || GetByte(15) == 0xFF;
 }
 
 bool CNetAddr::IsValid() const
@@ -882,17 +875,16 @@ std::string CNetAddr::ToStringIP() const
     socklen_t socklen = sizeof(sockaddr);
     if (serv.GetSockAddr((struct sockaddr*)&sockaddr, &socklen)) {
         char name[1025] = "";
-        if (!getnameinfo((const struct sockaddr*)&sockaddr, socklen, name, sizeof(name), NULL, 0, NI_NUMERICHOST))
+        if (!getnameinfo((const struct sockaddr*)&sockaddr, socklen, name, sizeof(name), nullptr, 0, NI_NUMERICHOST))
             return std::string(name);
     }
     if (IsIPv4())
         return strprintf("%u.%u.%u.%u", GetByte(3), GetByte(2), GetByte(1), GetByte(0));
-    else
-        return strprintf("%x:%x:%x:%x:%x:%x:%x:%x",
-                         GetByte(15) << 8 | GetByte(14), GetByte(13) << 8 | GetByte(12),
-                         GetByte(11) << 8 | GetByte(10), GetByte(9) << 8 | GetByte(8),
-                         GetByte(7) << 8 | GetByte(6), GetByte(5) << 8 | GetByte(4),
-                         GetByte(3) << 8 | GetByte(2), GetByte(1) << 8 | GetByte(0));
+    return strprintf("%x:%x:%x:%x:%x:%x:%x:%x",
+                        GetByte(15) << 8 | GetByte(14), GetByte(13) << 8 | GetByte(12),
+                        GetByte(11) << 8 | GetByte(10), GetByte(9) << 8 | GetByte(8),
+                        GetByte(7) << 8 | GetByte(6), GetByte(5) << 8 | GetByte(4),
+                        GetByte(3) << 8 | GetByte(2), GetByte(1) << 8 | GetByte(0));
 }
 
 std::string CNetAddr::ToString() const
@@ -902,17 +894,17 @@ std::string CNetAddr::ToString() const
 
 bool operator==(const CNetAddr& a, const CNetAddr& b)
 {
-    return (memcmp(a.ip, b.ip, 16) == 0);
+    return memcmp(a.ip, b.ip, 16) == 0;
 }
 
 bool operator!=(const CNetAddr& a, const CNetAddr& b)
 {
-    return (memcmp(a.ip, b.ip, 16) != 0);
+    return memcmp(a.ip, b.ip, 16) != 0;
 }
 
 bool operator<(const CNetAddr& a, const CNetAddr& b)
 {
-    return (memcmp(a.ip, b.ip, 16) < 0);
+    return memcmp(a.ip, b.ip, 16) < 0;
 }
 
 bool CNetAddr::GetInAddr(struct in_addr* pipv4Addr) const
@@ -988,8 +980,7 @@ std::vector<unsigned char> CNetAddr::GetGroup() const
     vchRet.push_back(nClass);
     while (nBits >= 8)
     {
-        vchRet.push_back(GetByte(15 - nStartByte));
-        nStartByte++;
+        vchRet.push_back(GetByte(15 - nStartByte++));
         nBits -= 8;
     }
     if (nBits > 0)
@@ -1008,11 +999,11 @@ uint64_t CNetAddr::GetHash() const
 
 // private extensions to enum Network, only returned by GetExtNetwork,
 // and only used in GetReachabilityFrom
-static const int NET_UNKNOWN = NET_MAX + 0;
+static const int NET_UNKNOWN = NET_MAX;
 static const int NET_TEREDO  = NET_MAX + 1;
 int static GetExtNetwork(const CNetAddr *addr)
 {
-    if (addr == NULL)
+    if (addr == nullptr)
         return NET_UNKNOWN;
     if (addr->IsRFC4380())
         return NET_TEREDO;
@@ -1222,11 +1213,9 @@ std::string CService::ToStringPort() const
 
 std::string CService::ToStringIPPort() const
 {
-    if (IsIPv4() || IsTor()) {
+    if (IsIPv4() || IsTor())
         return ToStringIP() + ":" + ToStringPort();
-    } else {
-        return "[" + ToStringIP() + "]:" + ToStringPort();
-    }
+    return "[" + ToStringIP() + "]:" + ToStringPort();
 }
 
 std::string CService::ToString() const
@@ -1250,12 +1239,12 @@ CSubNet::CSubNet(const std::string &strSubnet, bool fAllowLookup)
     size_t slash = strSubnet.find_last_of('/');
     std::vector<CNetAddr> vIP;
 
-    valid = true;
     // Default to /32 (IPv4) or /128 (IPv6), i.e. match single address
     memset(netmask, 255, sizeof(netmask));
 
     std::string strAddress = strSubnet.substr(0, slash);
-    if (LookupHost(strAddress.c_str(), vIP, 1, fAllowLookup))
+    valid = LookupHost(strAddress.c_str(), vIP, 1, fAllowLookup);
+    if (valid)
     {
         network = vIP[0];
         if (slash != strSubnet.npos)
@@ -1266,37 +1255,26 @@ CSubNet::CSubNet(const std::string &strSubnet, bool fAllowLookup)
             const int astartofs = network.IsIPv4() ? 12 : 0;
             if (ParseInt32(strNetmask, &n)) // If valid number, assume /24 symtex
             {
-                if(n >= 0 && n <= (128 - astartofs*8)) // Only valid if in range of bits of address
+                valid = n >= 0 && n <= 128 - astartofs*8;
+                if(valid) // Only valid if in range of bits of address
                 {
-                    n += astartofs*8;
                     // Clear bits [n..127]
-                    for (; n < 128; ++n)
+                    for (n += astartofs*8; n < 128; ++n)
                         netmask[n>>3] &= ~(1<<(7-(n&7)));
-                }
-                else
-                {
-                    valid = false;
                 }
             }
             else // If not a valid number, try full netmask syntax
             {
-                if (LookupHost(strNetmask.c_str(), vIP, 1, false)) // Never allow lookup for netmask
+                valid = LookupHost(strNetmask.c_str(), vIP, 1, false);
+                if (valid) // Never allow lookup for netmask
                 {
                     // Copy only the *last* four bytes in case of IPv4, the rest of the mask should stay 1's as
                     // we don't want pchIPv4 to be part of the mask.
                     for(int x=astartofs; x<16; ++x)
                         netmask[x] = vIP[0].ip[x];
                 }
-                else
-                {
-                    valid = false;
-                }
             }
         }
-    }
-    else
-    {
-        valid = false;
     }
 
     // Normalize network according to netmask
@@ -1345,38 +1323,35 @@ bool operator!=(const CSubNet& a, const CSubNet& b)
 
 bool operator<(const CSubNet& a, const CSubNet& b)
 {
-    return (a.network < b.network || (a.network == b.network && memcmp(a.netmask, b.netmask, 16) < 0));
+    return a.network < b.network || (a.network == b.network && memcmp(a.netmask, b.netmask, 16) < 0);
 }
 
 #ifdef _WIN32
 std::string NetworkErrorString(int err)
 {
     char buf[256];
-    buf[0] = 0;
+    buf[0] = '\0';
     if(FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK,
-            NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-            buf, sizeof(buf), NULL))
+            nullptr, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+            buf, sizeof(buf), nullptr))
     {
         return strprintf("%s (%d)", buf, err);
     }
-    else
-    {
-        return strprintf("Unknown error (%d)", err);
-    }
+    return strprintf("Unknown error (%d)", err);
 }
 #else
 std::string NetworkErrorString(int err)
 {
     char buf[256];
     const char *s = buf;
-    buf[0] = 0;
+    buf[0] = '\0';
     /* Too bad there are two incompatible implementations of the
      * thread-safe strerror. */
 #ifdef STRERROR_R_CHAR_P /* GNU variant can return a pointer outside the passed buffer */
     s = strerror_r(err, buf, sizeof(buf));
 #else /* POSIX variant always returns message in buffer */
     if (strerror_r(err, buf, sizeof(buf)))
-        buf[0] = 0;
+        buf[0] = '\0';
 #endif
     return strprintf("%s (%d)", s, err);
 }

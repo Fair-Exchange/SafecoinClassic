@@ -195,7 +195,7 @@ public:
         while (value < 1) {
             condition.wait(lock);
         }
-        value--;
+        --value;
     }
 
     bool try_wait()
@@ -203,7 +203,7 @@ public:
         boost::unique_lock<boost::mutex> lock(mutex);
         if (value < 1)
             return false;
-        value--;
+        --value;
         return true;
     }
 
@@ -211,7 +211,7 @@ public:
     {
         {
             boost::unique_lock<boost::mutex> lock(mutex);
-            value++;
+            ++value;
         }
         condition.notify_one();
     }
@@ -253,11 +253,11 @@ public:
         grant.Release();
         grant.sem = sem;
         grant.fHaveGrant = fHaveGrant;
-        sem = NULL;
+        sem = nullptr;
         fHaveGrant = false;
     }
 
-    CSemaphoreGrant() : sem(NULL), fHaveGrant(false) {}
+    CSemaphoreGrant() : sem(nullptr), fHaveGrant(false) {}
 
     CSemaphoreGrant(CSemaphore& sema, bool fTry = false) : sem(&sema), fHaveGrant(false)
     {

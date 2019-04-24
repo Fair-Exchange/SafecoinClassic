@@ -41,18 +41,18 @@ void pre_wallet_load()
     if (ShutdownRequested())
         throw new std::runtime_error("The node is shutting down");
 
-    if (pwalletMain)
+    if (pwalletMain != nullptr)
         pwalletMain->Flush(false);
 #ifdef ENABLE_MINING
-    GenerateBitcoins(false, NULL, 0);
+    GenerateBitcoins(false, nullptr, 0);
 #endif
     UnregisterNodeSignals(GetNodeSignals());
-    if (pwalletMain)
+    if (pwalletMain != nullptr)
         pwalletMain->Flush(true);
 
     UnregisterValidationInterface(pwalletMain);
     delete pwalletMain;
-    pwalletMain = NULL;
+    pwalletMain = nullptr;
     bitdb.Reset();
     RegisterNodeSignals(GetNodeSignals());
     LogPrintf("%s: done\n", __func__);
@@ -62,9 +62,9 @@ void post_wallet_load(){
     RegisterValidationInterface(pwalletMain);
 #ifdef ENABLE_MINING
     // Generate coins in the background
-    if (pwalletMain || !GetArg("-mineraddress", "").empty())
+    if (pwalletMain != nullptr || !GetArg("-mineraddress", "").empty())
         GenerateBitcoins(GetBoolArg("-gen", false), pwalletMain, GetArg("-genproclimit", 0));
-#endif    
+#endif
 }
 
 

@@ -221,16 +221,15 @@ bool WalletUtilityDB::parseKeys(bool dumppriv, std::string masterPass)
 
         if (dumppriv)
         {
-            while (result == DB_LOAD_OK && true)
+            while (result == DB_LOAD_OK)
             {
                 CDataStream ssKey(SER_DISK, CLIENT_VERSION);
                 CDataStream ssValue(SER_DISK, CLIENT_VERSION);
                 int result = ReadAtCursor(pcursor, ssKey, ssValue);
 
-                if (result == DB_NOTFOUND) {
+                if (result == DB_NOTFOUND)
                     break;
-                }
-                else if (result != 0)
+                if (result != 0)
                 {
                     LogPrintf("Error reading next record from wallet database\n");
                     result = DB_CORRUPT;
@@ -239,15 +238,13 @@ bool WalletUtilityDB::parseKeys(bool dumppriv, std::string masterPass)
 
                 ssKey >> strType;
                 if (strType == "mkey")
-                {
                     updateMasterKeys(ssKey, ssValue);
-                }
             }
             pcursor->close();
             pcursor = GetCursor();
         }
 
-        while (result == DB_LOAD_OK && true)
+        while (result == DB_LOAD_OK)
         {
             CDataStream ssKey(SER_DISK, CLIENT_VERSION);
             CDataStream ssValue(SER_DISK, CLIENT_VERSION);
@@ -259,7 +256,7 @@ bool WalletUtilityDB::parseKeys(bool dumppriv, std::string masterPass)
                 first = true;
                 break;
             }
-            else if (ret != DB_LOAD_OK)
+            if (ret != DB_LOAD_OK)
             {
                 LogPrintf("Error reading next record from wallet database\n");
                 result = DB_CORRUPT;
@@ -278,7 +275,7 @@ bool WalletUtilityDB::parseKeys(bool dumppriv, std::string masterPass)
                     strKey = getKey(ssKey, ssValue);
                 if (dumppriv && strType == "ckey")
                 {
-                    if (masterPass == "")
+                    if (masterPass.empty())
                     {
                         std::cout << "Encrypted wallet, please provide a password. See help below" << std::endl;
                         show_help();
@@ -288,13 +285,8 @@ bool WalletUtilityDB::parseKeys(bool dumppriv, std::string masterPass)
                     strKey = getCryptedKey(ssKey, ssValue, masterPass);
                 }
 
-                if (strAddr != "")
-                {
-                    if (first)
-                        std::cout << "[ ";
-                    else
-                        std::cout << ", ";
-                }
+                if (!strAddr.empty())
+                    std::cout << (first ? "[ " : ", ");
 
                 if (dumppriv)
                 {
@@ -318,10 +310,7 @@ bool WalletUtilityDB::parseKeys(bool dumppriv, std::string masterPass)
         std::cout << "Exception caught " << std::endl;
     }
 
-    if (result == DB_LOAD_OK)
-        return true;
-    else
-        return false;
+    return result == DB_LOAD_OK;
 }
 
 
@@ -349,8 +338,5 @@ int main(int argc, char* argv[])
         std::cout << e.what() << std::endl;
     }
 
-    if (result)
-        return 0;
-    else
-        return -1;
+    return result ? 0 : -1;
 }

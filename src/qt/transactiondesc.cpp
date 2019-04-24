@@ -267,7 +267,7 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
     if (wtx.IsCoinBase())
     {
         extern char ASSETCHAINS_SYMBOL[SAFECOIN_ASSETCHAIN_MAXLEN];
-        if ( ASSETCHAINS_SYMBOL[0] == 0 )
+        if ( ASSETCHAINS_SYMBOL[0] == '\0' )
             COINBASE_MATURITY = _COINBASE_MATURITY;
         quint32 numBlocksToMaturity = COINBASE_MATURITY + 1;
         strHTML += "<br>" + tr("Generated coins must mature %1 blocks and have any applicable time locks open before they can be spent. When you generated this block, it was broadcast to the network to be added to the block chain. If it fails to get into the chain, its state will change to \"not accepted\" and it won't be spendable. This may occasionally happen if another node generates a block within a few seconds of yours.").arg(QString::number(numBlocksToMaturity)) + "<br>";
@@ -280,8 +280,8 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
     if (fDebug)
     {
         strHTML += "<hr><br>" + tr("Debug information") + "<br><br>";
-        BOOST_FOREACH(const CTxIn& txin, wtx.vin)
-            if(wallet->IsMine(txin))
+        for (const CTxIn& txin : wtx.vin)
+            if (wallet->IsMine(txin))
                 strHTML += "<b>" + tr("Debit") + ":</b> " + BitcoinUnits::formatHtmlWithUnit(unit, -wallet->GetDebit(txin, ISMINE_ALL)) + "<br>";
         for (int i = 0; i < wtx.vout.size(); i++)
             if (wallet->IsMine(wtx, i))
@@ -293,7 +293,7 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
         strHTML += "<br><b>" + tr("Inputs") + ":</b>";
         strHTML += "<ul>";
 
-        BOOST_FOREACH(const CTxIn& txin, wtx.vin)
+        for (const CTxIn& txin : wtx.vin)
         {
             COutPoint prevout = txin.prevout;
 

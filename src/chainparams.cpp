@@ -153,7 +153,7 @@ public:
         CMutableTransaction txNew;
         txNew.vin.resize(1);
         txNew.vout.resize(1);
-	const char* pszTimestamp = psztimestmp.replace(7, 1, "7").c_str();        
+	const char* pszTimestamp = psztimestmp.replace(7, 1, "7").c_str();
 	txNew.vin[0].scriptSig = CScript() << 486604799 << CScriptNum(4) << std::vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
         txNew.vout[0].nValue = 0;
 	txNew.vout[0].scriptPubKey = CScript() << ParseHex("0479db7ca0688048fe54fc888fa35250fdb01d7a0dd4e266183f0d76cc5925e4c17e9479c16d2ead7c626b85f8c89bbea5dd995caf0dbd0ef80cd243bdecadb8dc") << OP_CHECKSIG;   genesis.vtx.push_back(txNew);
@@ -228,8 +228,8 @@ int32_t MAX_BLOCK_SIZE(int32_t height)
 {
     //fprintf(stderr,"MAX_BLOCK_SIZE %d vs. %d\n",height,mainParams.consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nActivationHeight);
     if ( height <= 0 || (mainParams.consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nActivationHeight > 0 && height >= mainParams.consensus.vUpgrades[Consensus::UPGRADE_SAPLING].nActivationHeight) )
-        return(4096 * 1024);
-    else return(2000000);
+        return 4096 * 1024;
+    return 2000000;
 }
 
 void safecoin_setactivation(int32_t height)
@@ -252,7 +252,7 @@ void *chainparams_commandline(void *ptr)
         #endif
     }
     //fprintf(stderr,">>>>>>>> port.%u\n",ASSETCHAINS_P2PPORT);
-    if ( ASSETCHAINS_SYMBOL[0] != 0 )
+    if ( ASSETCHAINS_SYMBOL[0] != '\0' )
     {
         mainParams.SetDefaultPort(ASSETCHAINS_P2PPORT);
         if ( ASSETCHAINS_RPCPORT == 0 )
@@ -346,7 +346,7 @@ void *chainparams_commandline(void *ptr)
 				(360000, uint256S("0x00000260ec5c16afbc1d4e70f9616e60bbc3222ad3604c0d2acdf716da7f8b9c"))
 				(420000, uint256S("0x000002f4a612958896c215e9541a3036fd0401377c03e00d5a5e9fb3dbd379a4"))       //add TLS
 				(469630, uint256S("0x000001712c534cca9aca4fac0cf565557ddd8a60ae60b1b8a66f16a0072d608a"))
-				(512429, uint256S("0x000004710d95421263db721829985e2a43c903718444443c1824b954df523fc1")),       			
+				(512429, uint256S("0x000004710d95421263db721829985e2a43c903718444443c1824b954df523fc1")),
 				(int64_t)1549807875,	// * UNIX timestamp of last checkpoint block
 				(int64_t)877839,		// * total number of transactions between genesis and last checkpoint
 										//   (the tx=... number in the SetBestChain debug.log lines)
@@ -358,7 +358,7 @@ void *chainparams_commandline(void *ptr)
     mainParams.SetCheckpointData(checkpointData);
 
     ASSETCHAIN_INIT = 1;
-    return(0);
+    return 0;
 }
 
 /**
@@ -427,7 +427,7 @@ public:
         txNew.vin[0].scriptSig = CScript() << 486604799 << CScriptNum(4) << std::vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
         txNew.vout[0].nValue = 0;
 	txNew.vout[0].scriptPubKey = CScript() << ParseHex("0479db7ca0688048fe54fc888fa35250fdb01d7a0dd4e266183f0d76cc5925e4c17e9479c16d2ead7c626b85f8c89bbea5dd995caf0dbd0ef80cd243bdecadb8dc") << OP_CHECKSIG;   genesis.vtx.push_back(txNew);
-  
+
 
         //! Modify the testnet genesis block so the timestamp is valid for a later start.
 	genesis.hashMerkleRoot = genesis.BuildMerkleTree();
@@ -597,7 +597,7 @@ public:
 };
 static CRegTestParams regTestParams;
 
-static CChainParams *pCurrentParams = 0;
+static CChainParams *pCurrentParams = nullptr;
 
 const CChainParams &Params() {
     assert(pCurrentParams);
@@ -623,9 +623,8 @@ void SelectParams(CBaseChainParams::Network network) {
     pCurrentParams = &Params(network);
 
     // Some python qa rpc tests need to enforce the coinbase consensus rule
-    if (network == CBaseChainParams::REGTEST && mapArgs.count("-regtestprotectcoinbase")) {
+    if (network == CBaseChainParams::REGTEST && mapArgs.count("-regtestprotectcoinbase"))
         regTestParams.SetRegTestCoinbaseMustBeProtected();
-    }
 }
 
 bool SelectParamsFromCommandLine()
@@ -679,24 +678,24 @@ int validEHparameterList(EHparameters *ehparams, unsigned long blockheight, cons
     //if in overlap period, there will be two valid solutions, else 1.
     //The upcoming version of EH is preferred so will always be first element
     //returns number of elements in list
-    if(blockheight>=params.eh_epoch_3_start() && blockheight>params.eh_epoch_2_end()){
+    if (blockheight>=params.eh_epoch_3_start() && blockheight>params.eh_epoch_2_end()){
         ehparams[0]=params.eh_epoch_3_params();
         return 1;
     }
-    if(blockheight>=params.eh_epoch_2_start() && blockheight>params.eh_epoch_1_end()){
+    if (blockheight>=params.eh_epoch_2_start() && blockheight>params.eh_epoch_1_end()){
         ehparams[0]=params.eh_epoch_2_params();
         return 1;
     }
-    if(blockheight<params.eh_epoch_2_start()){
+    if (blockheight<params.eh_epoch_2_start()){
         ehparams[0]=params.eh_epoch_1_params();
         return 1;
     }
-    if(blockheight<params.eh_epoch_3_start()){
-    ehparams[0]=params.eh_epoch_2_params();
-    ehparams[1]=params.eh_epoch_1_params();
-    return 2;
+    if (blockheight<params.eh_epoch_3_start()){
+        ehparams[0]=params.eh_epoch_2_params();
+        ehparams[1]=params.eh_epoch_1_params();
+        return 2;
     }
     ehparams[0]=params.eh_epoch_3_params();
     ehparams[1]=params.eh_epoch_2_params();
-    return 2; 
+    return 2;
 }

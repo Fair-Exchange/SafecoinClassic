@@ -12,7 +12,7 @@
 
 class CNetAddr;
 
-/** 
+/**
  * Median filter over a stream of values.
  * Returns the median of the last N numbers
  */
@@ -34,9 +34,8 @@ public:
 
     void input(T value)
     {
-        if (vValues.size() == nSize) {
+        if (vValues.size() == nSize)
             vValues.erase(vValues.begin());
-        }
         vValues.push_back(value);
 
         vSorted.resize(vValues.size());
@@ -49,12 +48,9 @@ public:
         int size = vSorted.size();
         assert(size > 0);
         if (size & 1) // Odd number of elements
-        {
             return vSorted[size / 2];
-        } else // Even number of elements
-        {
-            return (vSorted[size / 2 - 1] + vSorted[size / 2]) / 2;
-        }
+        // Even number of elements
+        return (vSorted[size / 2 - 1] + vSorted[size / 2]) / 2;
     }
 
     int size() const

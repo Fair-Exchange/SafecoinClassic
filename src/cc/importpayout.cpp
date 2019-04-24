@@ -31,7 +31,8 @@
  */
 bool Eval::ImportPayout(const std::vector<uint8_t> params, const CTransaction &importTx, unsigned int nIn)
 {
-    if (importTx.vout.size() == 0) return Invalid("no-vouts");
+    if (importTx.vout.empty())
+        return Invalid("no-vouts");
 
     // load data from vout[0]
     MoMProof proof;

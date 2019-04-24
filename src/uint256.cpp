@@ -49,7 +49,7 @@ void base_blob<BITS>::SetHex(const char* psz)
     while (psz >= pbegin && p1 < pend) {
         *p1 = ::HexDigit(*psz--);
         if (psz >= pbegin) {
-            *p1 |= ((unsigned char)::HexDigit(*psz--) << 4);
+            *p1 |= (unsigned char)::HexDigit(*psz--) << 4;
             p1++;
         }
     }
@@ -64,7 +64,7 @@ void base_blob<BITS>::SetHex(const std::string& str)
 template <unsigned int BITS>
 std::string base_blob<BITS>::ToString() const
 {
-    return (GetHex());
+    return GetHex();
 }
 
 // Explicit instantiations for base_blob<160>
@@ -85,22 +85,22 @@ static void inline HashMix(uint32_t& a, uint32_t& b, uint32_t& c)
 {
     // Taken from lookup3, by Bob Jenkins.
     a -= c;
-    a ^= ((c << 4) | (c >> 28));
+    a ^= (c << 4) | (c >> 28);
     c += b;
     b -= a;
-    b ^= ((a << 6) | (a >> 26));
+    b ^= (a << 6) | (a >> 26);
     a += c;
     c -= b;
-    c ^= ((b << 8) | (b >> 24));
+    c ^= (b << 8) | (b >> 24);
     b += a;
     a -= c;
-    a ^= ((c << 16) | (c >> 16));
+    a ^= (c << 16) | (c >> 16);
     c += b;
     b -= a;
-    b ^= ((a << 19) | (a >> 13));
+    b ^= (a << 19) | (a >> 13);
     a += c;
     c -= b;
-    c ^= ((b << 4) | (b >> 28));
+    c ^= (b << 4) | (b >> 28);
     b += a;
 }
 
@@ -108,19 +108,19 @@ static void inline HashFinal(uint32_t& a, uint32_t& b, uint32_t& c)
 {
     // Taken from lookup3, by Bob Jenkins.
     c ^= b;
-    c -= ((b << 14) | (b >> 18));
+    c -= (b << 14) | (b >> 18);
     a ^= c;
-    a -= ((c << 11) | (c >> 21));
+    a -= (c << 11) | (c >> 21);
     b ^= a;
-    b -= ((a << 25) | (a >> 7));
+    b -= (a << 25) | (a >> 7);
     c ^= b;
-    c -= ((b << 16) | (b >> 16));
+    c -= (b << 16) | (b >> 16);
     a ^= c;
-    a -= ((c << 4) | (c >> 28));
+    a -= (c << 4) | (c >> 28);
     b ^= a;
-    b -= ((a << 14) | (a >> 18));
+    b -= (a << 14) | (a >> 18);
     c ^= b;
-    c -= ((b << 24) | (b >> 8));
+    c -= (b << 24) | (b >> 8);
 }
 
 uint64_t uint256::GetHash(const uint256& salt) const
@@ -142,5 +142,5 @@ uint64_t uint256::GetHash(const uint256& salt) const
     b += pn[7] ^ salt_pn[7];
     HashFinal(a, b, c);
 
-    return ((((uint64_t)b) << 32) | c);
+    return (((uint64_t)b) << 32) | c;
 }

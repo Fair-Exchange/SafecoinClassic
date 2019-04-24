@@ -16,7 +16,7 @@ using namespace std;
 
 static boost::uuids::random_generator uuidgen;
 
-static std::map<OperationStatus, std::string> OperationStatusMap = {
+static map<OperationStatus, string> OperationStatusMap = {
     {OperationStatus::READY, "queued"},
     {OperationStatus::EXECUTING, "executing"},
     {OperationStatus::CANCELLED, "cancelled"},
@@ -63,35 +63,33 @@ AsyncRPCOperation::~AsyncRPCOperation() {
  * Override this cancel() method if you can interrupt main() when executing.
  */
 void AsyncRPCOperation::cancel() {
-    if (isReady()) {
+    if (isReady())
         set_state(OperationStatus::CANCELLED);
-    }
 }
 
 /**
  * Start timing the execution run of the code you're interested in
  */
 void AsyncRPCOperation::start_execution_clock() {
-    std::lock_guard<std::mutex> guard(lock_);
-    start_time_ = std::chrono::system_clock::now();
+    lock_guard<mutex> guard(lock_);
+    start_time_ = chrono::system_clock::now();
 }
 
 /**
  * Stop timing the execution run
  */
 void AsyncRPCOperation::stop_execution_clock() {
-    std::lock_guard<std::mutex> guard(lock_);
-    end_time_ = std::chrono::system_clock::now();
+    lock_guard<mutex> guard(lock_);
+    end_time_ = chrono::system_clock::now();
 }
 
 /**
  * Implement this virtual method in any subclass.  This is just an example implementation.
  */
 void AsyncRPCOperation::main() {
-    if (isCancelled()) {
+    if (isCancelled())
         return;
-    }
-    
+
     set_state(OperationStatus::EXECUTING);
 
     start_execution_clock();
@@ -122,7 +120,7 @@ UniValue AsyncRPCOperation::getError() const {
         return NullUniValue;
     }
 
-    std::lock_guard<std::mutex> guard(lock_);
+    lock_guard<mutex> guard(lock_);
     UniValue error(UniValue::VOBJ);
     error.push_back(Pair("code", this->error_code_));
     error.push_back(Pair("message", this->error_message_));
@@ -138,7 +136,7 @@ UniValue AsyncRPCOperation::getResult() const {
         return NullUniValue;
     }
 
-    std::lock_guard<std::mutex> guard(lock_);
+    lock_guard<mutex> guard(lock_);
     return this->result_;
 }
 
@@ -165,7 +163,7 @@ UniValue AsyncRPCOperation::getStatus() const {
         obj.push_back(Pair("result", result));
 
         // Include execution time for successful operation
-        std::chrono::duration<double> elapsed_seconds = end_time_ - start_time_;
+        chrono::duration<double> elapsed_seconds = end_time_ - start_time_;
         obj.push_back(Pair("execution_secs", elapsed_seconds.count()));
 
     }
@@ -175,7 +173,7 @@ UniValue AsyncRPCOperation::getStatus() const {
 /**
  * Return the operation state in human readable form.
  */
-std::string AsyncRPCOperation::getStateAsString() const {
+string AsyncRPCOperation::getStateAsString() const {
     OperationStatus status = this->getState();
     return OperationStatusMap[status];
 }

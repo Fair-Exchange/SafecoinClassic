@@ -77,7 +77,7 @@ public:
     friend bool operator==(const CKey& a, const CKey& b)
     {
         return a.fCompressed == b.fCompressed && a.size() == b.size() &&
-               memcmp(&a.vch[0], &b.vch[0], a.size()) == 0;
+               memcmp(a.vch, b.vch, a.size()) == 0;
     }
 
     //! Initialize using begin and end iterators to byte data.
@@ -88,17 +88,15 @@ public:
             fValid = false;
             return;
         }
-        if (Check(&pbegin[0])) {
+        fValid = Check(&pbegin[0]);
+        if (fValid) {
             memcpy(vch, (unsigned char*)&pbegin[0], 32);
-            fValid = true;
             fCompressed = fCompressedIn;
-        } else {
-            fValid = false;
         }
     }
 
     //! Simple read-only vector-like interface.
-    unsigned int size() const { return (fValid ? 32 : 0); }
+    unsigned int size() const { return fValid ? 32 : 0; }
     const unsigned char* begin() const { return vch; }
     const unsigned char* end() const { return vch + size(); }
 
@@ -116,7 +114,7 @@ public:
 
     /**
      * Convert the private key to a CPrivKey (serialized OpenSSL private key data).
-     * This is expensive. 
+     * This is expensive.
      */
     CPrivKey GetPrivKey() const;
 

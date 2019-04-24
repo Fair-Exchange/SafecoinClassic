@@ -137,7 +137,7 @@ bool GetOpReturnData(const CScript &sig, std::vector<unsigned char> &data)
 {
     auto pc = sig.begin();
     opcodetype opcode;
-    if (sig.GetOp2(pc, opcode, NULL))
+    if (sig.GetOp2(pc, opcode, nullptr))
         if (opcode == OP_RETURN)
             if (sig.GetOp(pc, opcode, data))
                 return opcode > OP_0 && opcode <= OP_PUSHDATA4;

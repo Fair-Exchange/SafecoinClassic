@@ -30,7 +30,7 @@ struct CCheckpointData {
 };
     bool CheckBlock(const CChainParams::CCheckpointData& data, int nHeight, const uint256& hash);
 
-    
+
 //! Return conservative estimate of total number of blocks, 0 if unknown
     int GetTotalBlocksEstimate(const CChainParams::CCheckpointData& data);
 

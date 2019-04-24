@@ -31,10 +31,8 @@ int64_t safecoin_block_unlocktime(uint32_t nHeight);
 void AtomicTimer::start()
 {
     std::unique_lock<std::mutex> lock(mtx);
-    if (threads < 1) {
+    if (threads++ < 1)
         start_time = GetTime();
-    }
-    ++threads;
 }
 
 void AtomicTimer::stop()
@@ -42,8 +40,7 @@ void AtomicTimer::stop()
     std::unique_lock<std::mutex> lock(mtx);
     // Ignore excess calls to stop()
     if (threads > 0) {
-        --threads;
-        if (threads < 1) {
+        if (--threads < 1) {
             int64_t time_span = GetTime() - start_time;
             total_time += time_span;
         }
@@ -123,11 +120,8 @@ int64_t GetUptime()
 double GetLocalSolPS()
 {
     if (ASSETCHAINS_ALGO == ASSETCHAINS_VERUSHASH)
-    {
         return miningTimer.rate(nHashCount);
-    }
-    else
-        return miningTimer.rate(solutionTargetChecks);
+    return miningTimer.rate(solutionTargetChecks);
 }
 
 int EstimateNetHeightInner(int height, int64_t tipmediantime,
@@ -192,9 +186,8 @@ static bool metrics_ThreadSafeMessageBox(const std::string& message,
 
     boost::strict_lock_ptr<std::list<std::string>> u = messageBox.synchronize();
     u->push_back(strCaption + ": " + message);
-    if (u->size() > 5) {
+    if (u->size() > 5)
         u->pop_back();
-    }
 
     TriggerRefresh();
     return false;
@@ -235,7 +228,7 @@ int printStats(bool mining)
         height = chainActive.Height();
         tipmediantime = chainActive.LastTip()->GetMedianTimePast();
         connections = vNodes.size();
-        tlsConnections = std::count_if(vNodes.begin(), vNodes.end(), [](CNode* n) {return n->ssl != NULL;});
+        tlsConnections = std::count_if(vNodes.begin(), vNodes.end(), [](CNode* n) {return n->ssl != nullptr;});
         netsolps = GetNetworkHashPS(120, -1);
     }
     auto localsolps = GetLocalSolPS();
@@ -251,7 +244,7 @@ int printStats(bool mining)
     std::cout << "  " << _("Network solution rate") << " | " << netsolps << " Sol/s" << std::endl;
     if (mining && miningTimer.running()) {
         std::cout << "    " << _("Local solution rate") << " | " << strprintf("%.4f Sol/s", localsolps) << std::endl;
-        lines++;
+        ++lines;
     }
     std::cout << std::endl;
 
@@ -275,15 +268,14 @@ int printMiningStatus(bool mining)
                 LOCK(cs_vNodes);
                 fvNodesEmpty = vNodes.empty();
             }
-            if (fvNodesEmpty) {
+            if (fvNodesEmpty)
                 std::cout << _("Mining is paused while waiting for connections.") << std::endl;
-            } else if (IsInitialBlockDownload()) {
+            else if (IsInitialBlockDownload())
                 std::cout << _("Mining is paused while downloading blocks.") << std::endl;
-            } else {
+            else
                 std::cout << _("Mining is paused (a JoinSplit may be in progress).") << std::endl;
-            }
         }
-        lines++;
+        ++lines;
     } else {
         std::cout << _("You are currently not mining.") << std::endl;
         std::cout << _("To enable mining, add 'gen=1' to your safecoin.conf and restart.") << std::endl;
@@ -305,37 +297,35 @@ int printMetrics(size_t cols, bool mining)
     // Calculate uptime
     int64_t uptime = GetUptime();
     int days = uptime / (24 * 60 * 60);
-    int hours = (uptime - (days * 24 * 60 * 60)) / (60 * 60);
-    int minutes = (uptime - (((days * 24) + hours) * 60 * 60)) / 60;
-    int seconds = uptime - (((((days * 24) + hours) * 60) + minutes) * 60);
+    int hours = (uptime - days * 24 * 60 * 60) / (60 * 60);
+    int minutes = (uptime - ((days * 24 + hours) * 60 * 60)) / 60;
+    int seconds = uptime - ((((days * 24) + hours) * 60) + minutes) * 60;
 
     // Display uptime
     std::string duration;
-    if (days > 0) {
+    if (days > 0)
         duration = strprintf(_("%d days, %d hours, %d minutes, %d seconds"), days, hours, minutes, seconds);
-    } else if (hours > 0) {
+    else if (hours > 0)
         duration = strprintf(_("%d hours, %d minutes, %d seconds"), hours, minutes, seconds);
-    } else if (minutes > 0) {
+    else if (minutes > 0)
         duration = strprintf(_("%d minutes, %d seconds"), minutes, seconds);
-    } else {
+    else
         duration = strprintf(_("%d seconds"), seconds);
-    }
     std::string strDuration = strprintf(_("Since starting this node %s ago:"), duration);
     std::cout << strDuration << std::endl;
-    lines += (strDuration.size() / cols);
+    lines += strDuration.size() / cols;
 
     int validatedCount = transactionsValidated.get();
-    if (validatedCount > 1) {
+    if (validatedCount > 1)
       std::cout << "- " << strprintf(_("You have validated %d transactions!"), validatedCount) << std::endl;
-    } else if (validatedCount == 1) {
+    else if (validatedCount == 1)
       std::cout << "- " << _("You have validated a transaction!") << std::endl;
-    } else {
+    else
       std::cout << "- " << _("You have validated no transactions.") << std::endl;
-    }
 
     if (mining && loaded) {
         std::cout << "- " << strprintf(_("You have completed %d Equihash solver runs."), ehSolverRuns.get()) << std::endl;
-        lines++;
+        ++lines;
 
         int mined = 0;
         int orphaned = 0;
@@ -355,11 +345,10 @@ int printMetrics(size_t cols, bool mining)
                         chainActive.Contains(mapBlockIndex[hash])) {
                     int height = mapBlockIndex[hash]->GetHeight();
                     CAmount subsidy = GetBlockSubsidy(height, consensusParams);
-                    if ((height > 0) && (height <= consensusParams.GetLastFoundersRewardBlockHeight())) {
+                    if (height > 0 && height <= consensusParams.GetLastFoundersRewardBlockHeight())
                         subsidy -= subsidy/5;
-                    }
 
-                    if ((std::max(0, COINBASE_MATURITY - (tipHeight - height)) > 0) ||
+                    if (COINBASE_MATURITY - (tipHeight - height) > 0 ||
                         (tipHeight < safecoin_block_unlocktime(height) && subsidy >= ASSETCHAINS_TIMELOCKGTE)) {
                         immature += subsidy;
                     } else {
@@ -396,9 +385,8 @@ int printMessageBox(size_t cols)
 {
     boost::strict_lock_ptr<std::list<std::string>> u = messageBox.synchronize();
 
-    if (u->size() == 0) {
+    if (u->empty())
         return 0;
-    }
 
     int lines = 2 + u->size();
     std::cout << _("Messages:") << std::endl;
@@ -410,11 +398,11 @@ int printMessageBox(size_t cols)
         size_t j = 0;
         while (j < msg.size()) {
             i = msg.find('\n', j);
-            if (i == std::string::npos) {
+            if (i == msg.npos) {
                 i = msg.size();
             } else {
                 // Newline
-                lines++;
+                ++lines;
             }
             j = i + 1;
         }
@@ -425,17 +413,15 @@ int printMessageBox(size_t cols)
 
 int printInitMessage()
 {
-    if (loaded) {
+    if (loaded)
         return 0;
-    }
 
     std::string msg = *initMessage;
     std::cout << _("Init message:") << " " << msg << std::endl;
     std::cout << std::endl;
 
-    if (msg == _("Done loading")) {
+    if (msg == _("Done loading"))
         loaded = true;
-    }
 
     return 2;
 }
@@ -447,19 +433,16 @@ bool enableVTMode()
 {
     // Set output mode to handle virtual terminal sequences
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    if (hOut == INVALID_HANDLE_VALUE) {
+    if (hOut == INVALID_HANDLE_VALUE)
         return false;
-    }
 
     DWORD dwMode = 0;
-    if (!GetConsoleMode(hOut, &dwMode)) {
+    if (!GetConsoleMode(hOut, &dwMode))
         return false;
-    }
 
     dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-    if (!SetConsoleMode(hOut, dwMode)) {
+    if (!SetConsoleMode(hOut, dwMode))
         return false;
-    }
     return true;
 }
 #endif
@@ -504,15 +487,13 @@ void ThreadShowMetricsScreen()
         if (isTTY) {
 #ifdef _WIN32
             CONSOLE_SCREEN_BUFFER_INFO csbi;
-            if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi) != 0) {
+            if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi) != 0)
                 cols = csbi.srWindow.Right - csbi.srWindow.Left + 1;
-            }
 #else
             struct winsize w;
             w.ws_col = 0;
-            if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) != -1 && w.ws_col != 0) {
+            if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) != -1 && w.ws_col != 0)
                 cols = w.ws_col;
-            }
 #endif
         }
 

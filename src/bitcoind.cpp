@@ -50,12 +50,11 @@ int32_t safecoin_longestchain();
 
 void WaitForShutdown(boost::thread_group* threadGroup)
 {
-    bool fShutdown = ShutdownRequested();
     // Tell the main threads to shutdown.
-    while (!fShutdown)
+    while (!ShutdownRequested())
     {
         //fprintf(stderr,"call passport iteration\n");
-        if ( ASSETCHAINS_SYMBOL[0] == 0 )
+        if ( ASSETCHAINS_SYMBOL[0] == '\0' )
         {
             safecoin_passport_iteration();
             MilliSleep(10000);
@@ -66,9 +65,8 @@ void WaitForShutdown(boost::thread_group* threadGroup)
             //safecoin_longestchain();
             MilliSleep(20000);
         }
-        fShutdown = ShutdownRequested();
     }
-    if (threadGroup)
+    if (threadGroup != nullptr)
     {
         Interrupt(*threadGroup);
         threadGroup->join_all();
@@ -79,9 +77,10 @@ void WaitForShutdown(boost::thread_group* threadGroup)
 //
 // Start
 //
-extern int32_t IS_SAFECOIN_NOTARY,USE_EXTERNAL_PUBKEY,ASSETCHAIN_INIT;
+extern bool IS_SAFECOIN_NOTARY;
+extern int32_t USE_EXTERNAL_PUBKEY,ASSETCHAIN_INIT;
 extern std::string NOTARY_PUBKEY;
-int32_t safecoin_is_issuer();
+bool safecoin_is_issuer();
 void safecoin_passport_iteration();
 
 bool AppInit(int argc, char* argv[])
@@ -142,7 +141,7 @@ bool AppInit(int argc, char* argv[])
         try
         {
             ReadConfigFile(mapArgs, mapMultiArgs);
-        } catch (const missing_zcash_conf& e) {
+        } catch (const missing_safecoin_conf& e) {
             fprintf(stderr,
                 (_("Before starting safecoind, you need to create a configuration file:\n"
                    "%s\n"
@@ -171,15 +170,11 @@ bool AppInit(int argc, char* argv[])
         }
 
         // Command-line RPC
-        bool fCommandLine = false;
-        for (int i = 1; i < argc; i++)
-            if (!IsSwitchChar(argv[i][0]) && !boost::algorithm::istarts_with(argv[i], "safecoin:"))
-                fCommandLine = true;
-
-        if (fCommandLine)
-        {
-            fprintf(stderr, "Error: There is no RPC client functionality in safecoind. Use the safecoin-cli utility instead.\n");
-            exit(EXIT_FAILURE);
+        for (int i = 1; i < argc; i++) {
+            if (!IsSwitchChar(argv[i][0]) && !boost::algorithm::istarts_with(argv[i], "safecoin:")) {
+                fprintf(stderr, "Error: There is no RPC client functionality in safecoind. Use the safecoin-cli utility instead.\n");
+                exit(EXIT_FAILURE);
+            }
         }
 
 #ifndef _WIN32
@@ -196,9 +191,7 @@ bool AppInit(int argc, char* argv[])
                 return false;
             }
             if (pid > 0) // Parent process, pid is child process id
-            {
                 return true;
-            }
             // Child process falls through to rest of initialization
 
             pid_t sid = setsid();
@@ -236,5 +229,5 @@ int main(int argc, char* argv[])
     // Connect bitcoind signal handlers
     noui_connect();
 
-    return (AppInit(argc, argv) ? EXIT_SUCCESS : EXIT_FAILURE);
+    return AppInit(argc, argv) ? EXIT_SUCCESS : EXIT_FAILURE;
 }

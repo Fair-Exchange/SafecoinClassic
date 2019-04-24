@@ -34,9 +34,8 @@ AMQPNotificationInterface::~AMQPNotificationInterface()
 {
     Shutdown();
 
-    for (std::list<AMQPAbstractNotifier*>::iterator i = notifiers.begin(); i != notifiers.end(); ++i) {
-        delete *i;
-    }
+    for (auto notifier : notifiers)
+        delete notifier;
 }
 
 AMQPNotificationInterface* AMQPNotificationInterface::CreateWithArguments(const std::map<std::string, std::string> &args)
@@ -50,13 +49,13 @@ AMQPNotificationInterface* AMQPNotificationInterface::CreateWithArguments(const 
     factories["pubrawblock"] = AMQPAbstractNotifier::Create<AMQPPublishRawBlockNotifier>;
     factories["pubrawtx"] = AMQPAbstractNotifier::Create<AMQPPublishRawTransactionNotifier>;
 
-    for (std::map<std::string, AMQPNotifierFactory>::const_iterator i=factories.begin(); i!=factories.end(); ++i) {
-        std::map<std::string, std::string>::const_iterator j = args.find("-amqp" + i->first);
-        if (j!=args.end()) {
-            AMQPNotifierFactory factory = i->second;
+    for (auto i : factories) {
+        std::map<std::string, std::string>::const_iterator j = args.find("-amqp" + i.first);
+        if (j != args.end()) {
+            AMQPNotifierFactory factory = i.second;
             std::string address = j->second;
             AMQPAbstractNotifier *notifier = factory();
-            notifier->SetType(i->first);
+            notifier->SetType(i.first);
             notifier->SetAddress(address);
             notifiers.push_back(notifier);
         }
@@ -80,19 +79,13 @@ bool AMQPNotificationInterface::Initialize()
 {
     LogPrint("amqp", "amqp: Initialize notification interface\n");
 
-    std::list<AMQPAbstractNotifier*>::iterator i = notifiers.begin();
-    for (; i != notifiers.end(); ++i) {
-        AMQPAbstractNotifier *notifier = *i;
+    for (auto notifier : notifiers) {
         if (notifier->Initialize()) {
             LogPrint("amqp", "amqp: Notifier %s ready (address = %s)\n", notifier->GetType(), notifier->GetAddress());
         } else {
             LogPrint("amqp", "amqp: Notifier %s failed (address = %s)\n", notifier->GetType(), notifier->GetAddress());
-            break;
+            return false;
         }
-    }
-
-    if (i != notifiers.end()) {
-        return false;
     }
 
     return true;
@@ -103,10 +96,8 @@ void AMQPNotificationInterface::Shutdown()
 {
     LogPrint("amqp", "amqp: Shutdown notification interface\n");
 
-    for (std::list<AMQPAbstractNotifier*>::iterator i = notifiers.begin(); i != notifiers.end(); ++i) {
-        AMQPAbstractNotifier *notifier = *i;
+    for (auto notifier : notifiers)
         notifier->Shutdown();
-    }
 }
 
 void AMQPNotificationInterface::UpdatedBlockTip(const CBlockIndex *pindex)

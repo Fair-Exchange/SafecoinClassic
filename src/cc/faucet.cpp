@@ -18,11 +18,11 @@
 
 /*
  This file implements a simple CC faucet as an example of how to make a new CC contract. It wont have any fancy sybil protection but will serve the purpose of a fully automated faucet.
- 
+
  In order to implement a faucet, we need to have it funded. Once it is funded, anybody should be able to get some reasonable small amount.
- 
+
  This leads to needing to lock the funding in a CC protected output. And to put a spending limit. We can do a per transaction spending limit quite easily with vout constraints. However, that would allow anybody to issue thousands of transactions per block, so we also need to add a rate limiter.
- 
+
  To implement this, we can simply make any faucet vout fund the faucet. Then we can limit the number of confirmed utxo by combining faucet outputs and then only using utxo which are confirmed. This combined with a vout size limit will drastically limit the funds that can be withdrawn from the faucet.
 */
 
@@ -31,50 +31,41 @@
 int64_t IsFaucetvout(struct CCcontract_info *cp,const CTransaction& tx,int32_t v)
 {
     char destaddr[64];
-    if ( tx.vout[v].scriptPubKey.IsPayToCryptoCondition() != 0 )
-    {
-        if ( Getscriptaddress(destaddr,tx.vout[v].scriptPubKey) > 0 && strcmp(destaddr,cp->unspendableCCaddr) == 0 )
-            return(tx.vout[v].nValue);
-    }
-    return(0);
+    if (tx.vout[v].scriptPubKey.IsPayToCryptoCondition() && Getscriptaddress(destaddr,tx.vout[v].scriptPubKey) && strcmp(destaddr,cp->unspendableCCaddr) == 0)
+        return tx.vout[v].nValue;
+    return 0;
 }
 
 bool FaucetExactAmounts(struct CCcontract_info *cp,Eval* eval,const CTransaction &tx,int32_t minage,uint64_t txfee)
 {
     static uint256 zerohash;
-    CTransaction vinTx; uint256 hashBlock,activehash; int32_t i,numvins,numvouts; int64_t inputs=0,outputs=0,assetoshis;
-    numvins = tx.vin.size();
+    CTransaction vinTx; uint256 hashBlock,activehash; int32_t i,numvouts; int64_t inputs=0,outputs=0;
     numvouts = tx.vout.size();
-    for (i=0; i<numvins; i++)
+    for (auto txvin : tx.vin)
     {
         //fprintf(stderr,"vini.%d\n",i);
-        if ( (*cp->ismyvin)(tx.vin[i].scriptSig) != 0 )
+        if ((*cp->ismyvin)(txvin.scriptSig))
         {
             //fprintf(stderr,"vini.%d check mempool\n",i);
-            if ( eval->GetTxUnconfirmed(tx.vin[i].prevout.hash,vinTx,hashBlock) == 0 )
+            if (!eval->GetTxUnconfirmed(txvin.prevout.hash,vinTx,hashBlock))
                 return eval->Invalid("cant find vinTx");
-            else
-            {
-                //fprintf(stderr,"vini.%d check hash and vout\n",i);
-                if ( hashBlock == zerohash )
-                    return eval->Invalid("cant faucet from mempool");
-                if ( (assetoshis= IsFaucetvout(cp,vinTx,tx.vin[i].prevout.n)) != 0 )
-                    inputs += assetoshis;
-            }
+            //fprintf(stderr,"vini.%d check hash and vout\n",i);
+            if ( hashBlock == zerohash )
+                return eval->Invalid("cant faucet from mempool");
+            inputs += IsFaucetvout(cp,vinTx,txvin.prevout.n);
         }
     }
     for (i=0; i<numvouts; i++)
     {
         //fprintf(stderr,"i.%d of numvouts.%d\n",i,numvouts);
-        if ( (assetoshis= IsFaucetvout(cp,tx,i)) != 0 )
-            outputs += assetoshis;
+        outputs += IsFaucetvout(cp,tx,i);
     }
     if ( inputs != outputs+FAUCETSIZE+txfee )
     {
         fprintf(stderr,"inputs %llu vs outputs %llu\n",(long long)inputs,(long long)outputs);
         return eval->Invalid("mismatched inputs != outputs + FAUCETSIZE + txfee");
     }
-    else return(true);
+    return true;
 }
 
 bool FaucetValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &tx, uint32_t nIn)
@@ -88,52 +79,47 @@ bool FaucetValidate(struct CCcontract_info *cp,Eval* eval,const CTransaction &tx
         return eval->Invalid("no vouts");
     else
     {
+        //TODO: Useless loop
         for (i=0; i<numvins; i++)
         {
-            if ( IsCCInput(tx.vin[0].scriptSig) == 0 )
+            if (!IsCCInput(tx.vin[0].scriptSig))
             {
                 fprintf(stderr,"faucetget invalid vini\n");
                 return eval->Invalid("illegal normal vini");
             }
         }
         //fprintf(stderr,"check amounts\n");
-        if ( FaucetExactAmounts(cp,eval,tx,1,10000) == false )
+        if (!FaucetExactAmounts(cp, eval, tx, 1, 10000))
         {
             fprintf(stderr,"faucetget invalid amount\n");
             return false;
         }
-        else
+        i = IsFaucetvout(cp,tx,0) != 0 ? 1 : 0;
+        preventCCvouts = 1 + i;
+        txid = tx.GetHash();
+        memcpy(hash,&txid,sizeof(hash));
+        fprintf(stderr,"check faucetget txid %s %02x/%02x\n",uint256_str(str,txid),hash[0],hash[31]);
+        if ( tx.vout[i].nValue != FAUCETSIZE )
+            return eval->Invalid("invalid faucet output");
+        if ( hash[0] & 0xff != 0 || hash[31] & 0xff != 0 )
+            return eval->Invalid("invalid faucetget txid");
+        Getscriptaddress(destaddr,tx.vout[i].scriptPubKey);
+        SetCCtxids(txids,destaddr);
+        for (auto txid : txids)
         {
-            preventCCvouts = 1;
-            if ( IsFaucetvout(cp,tx,0) != 0 )
+            //int height = txid.first.blockHeight;
+            if ( CCduration(numblocks,txid.first.txhash) > 0 && numblocks > 3 )
             {
-                preventCCvouts++;
-                i = 1;
-            } else i = 0;
-            txid = tx.GetHash();
-            memcpy(hash,&txid,sizeof(hash));
-            fprintf(stderr,"check faucetget txid %s %02x/%02x\n",uint256_str(str,txid),hash[0],hash[31]);
-            if ( tx.vout[i].nValue != FAUCETSIZE )
-                return eval->Invalid("invalid faucet output");
-            else if ( (hash[0] & 0xff) != 0 || (hash[31] & 0xff) != 0 )
-                return eval->Invalid("invalid faucetget txid");
-            Getscriptaddress(destaddr,tx.vout[i].scriptPubKey);
-            SetCCtxids(txids,destaddr);
-            for (std::vector<std::pair<CAddressIndexKey, CAmount> >::const_iterator it=txids.begin(); it!=txids.end(); it++)
-            {
-                //int height = it->first.blockHeight;
-                if ( CCduration(numblocks,it->first.txhash) > 0 && numblocks > 3 )
-                {
-                    //fprintf(stderr,"would return error %s numblocks.%d ago\n",uint256_str(str,it->first.txhash),numblocks);
-                    return eval->Invalid("faucet is only for brand new addresses");
-                }
+                //fprintf(stderr,"would return error %s numblocks.%d ago\n",uint256_str(str,it->first.txhash),numblocks);
+                return eval->Invalid("faucet is only for brand new addresses");
             }
-            retval = PreventCC(eval,tx,preventCCvins,numvins,preventCCvouts,numvouts);
-            if ( retval != 0 )
-                fprintf(stderr,"faucetget validated\n");
-            else fprintf(stderr,"faucetget invalid\n");
-            return(retval);
         }
+        retval = PreventCC(eval,tx,preventCCvins,numvins,preventCCvouts,numvouts);
+        if (retval)
+            fprintf(stderr,"faucetget validated\n");
+        else
+            fprintf(stderr,"faucetget invalid\n");
+        return retval;
     }
 }
 // end of consensus code
@@ -147,21 +133,21 @@ int64_t AddFaucetInputs(struct CCcontract_info *cp,CMutableTransaction &mtx,CPub
     GetCCaddress(cp,coinaddr,pk);
     SetCCunspents(unspentOutputs,coinaddr);
     threshold = total/(maxinputs+1);
-    for (std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> >::const_iterator it=unspentOutputs.begin(); it!=unspentOutputs.end(); it++)
+    for (auto unspentOutput : unspentOutputs)
     {
-        txid = it->first.txhash;
-        vout = (int32_t)it->first.index;
-        if ( it->second.satoshis < threshold )
+        txid = unspentOutput.first.txhash;
+        vout = (int32_t)unspentOutput.first.index;
+        if ( unspentOutput.second.satoshis < threshold )
             continue;
         //char str[65]; fprintf(stderr,"check %s/v%d %.8f`\n",uint256_str(str,txid),vout,(double)it->second.satoshis/COIN);
         // no need to prevent dup
-        if ( GetTransaction(txid,vintx,hashBlock,false) != 0 )
+        if (GetTransaction(txid,vintx,hashBlock,false))
         {
             if ( (nValue= IsFaucetvout(cp,vintx,vout)) > 1000000 && myIsutxo_spentinmempool(txid,vout) == 0 )
             {
                 if ( total != 0 && maxinputs != 0 )
                     mtx.vin.push_back(CTxIn(txid,vout,CScript()));
-                nValue = it->second.satoshis;
+                nValue = unspentOutput.second.satoshis;
                 totalinputs += nValue;
                 n++;
                 if ( (total > 0 && totalinputs >= total) || (maxinputs > 0 && n >= maxinputs) )
@@ -169,7 +155,7 @@ int64_t AddFaucetInputs(struct CCcontract_info *cp,CMutableTransaction &mtx,CPub
             } else fprintf(stderr,"nValue too small or already spent in mempool\n");
         } else fprintf(stderr,"couldnt get tx\n");
     }
-    return(totalinputs);
+    return totalinputs;
 }
 
 std::string FaucetGet(uint64_t txfee)
@@ -179,12 +165,12 @@ std::string FaucetGet(uint64_t txfee)
     cp = CCinit(&C,EVAL_FAUCET);
     if ( txfee == 0 )
         txfee = 10000;
-    faucetpk = GetUnspendable(cp,0);
+    faucetpk = GetUnspendable(cp, nullptr);
     mypk = pubkey2pk(Mypubkey());
     if ( (inputs= AddFaucetInputs(cp,mtx,faucetpk,nValue+txfee,60)) > 0 )
     {
         if ( inputs > nValue )
-            CCchange = (inputs - nValue - txfee);
+            CCchange = inputs - nValue - txfee;
         if ( CCchange != 0 )
             mtx.vout.push_back(MakeCC1vout(EVAL_FAUCET,CCchange,faucetpk));
         mtx.vout.push_back(CTxOut(nValue,CScript() << ParseHex(HexStr(mypk)) << OP_CHECKSIG));
@@ -198,19 +184,20 @@ std::string FaucetGet(uint64_t txfee)
             {
                 len >>= 1;
                 decode_hex(buf,len,(char *)rawhex.c_str());
-                hash = bits256_doublesha256(0,buf,len);
+                hash = bits256_doublesha256(nullptr,buf,len);
                 if ( (hash.bytes[0] & 0xff) == 0 && (hash.bytes[31] & 0xff) == 0 )
                 {
                     fprintf(stderr,"found valid txid after %d iterations %u\n",i,(uint32_t)time(NULL));
-                    return(rawhex);
+                    return rawhex;
                 }
                 //fprintf(stderr,"%02x%02x ",hash.bytes[0],hash.bytes[31]);
             }
         }
         fprintf(stderr,"couldnt generate valid txid %u\n",(uint32_t)time(NULL));
-        return("");
-    } else fprintf(stderr,"cant find faucet inputs\n");
-    return("");
+        return "";
+    }
+    fprintf(stderr,"cant find faucet inputs\n");
+    return "";
 }
 
 std::string FaucetFund(uint64_t txfee,int64_t funds)
@@ -221,13 +208,13 @@ std::string FaucetFund(uint64_t txfee,int64_t funds)
     if ( txfee == 0 )
         txfee = 10000;
     mypk = pubkey2pk(Mypubkey());
-    faucetpk = GetUnspendable(cp,0);
+    faucetpk = GetUnspendable(cp, nullptr);
     if ( AddNormalinputs(mtx,mypk,funds+txfee,64) > 0 )
     {
         mtx.vout.push_back(MakeCC1vout(EVAL_FAUCET,funds,faucetpk));
-        return(FinalizeCCTx(0,cp,mtx,mypk,txfee,opret));
+        return FinalizeCCTx(0,cp,mtx,mypk,txfee,opret);
     }
-    return("");
+    return "";
 }
 
 UniValue FaucetInfo()
@@ -238,10 +225,10 @@ UniValue FaucetInfo()
     result.push_back(Pair("result","success"));
     result.push_back(Pair("name","Faucet"));
     cp = CCinit(&C,EVAL_FAUCET);
-    faucetpk = GetUnspendable(cp,0);
+    faucetpk = GetUnspendable(cp, nullptr);
     funding = AddFaucetInputs(cp,mtx,faucetpk,0,0);
     sprintf(numstr,"%.8f",(double)funding/COIN);
     result.push_back(Pair("funding",numstr));
-    return(result);
+    return result;
 }
 

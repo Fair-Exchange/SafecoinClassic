@@ -47,7 +47,7 @@ void init_string(struct return_string *s)
 {
     s->len = 0;
     s->ptr = (char *)calloc(1,s->len+1);
-    if ( s->ptr == NULL )
+    if ( s->ptr == nullptr )
     {
         fprintf(stderr,"init_string malloc() failed\n");
         exit(-1);
@@ -65,7 +65,7 @@ size_t accumulatebytes(void *ptr,size_t size,size_t nmemb,struct return_string *
 {
     size_t new_len = s->len + size*nmemb;
     s->ptr = (char *)realloc(s->ptr,new_len+1);
-    if ( s->ptr == NULL )
+    if ( s->ptr == nullptr )
     {
         fprintf(stderr, "accumulate realloc() failed\n");
         exit(-1);
@@ -73,7 +73,7 @@ size_t accumulatebytes(void *ptr,size_t size,size_t nmemb,struct return_string *
     memcpy(s->ptr+s->len,ptr,size*nmemb);
     s->ptr[new_len] = '\0';
     s->len = new_len;
-    return(size * nmemb);
+    return size * nmemb;
 }
 
 /************************************************************************
@@ -93,24 +93,24 @@ size_t accumulatebytes(void *ptr,size_t size,size_t nmemb,struct return_string *
 
 char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr,char *params)
 {
-    long i,j,len; char *retstr = 0; cJSON *json,*result,*error;
+    long i,j,len; char *retstr = nullptr; cJSON *json,*result,*error;
     //printf("<<<<<<<<<<< bitcoind_RPC: %s post_process_bitcoind_RPC.%s.[%s]\n",debugstr,command,rpcstr);
-    if ( command == 0 || rpcstr == 0 || rpcstr[0] == 0 )
+    if ( command == nullptr || rpcstr == nullptr || rpcstr[0] == '\0' )
     {
         if ( strcmp(command,"signrawtransaction") != 0 )
             printf("<<<<<<<<<<< bitcoind_RPC: %s post_process_bitcoind_RPC.%s.[%s]\n",debugstr,command,rpcstr);
-        return(rpcstr);
+        return rpcstr;
     }
     json = cJSON_Parse(rpcstr);
-    if ( json == 0 )
+    if ( json == nullptr )
     {
         printf("<<<<<<<<<<< bitcoind_RPC: %s post_process_bitcoind_RPC.%s can't parse.(%s) params.(%s)\n",debugstr,command,rpcstr,params);
         free(rpcstr);
-        return(0);
+        return nullptr;
     }
     result = cJSON_GetObjectItem(json,"result");
     error = cJSON_GetObjectItem(json,"error");
-    if ( error != 0 && result != 0 )
+    if ( error != nullptr && result != nullptr)
     {
         if ( (error->type&0xff) == cJSON_NULL && (result->type&0xff) != cJSON_NULL )
         {
@@ -118,9 +118,9 @@ char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr,char *
             len = strlen(retstr);
             if ( retstr[0] == '"' && retstr[len-1] == '"' )
             {
-                for (i=1,j=0; i<len-1; i++,j++)
-                    retstr[j] = retstr[i];
-                retstr[j] = 0;
+                for (i=1; i<len-1; i++)
+                    retstr[i-1] = retstr[i];
+                retstr[i-1] = '\0';
             }
         }
         else if ( (error->type&0xff) != cJSON_NULL || (result->type&0xff) != cJSON_NULL )
@@ -132,7 +132,7 @@ char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr,char *
     } else retstr = rpcstr;
     free_json(json);
     //fprintf(stderr,"<<<<<<<<<<< bitcoind_RPC: postprocess returns.(%s)\n",retstr);
-    return(retstr);
+    return retstr;
 }
 #endif
 
@@ -144,33 +144,31 @@ char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr,char *
 
 char *bitcoind_RPC(char **retstrp,char *debugstr,char *url,char *userpass,char *command,char *params)
 {
-    static int didinit,count,count2; static double elapsedsum,elapsedsum2;
-    struct curl_slist *headers = NULL; struct return_string s; CURLcode res; CURL *curl_handle;
-    char *bracket0,*bracket1,*databuf = 0; long len; int32_t specialcase,numretries; double starttime;
-    if ( didinit == 0 )
+    static int count,count2; static double elapsedsum,elapsedsum2; static bool didinit; int32_t numretries;
+    struct curl_slist *headers = nullptr; struct return_string s; CURLcode res; CURL *curl_handle;
+    char *bracket0,*bracket1,*databuf = nullptr; long len; bool specialcase; double starttime;
+    if ( !didinit )
     {
-        didinit = 1;
+        didinit = true;
         curl_global_init(CURL_GLOBAL_ALL); //init the curl session
     }
-    numretries = 0;
-    if ( debugstr != 0 && strcmp(debugstr,"BTCD") == 0 && command != 0 && strcmp(command,"SuperNET") ==  0 )
-        specialcase = 1;
-    else specialcase = 0;
-    if ( url[0] == 0 )
+    specialcase = debugstr != nullptr && strcmp(debugstr,"BTCD") == 0 && command != nullptr && strcmp(command,"SuperNET") ==  0;
+    //TODO: check buffer overflow
+    if ( url[0] == '\0' )
         strcpy(url,"http://127.0.0.1:7876/nxt");
-    if ( specialcase != 0 && 0 )
+    if ( specialcase && 0 )
         printf("<<<<<<<<<<< bitcoind_RPC: debug.(%s) url.(%s) command.(%s) params.(%s)\n",debugstr,url,command,params);
 try_again:
-    if ( retstrp != 0 )
-        *retstrp = 0;
+    if ( retstrp != nullptr )
+        *retstrp = nullptr;
     starttime = OS_milliseconds();
     curl_handle = curl_easy_init();
     init_string(&s);
     headers = curl_slist_append(0,"Expect:");
 
-    curl_easy_setopt(curl_handle,CURLOPT_USERAGENT,"mozilla/4.0");//"Mozilla/4.0 (compatible; )");
+    curl_easy_setopt(curl_handle,CURLOPT_USERAGENT,     "mozilla/4.0");//"Mozilla/4.0 (compatible; )");
     curl_easy_setopt(curl_handle,CURLOPT_HTTPHEADER,	headers);
-    curl_easy_setopt(curl_handle,CURLOPT_URL,		url);
+    curl_easy_setopt(curl_handle,CURLOPT_URL,		    url);
     curl_easy_setopt(curl_handle,CURLOPT_WRITEFUNCTION,	(void *)accumulatebytes); 		// send all data to this function
     curl_easy_setopt(curl_handle,CURLOPT_WRITEDATA,		&s); 			// we pass our 's' struct to the callback
     curl_easy_setopt(curl_handle,CURLOPT_NOSIGNAL,		1L);   			// supposed to fix "Alarm clock" and long jump crash
@@ -180,12 +178,12 @@ try_again:
         curl_easy_setopt(curl_handle,CURLOPT_SSL_VERIFYPEER,0);
         curl_easy_setopt(curl_handle,CURLOPT_SSL_VERIFYHOST,0);
     }
-    if ( userpass != 0 )
+    if ( userpass != nullptr )
         curl_easy_setopt(curl_handle,CURLOPT_USERPWD,	userpass);
-    databuf = 0;
-    if ( params != 0 )
+    databuf = nullptr;
+    if ( params != nullptr )
     {
-        if ( command != 0 && specialcase == 0 )
+        if ( command != nullptr && !specialcase )
         {
             len = strlen(params);
             if ( len > 0 && params[0] == '[' && params[len-1] == ']' ) {
@@ -197,100 +195,77 @@ try_again:
                 bracket1 = (char *)"]";
             }
 
-            databuf = (char *)malloc(256 + strlen(command) + strlen(params));
+            databuf = (char *)malloc(38 + strlen(command) + strlen(params));
             sprintf(databuf,"{\"id\":\"jl777\",\"method\":\"%s\",\"params\":%s%s%s}",command,bracket0,params,bracket1);
             //printf("url.(%s) userpass.(%s) databuf.(%s)\n",url,userpass,databuf);
             //
-        } //else if ( specialcase != 0 ) fprintf(stderr,"databuf.(%s)\n",params);
+        } //else if ( specialcase ) fprintf(stderr,"databuf.(%s)\n",params);
         curl_easy_setopt(curl_handle,CURLOPT_POST,1L);
-        if ( databuf != 0 )
-            curl_easy_setopt(curl_handle,CURLOPT_POSTFIELDS,databuf);
-        else curl_easy_setopt(curl_handle,CURLOPT_POSTFIELDS,params);
+        curl_easy_setopt(curl_handle,CURLOPT_POSTFIELDS,databuf != nullptr ? databuf : params);
     }
     //laststart = milliseconds();
     res = curl_easy_perform(curl_handle);
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl_handle);
-    if ( databuf != 0 ) // clean up temporary buffer
+    if ( databuf != nullptr ) // clean up temporary buffer
     {
         free(databuf);
-        databuf = 0;
+        databuf = nullptr;
     }
     if ( res != CURLE_OK )
     {
-        numretries++;
-        if ( specialcase != 0 )
-        {
+        ++numretries;
+        free(s.ptr);
+        if ( specialcase )
             printf("<<<<<<<<<<< bitcoind_RPC.(%s): BTCD.%s timeout params.(%s) s.ptr.(%s) err.%d\n",url,command,params,s.ptr,res);
-            free(s.ptr);
-            return(0);
-        }
-        else if ( numretries >= 1 )
-        {
-            //printf("Maximum number of retries exceeded!\n");
-            free(s.ptr);
-            return(0);
-        }
         if ( (rand() % 1000) == 0 )
             printf( "curl_easy_perform() failed: %s %s.(%s %s), retries: %d\n",curl_easy_strerror(res),debugstr,url,command,numretries);
-        free(s.ptr);
-        sleep((1<<numretries));
+        sleep(1 << numretries);
         goto try_again;
-
     }
-    else
+    if ( command != nullptr && !specialcase )
     {
-        if ( command != 0 && specialcase == 0 )
+        elapsedsum += OS_milliseconds() - starttime;
+        if ( ++count % 1000000 == 0)
+            printf("%d: ave %9.6f | elapsed %.3f millis | bitcoind_RPC.(%s) url.(%s)\n",count,elapsedsum/count,(OS_milliseconds() - starttime),command,url);
+        if ( retstrp != nullptr )
         {
-            count++;
-            elapsedsum += (OS_milliseconds() - starttime);
-            if ( (count % 1000000) == 0)
-                printf("%d: ave %9.6f | elapsed %.3f millis | bitcoind_RPC.(%s) url.(%s)\n",count,elapsedsum/count,(OS_milliseconds() - starttime),command,url);
-            if ( retstrp != 0 )
-            {
-                *retstrp = s.ptr;
-                return(s.ptr);
-            }
-            return(post_process_bitcoind_RPC(debugstr,command,s.ptr,params));
+            *retstrp = s.ptr;
+            return s.ptr;
         }
-        else
-        {
-            if ( 0 && specialcase != 0 )
-                fprintf(stderr,"<<<<<<<<<<< bitcoind_RPC: BTCD.(%s) -> (%s)\n",params,s.ptr);
-            count2++;
-            elapsedsum2 += (OS_milliseconds() - starttime);
-            if ( (count2 % 10000) == 0)
-                printf("%d: ave %9.6f | elapsed %.3f millis | NXT calls.(%s) cmd.(%s)\n",count2,elapsedsum2/count2,(double)(OS_milliseconds() - starttime),url,command);
-            return(s.ptr);
-        }
+        return post_process_bitcoind_RPC(debugstr,command,s.ptr,params);
     }
-    printf("bitcoind_RPC: impossible case\n");
-    free(s.ptr);
-    return(0);
+    if ( 0 && specialcase )
+        fprintf(stderr,"<<<<<<<<<<< bitcoind_RPC: BTCD.(%s) -> (%s)\n",params,s.ptr);
+    elapsedsum2 +=  OS_milliseconds() - starttime;
+    if ( ++count2 % 10000 == 0)
+        printf("%d: ave %9.6f | elapsed %.3f millis | NXT calls.(%s) cmd.(%s)\n",count2,elapsedsum2/count2,(double)(OS_milliseconds() - starttime),url,command);
+    return s.ptr;
 }
 
 static size_t WriteMemoryCallback(void *ptr,size_t size,size_t nmemb,void *data)
 {
     size_t realsize = (size * nmemb);
     struct MemoryStruct *mem = (struct MemoryStruct *)data;
-    mem->memory = (char *)((ptr != 0) ? realloc(mem->memory,mem->size + realsize + 1) : malloc(mem->size + realsize + 1));
-    if ( mem->memory != 0 )
+    mem->memory = (char *)(ptr != nullptr ? realloc(mem->memory, mem->size + realsize + 1) : malloc(mem->size + realsize + 1));
+    if ( mem->memory != nullptr )
     {
-        if ( ptr != 0 )
+        if ( ptr != nullptr )
             memcpy(&(mem->memory[mem->size]),ptr,realsize);
         mem->size += realsize;
-        mem->memory[mem->size] = 0;
+        mem->memory[mem->size] = '\0';
     }
     //printf("got %d bytes\n",(int32_t)(size*nmemb));
-    return(realsize);
+    return realsize;
 }
 
-char *curl_post(CURL **cHandlep,char *url,char *userpass,char *postfields,char *hdr0,char *hdr1,char *hdr2,char *hdr3)
+char *curl_post(CURL **cHandlep, char *url, char *userpass, char *postfields, char *hdr0, char *hdr1, char *hdr2, char *hdr3)
 {
-    struct MemoryStruct chunk; CURL *cHandle; long code; struct curl_slist *headers = 0;
-    if ( (cHandle= *cHandlep) == NULL )
+    struct MemoryStruct chunk; CURL *cHandle; long code; struct curl_slist *headers = nullptr;
+    if ( (cHandle= *cHandlep) == nullptr )
         *cHandlep = cHandle = curl_easy_init();
-    else curl_easy_reset(cHandle);
+    else
+        curl_easy_reset(cHandle);
     //#ifdef DEBUG
     //curl_easy_setopt(cHandle,CURLOPT_VERBOSE, 1);
     //#endif
@@ -299,60 +274,60 @@ char *curl_post(CURL **cHandlep,char *url,char *userpass,char *postfields,char *
     //curl_easy_setopt(cHandle,CURLOPT_SSLVERSION,1);
     curl_easy_setopt(cHandle,CURLOPT_URL,url);
     curl_easy_setopt(cHandle,CURLOPT_CONNECTTIMEOUT,10);
-    if ( userpass != 0 && userpass[0] != 0 )
+    if ( userpass != nullptr && userpass[0] != '\0' )
         curl_easy_setopt(cHandle,CURLOPT_USERPWD,userpass);
-    if ( postfields != 0 && postfields[0] != 0 )
+    if ( postfields != nullptr && postfields[0] != '\0' )
     {
         curl_easy_setopt(cHandle,CURLOPT_POST,1);
         curl_easy_setopt(cHandle,CURLOPT_POSTFIELDS,postfields);
     }
-    if ( hdr0 != NULL && hdr0[0] != 0 )
+    if ( hdr0 != nullptr && hdr0[0] != '\0' )
     {
         //printf("HDR0.(%s) HDR1.(%s) HDR2.(%s) HDR3.(%s)\n",hdr0!=0?hdr0:"",hdr1!=0?hdr1:"",hdr2!=0?hdr2:"",hdr3!=0?hdr3:"");
         headers = curl_slist_append(headers,hdr0);
-        if ( hdr1 != 0 && hdr1[0] != 0 )
+        if ( hdr1 != nullptr && hdr1[0] != '\0' )
             headers = curl_slist_append(headers,hdr1);
-        if ( hdr2 != 0 && hdr2[0] != 0 )
+        if ( hdr2 != nullptr && hdr2[0] != '\0' )
             headers = curl_slist_append(headers,hdr2);
-        if ( hdr3 != 0 && hdr3[0] != 0 )
+        if ( hdr3 != nullptr && hdr3[0] != '\0' )
             headers = curl_slist_append(headers,hdr3);
     } //headers = curl_slist_append(0,"Expect:");
-    if ( headers != 0 )
+    if ( headers != nullptr )
         curl_easy_setopt(cHandle,CURLOPT_HTTPHEADER,headers);
     //res = curl_easy_perform(cHandle);
-    memset(&chunk,0,sizeof(chunk));
-    curl_easy_setopt(cHandle,CURLOPT_WRITEFUNCTION,WriteMemoryCallback);
-    curl_easy_setopt(cHandle,CURLOPT_WRITEDATA,(void *)&chunk);
+    memset(&chunk, 0, sizeof(chunk));
+    curl_easy_setopt(cHandle, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+    curl_easy_setopt(cHandle, CURLOPT_WRITEDATA, (void *)&chunk);
     curl_easy_perform(cHandle);
-    curl_easy_getinfo(cHandle,CURLINFO_RESPONSE_CODE,&code);
-    if ( headers != 0 )
+    curl_easy_getinfo(cHandle, CURLINFO_RESPONSE_CODE, &code);
+    if ( headers != nullptr )
         curl_slist_free_all(headers);
     if ( code != 200 )
         printf("(%s) server responded with code %ld (%s)\n",url,code,chunk.memory);
-    return(chunk.memory);
+    return chunk.memory;
 }
 
 char *safecoin_issuemethod(char *userpass,char *method,char *params,uint16_t port)
 {
     //static void *cHandle;
-    char url[512],*retstr=0,*retstr2=0,postdata[8192];
-    if ( params == 0 || params[0] == 0 )
+    char url[23], *retstr=nullptr, *retstr2=nullptr, postdata[8192];
+    if ( params == nullptr || params[0] == '\0' )
         params = (char *)"[]";
     if ( strlen(params) < sizeof(postdata)-128 )
     {
-        sprintf(url,(char *)"http://127.0.0.1:%u",port);
+        sprintf(url,(char *)"http://127.0.0.1:%u",port); // port is at most 65535
         sprintf(postdata,"{\"method\":\"%s\",\"params\":%s}",method,params);
         //printf("[%s] (%s) postdata.(%s) params.(%s) USERPASS.(%s)\n",ASSETCHAINS_SYMBOL,url,postdata,params,SAFEUSERPASS);
         retstr2 = bitcoind_RPC(&retstr,(char *)"debug",url,userpass,method,params);
         //retstr = curl_post(&cHandle,url,USERPASS,postdata,0,0,0,0);
     }
-    return(retstr2);
+    return retstr2;
 }
 
 int32_t notarizedtxid_height(char *dest,char *txidstr,int32_t *safenotarized_heightp)
 {
     char *jsonstr,params[256],*userpass; uint16_t port; cJSON *json,*item; int32_t height = 0,txid_height = 0,txid_confirmations = 0;
-    params[0] = 0;
+    params[0] = '\0';
     *safenotarized_heightp = 0;
     if ( strcmp(dest,"SAFE") == 0 )
     {
@@ -364,15 +339,16 @@ int32_t notarizedtxid_height(char *dest,char *txidstr,int32_t *safenotarized_hei
         port = 8332;
         userpass = BTCUSERPASS;
     }
-    else return(0);
-    if ( userpass[0] != 0 )
+    else
+        return 0;
+    if ( userpass[0] != '\0' )
     {
-        if ( (jsonstr= safecoin_issuemethod(userpass,(char *)"getinfo",params,port)) != 0 )
+        if ( (jsonstr= safecoin_issuemethod(userpass,(char *)"getinfo",params,port)) != nullptr )
         {
             //printf("(%s)\n",jsonstr);
-            if ( (json= cJSON_Parse(jsonstr)) != 0 )
+            if ( (json= cJSON_Parse(jsonstr)) != nullptr )
             {
-                if ( (item= jobj(json,(char *)"result")) != 0 )
+                if ( (item= jobj(json,(char *)"result")) != nullptr )
                 {
                     height = jint(item,(char *)"blocks");
                     *safenotarized_heightp = strcmp(dest,"SAFE") == 0 ? jint(item,(char *)"notarized") : height;
@@ -382,17 +358,18 @@ int32_t notarizedtxid_height(char *dest,char *txidstr,int32_t *safenotarized_hei
             free(jsonstr);
         }
         sprintf(params,"[\"%s\", 1]",txidstr);
-        if ( (jsonstr= safecoin_issuemethod(userpass,(char *)"getrawtransaction",params,port)) != 0 )
+        if ( (jsonstr= safecoin_issuemethod(userpass,(char *)"getrawtransaction",params,port)) != nullptr )
         {
             //printf("(%s)\n",jsonstr);
-            if ( (json= cJSON_Parse(jsonstr)) != 0 )
+            if ( (json= cJSON_Parse(jsonstr)) != nullptr )
             {
-                if ( (item= jobj(json,(char *)"result")) != 0 )
+                if ( (item= jobj(json,(char *)"result")) != nullptr )
                 {
                     txid_confirmations = jint(item,(char *)"rawconfirmations");
                     if ( txid_confirmations > 0 && height > txid_confirmations )
                         txid_height = height - txid_confirmations;
-                    else txid_height = height;
+                    else
+                        txid_height = height;
                     //printf("height.%d tconfs.%d txid_height.%d\n",height,txid_confirmations,txid_height);
                 }
                 free_json(json);
@@ -400,28 +377,28 @@ int32_t notarizedtxid_height(char *dest,char *txidstr,int32_t *safenotarized_hei
             free(jsonstr);
         }
     }
-    return(txid_height);
+    return txid_height;
 }
 
-int32_t safecoin_verifynotarizedscript(int32_t height,uint8_t *script,int32_t len,uint256 NOTARIZED_HASH)
+int8_t safecoin_verifynotarizedscript(int32_t height,uint8_t *script,int32_t len,uint256 NOTARIZED_HASH)
 {
-    int32_t i; uint256 hash; char params[256];
+    int32_t i; uint256 hash;
     for (i=0; i<32; i++)
         ((uint8_t *)&hash)[i] = script[2+i];
     if ( hash == NOTARIZED_HASH )
-        return(1);
+        return 1;
     for (i=0; i<32; i++)
         printf("%02x",((uint8_t *)&NOTARIZED_HASH)[i]);
     printf(" notarized, ");
     for (i=0; i<32; i++)
         printf("%02x",((uint8_t *)&hash)[i]);
     printf(" opreturn from [%s] ht.%d MISMATCHED\n",ASSETCHAINS_SYMBOL,height);
-    return(-1);
+    return -1;
 }
 
-int32_t safecoin_verifynotarization(char *symbol,char *dest,int32_t height,int32_t NOTARIZED_HEIGHT,uint256 NOTARIZED_HASH,uint256 NOTARIZED_DESTTXID)
+int8_t safecoin_verifynotarization(char *symbol,char *dest,int32_t height,int32_t NOTARIZED_HEIGHT,uint256 NOTARIZED_HASH,uint256 NOTARIZED_DESTTXID)
 {
-    char params[256],*jsonstr,*hexstr; uint8_t *script,_script[8192]; int32_t n,len,retval = -1; cJSON *json,*txjson,*vouts,*vout,*skey;
+    char params[256],*jsonstr,*hexstr; uint8_t *script,_script[8192]; int32_t n,len; int8_t retval = -1; cJSON *json,*txjson,*vouts,*vout,*skey;
     script = _script;
     /*params[0] = '[';
      params[1] = '"';
@@ -429,49 +406,48 @@ int32_t safecoin_verifynotarization(char *symbol,char *dest,int32_t height,int32
      sprintf(&params[i*2 + 2],"%02x",((uint8_t *)&NOTARIZED_DESTTXID)[31-i]);
      strcat(params,"\", 1]");*/
     sprintf(params,"[\"%s\", 1]",NOTARIZED_DESTTXID.ToString().c_str());
-    if ( strcmp(symbol,ASSETCHAINS_SYMBOL[0]==0?(char *)"SAFE":ASSETCHAINS_SYMBOL) != 0 )
-        return(0);
-    if ( 0 && ASSETCHAINS_SYMBOL[0] != 0 )
+    if ( strcmp(symbol,ASSETCHAINS_SYMBOL[0]=='\0'?"SAFE":ASSETCHAINS_SYMBOL) != 0 )
+        return 0;
+    if ( 0 && ASSETCHAINS_SYMBOL[0] != '\0' )
         printf("[%s] src.%s dest.%s params.[%s] ht.%d notarized.%d\n",ASSETCHAINS_SYMBOL,symbol,dest,params,height,NOTARIZED_HEIGHT);
     if ( strcmp(dest,"SAFE") == 0 )
     {
-        if ( SAFEUSERPASS[0] != 0 )
+        if ( SAFEUSERPASS[0] != '\0' )
         {
-            if ( ASSETCHAINS_SYMBOL[0] != 0 )
+            if (ASSETCHAINS_SYMBOL[0] != '\0' )
             {
                 jsonstr = safecoin_issuemethod(SAFEUSERPASS,(char *)"getrawtransaction",params,SAFE_PORT);
                 //printf("userpass.(%s) got (%s)\n",SAFEUSERPASS,jsonstr);
             }
         }//else jsonstr = _dex_getrawtransaction();
-        else return(0); // need universal way to issue DEX* API, since notaries mine most blocks, this ok
+        else return 0; // need universal way to issue DEX* API, since notaries mine most blocks, this ok
     }
     else if ( strcmp(dest,"BTC") == 0 )
     {
-        if ( BTCUSERPASS[0] != 0 )
-        {
-            //printf("BTCUSERPASS.(%s)\n",BTCUSERPASS);
-            jsonstr = safecoin_issuemethod(BTCUSERPASS,(char *)"getrawtransaction",params,8332);
+        if ( BTCUSERPASS[0] == '\0' ) {
+            //jsonstr = _dex_getrawtransaction();
+            return 0;
         }
-        //else jsonstr = _dex_getrawtransaction();
-        else return(0);
+        //printf("BTCUSERPASS.(%s)\n",BTCUSERPASS);
+        jsonstr = safecoin_issuemethod(BTCUSERPASS,(char *)"getrawtransaction",params,8332);
     }
     else
     {
         printf("[%s] verifynotarization error unexpected dest.(%s)\n",ASSETCHAINS_SYMBOL,dest);
-        return(-1);
+        return -1;
     }
-    if ( jsonstr != 0 )
+    if ( jsonstr != nullptr )
     {
-        if ( (json= cJSON_Parse(jsonstr)) != 0 )
+        if ( (json= cJSON_Parse(jsonstr)) != nullptr )
         {
-            if ( (txjson= jobj(json,(char *)"result")) != 0 && (vouts= jarray(&n,txjson,(char *)"vout")) > 0 )
+            if ( (txjson= jobj(json,(char *)"result")) != nullptr && (vouts= jarray(&n,txjson,(char *)"vout")) != nullptr )
             {
                 vout = jitem(vouts,n-1);
-                if ( 0 && ASSETCHAINS_SYMBOL[0] != 0 )
+                if ( 0 && ASSETCHAINS_SYMBOL[0] != '\0' )
                     printf("vout.(%s)\n",jprint(vout,0));
-                if ( (skey= jobj(vout,(char *)"scriptPubKey")) != 0 )
+                if ( (skey= jobj(vout,(char *)"scriptPubKey")) != nullptr )
                 {
-                    if ( (hexstr= jstr(skey,(char *)"hex")) != 0 )
+                    if ( (hexstr= jstr(skey,(char *)"hex")) != nullptr )
                     {
                         //printf("HEX.(%s) vs hash.%s\n",hexstr,NOTARIZED_HASH.ToString().c_str());
                         len = strlen(hexstr) >> 1;
@@ -494,7 +470,7 @@ int32_t safecoin_verifynotarization(char *symbol,char *dest,int32_t height,int32
         }
         free(jsonstr);
     }
-    return(retval);
+    return retval;
 }
 
 /*uint256 safecoin_getblockhash(int32_t height)
@@ -535,7 +511,7 @@ uint64_t safecoin_seed(int32_t height)
      memset(&zero,0,sizeof(zero));
      if ( height > 10 )
      height -= 10;
-     if ( ASSETCHAINS_SYMBOL[0] == 0 )
+     if ( ASSETCHAINS_SYMBOL[0] == '\0' )
      hash = _safecoin_getblockhash(height);
      if ( memcmp(&hash,&zero,sizeof(hash)) == 0 )
      hash = safecoin_getblockhash(height);
@@ -549,10 +525,10 @@ uint64_t safecoin_seed(int32_t height)
     {
         seed = (height << 13) ^ (height << 2);
         seed <<= 21;
-        seed |= (height & 0xffffffff);
+        seed |= height & 0xffffffff;
         seed ^= (seed << 17) ^ (seed << 1);
     }
-    return(seed);
+    return seed;
 }
 
 uint32_t safecoin_txtime(uint64_t *valuep,uint256 hash, int32_t n, char *destaddr)
@@ -566,7 +542,7 @@ uint32_t safecoin_txtime(uint64_t *valuep,uint256 hash, int32_t n, char *destadd
                         hashBlock, true))
     {
         //fprintf(stderr,"ERROR: %s/v%d locktime.%u\n",hash.ToString().c_str(),n,(uint32_t)tx.nLockTime);
-        return(0);
+        return 0;
     }
     //fprintf(stderr,"%s/v%d locktime.%u\n",hash.ToString().c_str(),n,(uint32_t)tx.nLockTime);
     if ( n < tx.vout.size() )
@@ -575,13 +551,13 @@ uint32_t safecoin_txtime(uint64_t *valuep,uint256 hash, int32_t n, char *destadd
         if (ExtractDestination(tx.vout[n].scriptPubKey, address))
             strcpy(destaddr,CBitcoinAddress(address).ToString().c_str());
     }
-    return(tx.nLockTime);
+    return tx.nLockTime;
 }
 
 CBlockIndex *safecoin_getblockindex(uint256 hash)
 {
     BlockMap::const_iterator it = mapBlockIndex.find(hash);
-    return((it != mapBlockIndex.end()) ? it->second : NULL);
+    return it != mapBlockIndex.end() ? it->second : nullptr;
 }
 
 uint32_t safecoin_txtime2(uint64_t *valuep,uint256 hash,int32_t n,char *destaddr)
@@ -595,11 +571,10 @@ uint32_t safecoin_txtime2(uint64_t *valuep,uint256 hash,int32_t n,char *destaddr
                         hashBlock, true))
     {
         //fprintf(stderr,"ERROR: %s/v%d locktime.%u\n",hash.ToString().c_str(),n,(uint32_t)tx.nLockTime);
-        return(0);
+        return 0;
     }
-    if ( (pindex= safecoin_getblockindex(hashBlock)) != 0 )
-        txtime = pindex->nTime;
-    else txtime = tx.nLockTime;
+    pindex = safecoin_getblockindex(hashBlock);
+    txtime = pindex != nullptr ? pindex->nTime : tx.nLockTime;
     //fprintf(stderr,"%s/v%d locktime.%u\n",hash.ToString().c_str(),n,(uint32_t)tx.nLockTime);
     if ( n < tx.vout.size() )
     {
@@ -607,31 +582,31 @@ uint32_t safecoin_txtime2(uint64_t *valuep,uint256 hash,int32_t n,char *destaddr
         if (ExtractDestination(tx.vout[n].scriptPubKey, address))
             strcpy(destaddr,CBitcoinAddress(address).ToString().c_str());
     }
-    return(txtime);
+    return txtime;
 }
 
-int32_t safecoin_isPoS(CBlock *pblock)
+bool safecoin_isPoS(CBlock *pblock)
 {
-    int32_t n,vout; uint32_t txtime; uint64_t value; char voutaddr[64],destaddr[64]; CTxDestination voutaddress; uint256 txid;
+    int32_t vout; uint32_t txtime; uint64_t value; char voutaddr[64],destaddr[64]; CTxDestination voutaddress; uint256 txid;
     if ( ASSETCHAINS_STAKED != 0 )
     {
-        if ( (n= pblock->vtx.size()) > 1 && pblock->vtx[n-1].vin.size() == 1 && pblock->vtx[n-1].vout.size() == 1 )
+        if ( pblock->vtx.size() > 1 && pblock->vtx.back().vin.size() == 1 && pblock->vtx.back().vout.size() == 1 )
         {
-            txid = pblock->vtx[n-1].vin[0].prevout.hash;
-            vout = pblock->vtx[n-1].vin[0].prevout.n;
+            txid = pblock->vtx.back().vin[0].prevout.hash;
+            vout = pblock->vtx.back().vin[0].prevout.n;
             txtime = safecoin_txtime(&value,txid,vout,destaddr);
-            if ( ExtractDestination(pblock->vtx[n-1].vout[0].scriptPubKey,voutaddress) )
+            if ( ExtractDestination(pblock->vtx.back().vout[0].scriptPubKey,voutaddress) )
             {
                 strcpy(voutaddr,CBitcoinAddress(voutaddress).ToString().c_str());
-                if ( strcmp(destaddr,voutaddr) == 0 && pblock->vtx[n-1].vout[0].nValue == value )
+                if ( strcmp(destaddr,voutaddr) == 0 && pblock->vtx.back().vout[0].nValue == value )
                 {
                     //fprintf(stderr,"is PoS block!\n");
-                    return(1);
+                    return true;
                 }
             }
         }
     }
-    return(0);
+    return false;
 }
 
 void safecoin_disconnect(CBlockIndex *pindex,CBlock& block)
@@ -639,48 +614,48 @@ void safecoin_disconnect(CBlockIndex *pindex,CBlock& block)
     char symbol[SAFECOIN_ASSETCHAIN_MAXLEN],dest[SAFECOIN_ASSETCHAIN_MAXLEN]; struct safecoin_state *sp;
     //fprintf(stderr,"disconnect ht.%d\n",pindex->GetHeight());
     safecoin_init(pindex->GetHeight());
-    if ( (sp= safecoin_stateptr(symbol,dest)) != 0 )
+    if ( (sp= safecoin_stateptr(symbol,dest)) != nullptr )
     {
         //sp->rewinding = pindex->GetHeight();
         //fprintf(stderr,"-%d ",pindex->GetHeight());
     } else printf("safecoin_disconnect: ht.%d cant get safecoin_state.(%s)\n",pindex->GetHeight(),ASSETCHAINS_SYMBOL);
 }
 
-int32_t safecoin_is_notarytx(const CTransaction& tx)
+bool safecoin_is_notarytx(const CTransaction& tx)
 {
     uint8_t *ptr; static uint8_t crypto777[33];
-    if ( tx.vout.size() > 0 )
+    if ( !tx.vout.empty() )
     {
         ptr = (uint8_t *)&tx.vout[0].scriptPubKey[0];
-        if ( ptr != 0 )
+        if ( ptr != nullptr )
         {
             if ( crypto777[0] == 0 )
                 decode_hex(crypto777,33,(char *)CRYPTO777_PUBSECPSTR);
             if ( memcmp(ptr+1,crypto777,33) == 0 )
             {
                 //printf("found notarytx\n");
-                return(1);
+                return true;
             }
         }
     }
-    return(0);
+    return false;
 }
 
 int32_t safecoin_block2height(CBlock *block)
 {
     static uint32_t match,mismatch;
-    int32_t i,n,height2=-1,height = 0; uint8_t *ptr; CBlockIndex *pindex = NULL;
+    int32_t i,n,height2=-1,height = 0; uint8_t *ptr; CBlockIndex *pindex = nullptr;
     BlockMap::const_iterator it = mapBlockIndex.find(block->GetHash());
-    if ( it != mapBlockIndex.end() && (pindex = it->second) != 0 )
+    if ( it != mapBlockIndex.end() && (pindex = it->second) != nullptr )
     {
-        height2 = (int32_t)pindex->GetHeight();
+        height2 = pindex->GetHeight();
         if ( height2 >= 0 )
-            return(height2);
+            return height2;
     }
-    if ( pindex && block != 0 && block->vtx[0].vin.size() > 0 )
+    if ( pindex != nullptr && block != nullptr && !block->vtx[0].vin.empty() )
     {
         ptr = (uint8_t *)&block->vtx[0].vin[0].scriptSig[0];
-        if ( ptr != 0 && block->vtx[0].vin[0].scriptSig.size() > 5 )
+        if ( ptr != nullptr && block->vtx[0].vin[0].scriptSig.size() > 5 )
         {
             //for (i=0; i<6; i++)
             //    printf("%02x",ptr[i]);
@@ -688,7 +663,7 @@ int32_t safecoin_block2height(CBlock *block)
             for (i=0; i<n; i++) // looks strange but this works
             {
                 //03bb81000101(bb 187) (81 48001) (00 12288256)  <- coinbase.6 ht.12288256
-                height += ((uint32_t)ptr[i+1] << (i*8));
+                height += ptr[i+1] << (i*8);
                 //printf("(%02x %x %d) ",ptr[i+1],((uint32_t)ptr[i+1] << (i*8)),height);
             }
             //printf(" <- coinbase.%d ht.%d\n",(int32_t)block->vtx[0].vin[0].scriptSig.size(),height);
@@ -698,20 +673,18 @@ int32_t safecoin_block2height(CBlock *block)
     if ( height != height2 )
     {
         //fprintf(stderr,"block2height height.%d vs height2.%d, match.%d mismatch.%d\n",height,height2,match,mismatch);
-        mismatch++;
+        ++mismatch;
         if ( height2 >= 0 )
             height = height2;
-    } else match++;
-    return(height);
+    } else ++match;
+    return height;
 }
 
-int32_t safecoin_block2pubkey33(uint8_t *pubkey33,CBlock *block)
+bool safecoin_block2pubkey33(uint8_t *pubkey33,CBlock *block)
 {
     int32_t n;
-    if ( SAFECOIN_LOADINGBLOCKS == 0 )
-        memset(pubkey33,0xff,33);
-    else memset(pubkey33,0,33);
-    if ( block->vtx[0].vout.size() > 0 )
+    memset(pubkey33, SAFECOIN_LOADINGBLOCKS ? 0 : 0xff,33);
+    if ( !block->vtx[0].vout.empty() )
     {
         txnouttype whichType;
         vector<vector<unsigned char>> vch = vector<vector<unsigned char>>();
@@ -723,68 +696,67 @@ int32_t safecoin_block2pubkey33(uint8_t *pubkey33,CBlock *block)
                 memcpy(pubkey33,vch[0].data(),33);
                 return true;
             }
-            else memset(pubkey33,0,33);
         }
-        else memset(pubkey33,0,33);
     }
-    return(0);
+    memset(pubkey33,0,33);
+    return false;
 }
 
-int32_t safecoin_blockload(CBlock& block,CBlockIndex *pindex)
+int8_t safecoin_blockload(CBlock& block,CBlockIndex *pindex)
 {
     block.SetNull();
     // Open history file to read
     CAutoFile filein(OpenBlockFile(pindex->GetBlockPos(),true),SER_DISK,CLIENT_VERSION);
     if (filein.IsNull())
-        return(-1);
+        return -1;
     // Read block
     try { filein >> block; }
     catch (const std::exception& e)
     {
         fprintf(stderr,"readblockfromdisk err B\n");
-        return(-1);
+        return -1;
     }
-    return(0);
+    return 0;
 }
 
 uint32_t safecoin_chainactive_timestamp()
 {
-    if ( chainActive.LastTip() != 0 )
-        return((uint32_t)chainActive.LastTip()->GetBlockTime());
-    else return(0);
+    if ( chainActive.LastTip() != nullptr )
+        return (uint32_t)chainActive.LastTip()->GetBlockTime();
+    return 0;
 }
 
 CBlockIndex *safecoin_chainactive(int32_t height)
 {
-    if ( chainActive.LastTip() != 0 )
+    if ( chainActive.LastTip() != nullptr )
     {
         if ( height <= chainActive.LastTip()->GetHeight() )
-            return(chainActive[height]);
+            return chainActive[height];
         // else fprintf(stderr,"safecoin_chainactive height %d > active.%d\n",height,chainActive.LastTip()->GetHeight());
     }
     //fprintf(stderr,"safecoin_chainactive null chainActive.LastTip() height %d\n",height);
-    return(0);
+    return nullptr;
 }
 
 uint32_t safecoin_heightstamp(int32_t height)
 {
     CBlockIndex *ptr;
-    if ( height > 0 && (ptr= safecoin_chainactive(height)) != 0 )
-        return(ptr->nTime);
+    if ( height > 0 && (ptr= safecoin_chainactive(height)) != nullptr )
+        return ptr->nTime;
     //else fprintf(stderr,"safecoin_heightstamp null ptr for block.%d\n",height);
-    return(0);
+    return 0;
 }
 
 /*void safecoin_pindex_init(CBlockIndex *pindex,int32_t height) gets data corrupted
 {
     int32_t i,num; uint8_t pubkeys[64][33]; CBlock block;
-    if ( pindex->didinit != 0 )
+    if ( pindex->didinit )
         return;
     //printf("pindex.%d safecoin_pindex_init notary.%d from height.%d\n",pindex->GetHeight(),pindex->notaryid,height);
-    if ( pindex->didinit == 0 )
+    if ( !pindex->didinit )
     {
         pindex->notaryid = -1;
-        if ( SAFECOIN_LOADINGBLOCKS == 0 )
+        if ( !SAFECOIN_LOADINGBLOCKS )
             memset(pindex->pubkey33,0xff,33);
         else memset(pindex->pubkey33,0,33);
         if ( safecoin_blockload(block,pindex) == 0 )
@@ -794,10 +766,10 @@ uint32_t safecoin_heightstamp(int32_t height)
             //    fprintf(stderr,"%02x",pindex->pubkey33[i]);
             //fprintf(stderr," set pubkey at height %d/%d\n",pindex->GetHeight(),height);
             //if ( pindex->pubkey33[0] == 2 || pindex->pubkey33[0] == 3 )
-            //    pindex->didinit = (SAFECOIN_LOADINGBLOCKS == 0);
+            //    pindex->didinit = !SAFECOIN_LOADINGBLOCKS;
         } // else fprintf(stderr,"error loading block at %d/%d",pindex->GetHeight(),height);
     }
-    if ( pindex->didinit != 0 && pindex->GetHeight() >= 0 && (num= safecoin_notaries(pubkeys,(int32_t)pindex->GetHeight(),(uint32_t)pindex->nTime)) > 0 )
+    if ( pindex->didinit && pindex->GetHeight() >= 0 && (num= safecoin_notaries(pubkeys,(int32_t)pindex->GetHeight(),(uint32_t)pindex->nTime)) > 0 )
     {
         for (i=0; i<num; i++)
         {
@@ -820,11 +792,8 @@ void safecoin_index2pubkey33(uint8_t *pubkey33,CBlockIndex *pindex,int32_t heigh
 {
     int32_t num,i; CBlock block;
     memset(pubkey33,0,33);
-    if ( pindex != 0 )
-    {
-        if ( safecoin_blockload(block,pindex) == 0 )
-            safecoin_block2pubkey33(pubkey33,&block);
-    }
+    if ( pindex != nullptr && safecoin_blockload(block,pindex) == 0 )
+        safecoin_block2pubkey33(pubkey33,&block);
 }
 
 /*int8_t safecoin_minerid(int32_t height,uint8_t *destpubkey33)
@@ -832,7 +801,7 @@ void safecoin_index2pubkey33(uint8_t *pubkey33,CBlockIndex *pindex,int32_t heigh
     int32_t num,i,numnotaries; CBlockIndex *pindex; uint32_t timestamp=0; uint8_t pubkey33[33],pubkeys[64][33];
     if ( (pindex= chainActive[height]) != 0 )
     {
-        if ( pindex->didinit != 0 )
+        if ( pindex->didinit )
         {
             if ( destpubkey33 != 0 )
                 memcpy(destpubkey33,pindex->pubkey33,33);
@@ -841,7 +810,7 @@ void safecoin_index2pubkey33(uint8_t *pubkey33,CBlockIndex *pindex,int32_t heigh
         safecoin_index2pubkey33(pubkey33,pindex,height);
         if ( destpubkey33 != 0 )
             memcpy(destpubkey33,pindex->pubkey33,33);
-        if ( pindex->didinit != 0 )
+        if ( pindex->didinit )
             return(pindex->notaryid);
         timestamp = pindex->GetBlockTime();
         if ( (num= safecoin_notaries(pubkeys,height,timestamp)) > 0 )
@@ -855,14 +824,14 @@ void safecoin_index2pubkey33(uint8_t *pubkey33,CBlockIndex *pindex,int32_t heigh
     return(safecoin_electednotary(&numnotaries,pubkey33,height,timestamp));
 }*/
 
-int32_t safecoin_eligiblenotary(uint8_t pubkeys[66][33],int32_t *mids,uint32_t blocktimes[66],int32_t *nonzpkeysp,int32_t height)
+bool safecoin_eligiblenotary(uint8_t pubkeys[66][33],int32_t *mids,uint32_t blocktimes[66],int32_t *nonzpkeysp,int32_t height)
 {
     int32_t i,j,n,duplicate; CBlock block; CBlockIndex *pindex; uint8_t notarypubs33[64][33];
     memset(mids,-1,sizeof(*mids)*66);
     n = safecoin_notaries(notarypubs33,height,0);
     for (i=duplicate=0; i<66; i++)
     {
-        if ( (pindex= safecoin_chainactive(height-i)) != 0 )
+        if ((pindex= safecoin_chainactive(height-i)) != nullptr)
         {
             blocktimes[i] = pindex->nTime;
             if ( safecoin_blockload(block,pindex) == 0 )
@@ -873,20 +842,19 @@ int32_t safecoin_eligiblenotary(uint8_t pubkeys[66][33],int32_t *mids,uint32_t b
                     if ( memcmp(notarypubs33[j],pubkeys[i],33) == 0 )
                     {
                         mids[i] = j;
-                        (*nonzpkeysp)++;
+                        ++(*nonzpkeysp);
                         break;
                     }
                 }
             } else fprintf(stderr,"couldnt load block.%d\n",height);
             if ( mids[0] >= 0 && i > 0 && mids[i] == mids[0] )
-                duplicate++;
+                ++duplicate;
         }
     }
-    if ( i == 66 && duplicate == 0 && (height > 186233 || *nonzpkeysp > 0) )
-        return(1);
-    else return(0);
+    return i == 66 && duplicate == 0 && (height > 186233 || *nonzpkeysp > 0);
 }
 
+//TODO: maybe nonz can be < uint32
 int32_t safecoin_minerids(uint8_t *minerids,int32_t height,int32_t width)
 {
     int32_t i,j,nonz,numnotaries; CBlock block; CBlockIndex *pindex; uint8_t notarypubs33[64][33],pubkey33[33];
@@ -895,7 +863,7 @@ int32_t safecoin_minerids(uint8_t *minerids,int32_t height,int32_t width)
     {
         if ( height-i <= 0 )
             continue;
-        if ( (pindex= safecoin_chainactive(height-width+i+1)) != 0 )
+        if ( (pindex= safecoin_chainactive(height-width+i+1)) != nullptr )
         {
             if ( safecoin_blockload(block,pindex) == 0 )
             {
@@ -913,64 +881,56 @@ int32_t safecoin_minerids(uint8_t *minerids,int32_t height,int32_t width)
             } else fprintf(stderr,"couldnt load block.%d\n",height);
         }
     }
-    return(nonz);
+    return nonz;
 }
 
-int32_t safecoin_is_special(uint8_t pubkeys[66][33],int32_t mids[66],uint32_t blocktimes[66],int32_t height,uint8_t pubkey33[33],uint32_t blocktime)
+int8_t safecoin_is_special(uint8_t pubkeys[66][33],int32_t mids[66],uint32_t blocktimes[66],int32_t height,uint8_t pubkey33[33],uint32_t blocktime)
 {
     int32_t i,j,notaryid=0,minerid,limit,nid; uint8_t destpubkey33[33];
     safecoin_chosennotary(&notaryid,height,pubkey33,blocktimes[0]);
     if ( height >= 82000 )
     {
-        if ( notaryid >= 0 )
+        if ( notaryid < 0 )
+            return 0;
+        for (i=1; i<66; i++)
         {
-            for (i=1; i<66; i++)
+            if ( mids[i] == notaryid )
             {
-                if ( mids[i] == notaryid )
-                {
-                    if ( height > 108800 )
-                    {
-                        for (j=0; j<66; j++)
-                            fprintf(stderr,"%d ",mids[j]);
-                        fprintf(stderr,"ht.%d repeat notaryid.%d in mids[%d]\n",height,notaryid,i);
-                        return(-1);
-                    } else break;
-                }
+                if ( height <= 108800 )
+                    break;
+                for (j=0; j<66; j++)
+                    fprintf(stderr,"%d ",mids[j]);
+                fprintf(stderr,"ht.%d repeat notaryid.%d in mids[%d]\n",height,notaryid,i);
+                return -1;
             }
-            if ( blocktime != 0 && blocktimes[1] != 0 && blocktime < blocktimes[1]+57 )
-            {
-                if ( height > 807000 )
-                    return(-2);
-            }
-            return(1);
-        } else return(0);
-    }
-    else
-    {
-        if ( height >= 34000 && notaryid >= 0 )
-        {
-            if ( height < 79693 )
-                limit = 64;
-            else if ( height < 82000 )
-                limit = 8;
-            else limit = 66;
-            for (i=1; i<limit; i++)
-            {
-                safecoin_chosennotary(&nid,height-i,pubkey33,blocktimes[i]);
-                if ( nid == notaryid )
-                {
-                    //for (j=0; j<66; j++)
-                    //    fprintf(stderr,"%d ",mids[j]);
-                    //fprintf(stderr,"ht.%d repeat mids[%d] nid.%d notaryid.%d\n",height-i,i,nid,notaryid);
-                    if ( height > 225000 )
-                        return(-1);
-                }
-            }
-            //fprintf(stderr,"special notaryid.%d ht.%d limit.%d\n",notaryid,height,limit);
-            return(1);
         }
+        if ( blocktime != 0 && blocktimes[1] != 0 && blocktime < blocktimes[1]+57 && height > 807000 )
+            return -2;
+        return 1;
     }
-    return(0);
+    if ( height >= 34000 && notaryid >= 0 )
+    {
+        if ( height < 79693 )
+            limit = 64;
+        else if ( height < 82000 )
+            limit = 8;
+        else limit = 66;
+        for (i=1; i<limit; i++)
+        {
+            safecoin_chosennotary(&nid,height-i,pubkey33,blocktimes[i]);
+            if ( nid == notaryid )
+            {
+                //for (j=0; j<66; j++)
+                //    fprintf(stderr,"%d ",mids[j]);
+                //fprintf(stderr,"ht.%d repeat mids[%d] nid.%d notaryid.%d\n",height-i,i,nid,notaryid);
+                if ( height > 225000 )
+                    return -1;
+            }
+        }
+        //fprintf(stderr,"special notaryid.%d ht.%d limit.%d\n",notaryid,height,limit);
+        return 1;
+    }
+    return 0;
 }
 
 int32_t safecoin_MoM(int32_t *notarized_heightp,uint256 *MoMp,uint256 *safetxidp,int32_t nHeight,uint256 *MoMoMp,int32_t *MoMoMoffsetp,int32_t *MoMoMdepthp,int32_t *safestartip,int32_t *safeendip)
@@ -986,18 +946,18 @@ int32_t safecoin_MoM(int32_t *notarized_heightp,uint256 *MoMp,uint256 *safetxidp
         *notarized_heightp = notarized_ht;
         *safetxidp = safetxid;
     }
-    return(depth);
+    return depth;
 }
 
-int32_t safecoin_checkpoint(int32_t *notarized_heightp,int32_t nHeight,uint256 hash)
+int8_t safecoin_checkpoint(int32_t *notarized_heightp,int32_t nHeight,uint256 hash)
 {
     int32_t notarized_height,MoMdepth; uint256 MoM,notarized_hash,notarized_desttxid; CBlockIndex *notary,*pindex;
-    if ( (pindex= chainActive.LastTip()) == 0 )
-        return(-1);
+    if ( (pindex= chainActive.LastTip()) == nullptr )
+        return -1;
     notarized_height = safecoin_notarizeddata(pindex->GetHeight(),&notarized_hash,&notarized_desttxid);
     *notarized_heightp = notarized_height;
     BlockMap::const_iterator it;
-    if ( notarized_height >= 0 && notarized_height <= pindex->GetHeight() && (it = mapBlockIndex.find(notarized_hash)) != mapBlockIndex.end() && (notary = it->second) != NULL )
+    if ( notarized_height >= 0 && notarized_height <= pindex->GetHeight() && (it = mapBlockIndex.find(notarized_hash)) != mapBlockIndex.end() && (notary = it->second) != nullptr )
     {
         //printf("nHeight.%d -> (%d %s)\n",pindex->Tip()->GetHeight(),notarized_height,notarized_hash.ToString().c_str());
         if ( notary->GetHeight() == notarized_height ) // if notarized_hash not in chain, reorg
@@ -1005,18 +965,18 @@ int32_t safecoin_checkpoint(int32_t *notarized_heightp,int32_t nHeight,uint256 h
             if ( nHeight < notarized_height )
             {
                 //fprintf(stderr,"[%s] nHeight.%d < NOTARIZED_HEIGHT.%d\n",ASSETCHAINS_SYMBOL,nHeight,notarized_height);
-                return(-1);
+                return -1;
             }
             else if ( nHeight == notarized_height && memcmp(&hash,&notarized_hash,sizeof(hash)) != 0 )
             {
                 fprintf(stderr,"[%s] nHeight.%d == NOTARIZED_HEIGHT.%d, diff hash\n",ASSETCHAINS_SYMBOL,nHeight,notarized_height);
-                return(-1);
+                return -1;
             }
         } //else fprintf(stderr,"[%s] unexpected error notary_hash %s ht.%d at ht.%d\n",ASSETCHAINS_SYMBOL,notarized_hash.ToString().c_str(),notarized_height,notary->GetHeight());
     }
     //else if ( notarized_height > 0 && notarized_height != 73880 && notarized_height >= 170000 )
     //    fprintf(stderr,"[%s] couldnt find notarized.(%s %d) ht.%d\n",ASSETCHAINS_SYMBOL,notarized_hash.ToString().c_str(),notarized_height,pindex->GetHeight());
-    return(0);
+    return 0;
 }
 
 uint32_t safecoin_interest_args(uint32_t *txheighttimep,int32_t *txheightp,uint32_t *tiptimep,uint64_t *valuep,uint256 hash,int32_t n)
@@ -1026,22 +986,22 @@ uint32_t safecoin_interest_args(uint32_t *txheighttimep,int32_t *txheightp,uint3
     *txheighttimep = *txheightp = *tiptimep = 0;
     *valuep = 0;
     if ( !GetTransaction(hash,tx,hashBlock,true) )
-        return(0);
+        return 0;
     uint32_t locktime = 0;
     if ( n < tx.vout.size() )
     {
-        if ( (pindex= safecoin_getblockindex(hashBlock)) != 0 )
+        if ( (pindex= safecoin_getblockindex(hashBlock)) != nullptr )
         {
             *valuep = tx.vout[n].nValue;
             *txheightp = pindex->GetHeight();
             *txheighttimep = pindex->nTime;
-            if ( *tiptimep == 0 && (tipindex= chainActive.LastTip()) != 0 )
+            if ( *tiptimep == 0 && (tipindex= chainActive.LastTip()) != nullptr )
                 *tiptimep = (uint32_t)tipindex->nTime;
             locktime = tx.nLockTime;
             //fprintf(stderr,"tx locktime.%u %.8f height.%d | tiptime.%u\n",locktime,(double)*valuep/COIN,*txheightp,*tiptimep);
         }
     }
-    return(locktime);
+    return locktime;
 }
 
 uint64_t safecoin_interest(int32_t txheight,uint64_t nValue,uint32_t nLockTime,uint32_t tiptime);
@@ -1049,42 +1009,41 @@ uint64_t safecoin_interest(int32_t txheight,uint64_t nValue,uint32_t nLockTime,u
 uint64_t safecoin_accrued_interest(int32_t *txheightp,uint32_t *locktimep,uint256 hash,int32_t n,int32_t checkheight,uint64_t checkvalue,int32_t tipheight)
 {
     uint64_t value; uint32_t tiptime=0,txheighttimep; CBlockIndex *pindex;
-    if ( (pindex= chainActive[tipheight]) != 0 )
+    if ( (pindex= chainActive[tipheight]) != nullptr )
         tiptime = (uint32_t)pindex->nTime;
     else fprintf(stderr,"cant find height[%d]\n",tipheight);
     if ( (*locktimep= safecoin_interest_args(&txheighttimep,txheightp,&tiptime,&value,hash,n)) != 0 )
     {
         if ( (checkvalue == 0 || value == checkvalue) && (checkheight == 0 || *txheightp == checkheight) )
           //  return(safecoin_interest(*txheightp,value,*locktimep,tiptime));
-	return(0);
+	        return 0;
         //fprintf(stderr,"nValue %llu lock.%u:%u nTime.%u -> %llu\n",(long long)coins.vout[n].nValue,coins.nLockTime,timestamp,pindex->nTime,(long long)interest);
         else fprintf(stderr,"safecoin_accrued_interest value mismatch %llu vs %llu or height mismatch %d vs %d\n",(long long)value,(long long)checkvalue,*txheightp,checkheight);
     }
-    return(0);
+    return 0;
 }
 
 int32_t safecoin_nextheight()
 {
     CBlockIndex *pindex; int32_t ht,longest = safecoin_longestchain();
-    if ( (pindex= chainActive.LastTip()) != 0 && (ht= pindex->GetHeight()) >= longest )
-        return(ht+1);
-    else return(longest + 1);
+    if ( (pindex= chainActive.LastTip()) != nullptr && (ht= pindex->GetHeight()) >= longest )
+        return ht+1;
+    return longest+1;
 }
 
-int32_t safecoin_isrealtime(int32_t *safeheightp)
+bool safecoin_isrealtime(int32_t *safeheightp)
 {
     struct safecoin_state *sp; CBlockIndex *pindex;
-    if ( (sp= safecoin_stateptrget((char *)"SAFE")) != 0 )
+    if ( (sp= safecoin_stateptrget((char *)"SAFE")) != nullptr )
         *safeheightp = sp->CURRENT_HEIGHT;
     else *safeheightp = 0;
-    if ( (pindex= chainActive.LastTip()) != 0 && pindex->GetHeight() >= (int32_t)safecoin_longestchain() )
-        return(1);
-    else return(0);
+    pindex = chainActive.LastTip();
+    return pindex != nullptr && pindex->GetHeight() >= (int32_t)safecoin_longestchain();
 }
 
-int32_t safecoin_validate_interest(const CTransaction &tx,int32_t txheight,uint32_t cmptime,int32_t dispflag)
+int8_t safecoin_validate_interest(const CTransaction &tx,int32_t txheight,uint32_t cmptime,int32_t dispflag)
 {
-    if ( SAFECOIN_REWIND == 0 && ASSETCHAINS_SYMBOL[0] == 0 && (int64_t)tx.nLockTime >= LOCKTIME_THRESHOLD ) //1473793441 )
+    if ( SAFECOIN_REWIND == 0 && ASSETCHAINS_SYMBOL[0] == '\0' && (int64_t)tx.nLockTime >= LOCKTIME_THRESHOLD ) //1473793441 )
     {
         if ( txheight > 89500 )
         {
@@ -1093,16 +1052,14 @@ int32_t safecoin_validate_interest(const CTransaction &tx,int32_t txheight,uint3
             if ( (int64_t)tx.nLockTime < cmptime-SAFECOIN_MAXMEMPOOLTIME )
             {
                 if ( tx.nLockTime != 1477258935 && dispflag != 0 )
-                {
                     fprintf(stderr,"safecoin_validate_interest.%d reject.%d [%d] locktime %u cmp2.%u\n",dispflag,txheight,(int32_t)(tx.nLockTime - (cmptime-SAFECOIN_MAXMEMPOOLTIME)),(uint32_t)tx.nLockTime,cmptime);
-                }
-                return(-1);
+                return -1;
             }
             if ( 0 && dispflag != 0 )
                 fprintf(stderr,"validateinterest.%d accept.%d [%d] locktime %u cmp2.%u\n",dispflag,(int32_t)txheight,(int32_t)(tx.nLockTime - (cmptime-SAFECOIN_MAXMEMPOOLTIME)),(int32_t)tx.nLockTime,cmptime);
         }
     }
-    return(0);
+    return 0;
 }
 
 /*
@@ -1124,13 +1081,9 @@ uint64_t safecoin_commission(const CBlock *pblock,int32_t height)
     {
         nSubsidy = GetBlockSubsidy(height,Params().GetConsensus());
         //fprintf(stderr,"ht.%d nSubsidy %.8f prod %llu\n",height,(double)nSubsidy/COIN,(long long)(nSubsidy * ASSETCHAINS_COMMISSION));
-        commission = ((nSubsidy * ASSETCHAINS_COMMISSION) / COIN);
+        commission = nSubsidy * ASSETCHAINS_COMMISSION / COIN;
         if ( ASSETCHAINS_FOUNDERS > 1 )
-        {
-            if ( (height % ASSETCHAINS_FOUNDERS) == 0 )
-                commission = commission * ASSETCHAINS_FOUNDERS;
-            else commission = 0;
-        }
+            commission = (height % ASSETCHAINS_FOUNDERS) == 0 ? commission * ASSETCHAINS_FOUNDERS : 0;
     }
     else
     {
@@ -1144,39 +1097,38 @@ uint64_t safecoin_commission(const CBlock *pblock,int32_t height)
                     total += pblock->vtx[i].vout[j].nValue;
             }
         }
-        commission = ((total * ASSETCHAINS_COMMISSION) / COIN);
+        commission = total * ASSETCHAINS_COMMISSION / COIN;
     }
     if ( commission < 10000 )
         commission = 0;
-    return(commission);
+    return commission;
 }
 
 uint32_t safecoin_segid32(char *coinaddr)
 {
     bits256 addrhash;
     vcalc_sha256(0,(uint8_t *)&addrhash,(uint8_t *)coinaddr,(int32_t)strlen(coinaddr));
-    return(addrhash.uints[0]);
+    return addrhash.uints[0];
 }
 
 int8_t safecoin_segid(int32_t nocache,int32_t height)
 {
-    CTxDestination voutaddress; CBlock block; CBlockIndex *pindex; uint64_t value; uint32_t txtime; char voutaddr[64],destaddr[64]; int32_t txn_count,vout; uint256 txid; int8_t segid = -1;
-    if ( height > 0 && (pindex= safecoin_chainactive(height)) != 0 )
+    CTxDestination voutaddress; CBlock block; CBlockIndex *pindex; uint64_t value; uint32_t txtime; char voutaddr[64],destaddr[64]; int32_t vout; uint256 txid; int8_t segid = -1;
+    if ( height > 0 && (pindex= safecoin_chainactive(height)) != nullptr )
     {
         if ( nocache == 0 && pindex->segid >= -1 )
-            return(pindex->segid);
+            return pindex->segid;
         if ( safecoin_blockload(block,pindex) == 0 )
         {
-            txn_count = block.vtx.size();
-            if ( txn_count > 1 && block.vtx[txn_count-1].vin.size() == 1 && block.vtx[txn_count-1].vout.size() == 1 )
+            if ( block.vtx.size() && block.vtx.back().vin.size() == 1 && block.vtx.back().vout.size() == 1 )
             {
-                txid = block.vtx[txn_count-1].vin[0].prevout.hash;
-                vout = block.vtx[txn_count-1].vin[0].prevout.n;
+                txid = block.vtx.back().vin[0].prevout.hash;
+                vout = block.vtx.back().vin[0].prevout.n;
                 txtime = safecoin_txtime(&value,txid,vout,destaddr);
-                if ( ExtractDestination(block.vtx[txn_count-1].vout[0].scriptPubKey,voutaddress) )
+                if ( ExtractDestination(block.vtx.back().vout[0].scriptPubKey,voutaddress) )
                 {
                     strcpy(voutaddr,CBitcoinAddress(voutaddress).ToString().c_str());
-                    if ( strcmp(destaddr,voutaddr) == 0 && block.vtx[txn_count-1].vout[0].nValue == value )
+                    if ( strcmp(destaddr,voutaddr) == 0 && block.vtx.back().vout[0].nValue == value )
                     {
                         segid = safecoin_segid32(voutaddr) & 0x3f;
                         //fprintf(stderr,"safecoin_segid.(%d) -> %02x\n",height,segid);
@@ -1185,7 +1137,7 @@ int8_t safecoin_segid(int32_t nocache,int32_t height)
             }
         }
     }
-    return(segid);
+    return segid;
 }
 
 void safecoin_segids(uint8_t *hashbuf,int32_t height,int32_t n)
@@ -1219,7 +1171,7 @@ uint32_t safecoin_stakehash(uint256 *hashp,char *address,uint8_t *hashbuf,uint25
     memcpy(&hashbuf[100+sizeof(addrhash)],&txid,sizeof(txid));
     memcpy(&hashbuf[100+sizeof(addrhash)+sizeof(txid)],&vout,sizeof(vout));
     vcalc_sha256(0,(uint8_t *)hashp,hashbuf,100 + (int32_t)sizeof(uint256)*2 + sizeof(vout));
-    return(addrhash.uints[0]);
+    return addrhash.uints[0];
 }
 
 uint32_t safecoin_stake(int32_t validateflag,arith_uint256 bnTarget,int32_t nHeight,uint256 txid,int32_t vout,uint32_t blocktime,uint32_t prevtime,char *destaddr)
@@ -1238,35 +1190,31 @@ uint32_t safecoin_stake(int32_t validateflag,arith_uint256 bnTarget,int32_t nHei
     if ( value == 0 || txtime == 0 || blocktime == 0 || prevtime == 0 )
     {
         //fprintf(stderr,"safecoin_stake null %.8f %u %u %u\n",dstr(value),txtime,blocktime,prevtime);
-        return(0);
+        return 0;
     }
     if ( value < SATOSHIDEN )
-        return(0);
+        return 0;
     value /= SATOSHIDEN;
     mindiff.SetCompact(SAFECOIN_MINDIFF_NBITS,&fNegative,&fOverflow);
-    ratio = (mindiff / bnTarget);
-    if ( (minage= nHeight*3) > 6000 ) // about 100 blocks
-        minage = 6000;
+    ratio = mindiff / bnTarget;
+    minage = std::min(nHeight*3, 6000 ); // about 100 blocks
     safecoin_segids(hashbuf,nHeight-101,100);
     segid32 = safecoin_stakehash(&hash,address,hashbuf,txid,vout);
-    segid = ((nHeight + segid32) & 0x3f);
+    segid = (nHeight + segid32) & 0x3f;
     for (iter=0; iter<600; iter++)
     {
         if ( blocktime+iter+segid*2 < txtime+minage )
             continue;
-        diff = (iter + blocktime - txtime - minage);
+        diff = iter + blocktime - txtime - minage;
         if ( diff < 0 )
             diff = 60;
-        else if ( diff > 3600*24*30 )
-        {
-            //printf("diff.%d (iter.%d blocktime.%u txtime.%u minage.%d)\n",(int32_t)diff,iter,blocktime,txtime,(int32_t)minage);
-            diff = 3600*24*30;
-        }
+        else if ( diff > 60*60*24*30 )
+            diff = 60*60*24*30;
         if ( iter > 0 )
             diff += segid*2;
-        coinage = (value * diff);
+        coinage = value * diff;
         if ( blocktime+iter+segid*2 > prevtime+480 )
-            coinage *= ((blocktime+iter+segid*2) - (prevtime+400));
+            coinage *= blocktime+iter+segid*2 - prevtime-400;
         coinage256 = arith_uint256(coinage+1);
         hashval = ratio * (UintToArith256(hash) / coinage256);
         if ( hashval <= bnTarget )
@@ -1301,9 +1249,7 @@ uint32_t safecoin_stake(int32_t validateflag,arith_uint256 bnTarget,int32_t nHei
             fprintf(stderr,"%02x",((uint8_t *)&bnTarget)[i]);
         fprintf(stderr," segid.%d iter.%d winner.%d coinage.%llu %d ht.%d t.%u v%d diff.%d ht.%d\n",segid,iter,winner,(long long)coinage,(int32_t)(blocktime - txtime),nHeight,blocktime,(int32_t)value,(int32_t)diff,nHeight);
     }
-    if ( nHeight < 10 )
-        return(blocktime);
-    return(blocktime * winner);
+    return nHeight < 10 ? blocktime : blocktime * winner;
 }
 
 arith_uint256 safecoin_PoWtarget(int32_t *percPoSp,arith_uint256 target,int32_t height,int32_t goalperc)
@@ -1312,7 +1258,7 @@ arith_uint256 safecoin_PoWtarget(int32_t *percPoSp,arith_uint256 target,int32_t 
     CBlockIndex *pindex; arith_uint256 easydiff,bnTarget,hashval,sum,ave; bool fNegative,fOverflow; int32_t i,n,m,ht,percPoS,diff,val;
     *percPoSp = percPoS = 0;
     if ( height <= 10 || (ASSETCHAINS_STAKED == 100 && height <= 100) )
-        return(target);
+        return target;
     sum = arith_uint256(0);
     ave = sum;
     easydiff.SetCompact(SAFECOIN_MINDIFF_NBITS,&fNegative,&fOverflow);
@@ -1321,12 +1267,12 @@ arith_uint256 safecoin_PoWtarget(int32_t *percPoSp,arith_uint256 target,int32_t 
         ht = height - 100 + i;
         if ( ht <= 1 )
             continue;
-        if ( (pindex= safecoin_chainactive(ht)) != 0 )
+        if ( (pindex= safecoin_chainactive(ht)) != nullptr )
         {
             if ( safecoin_segid(0,ht) >= 0 )
             {
-                n++;
-                percPoS++;
+                ++n;
+                ++percPoS;
                 if ( dispflag != 0 && ASSETCHAINS_STAKED < 100 )
                     fprintf(stderr,"0");
             }
@@ -1335,30 +1281,26 @@ arith_uint256 safecoin_PoWtarget(int32_t *percPoSp,arith_uint256 target,int32_t 
                 if ( dispflag != 0 && ASSETCHAINS_STAKED < 100 )
                     fprintf(stderr,"1");
                 sum += UintToArith256(pindex->GetBlockHash());
-                m++;
+                ++m;
             }
         }
         if ( dispflag != 0 && ASSETCHAINS_STAKED < 100 && (i % 10) == 9 )
             fprintf(stderr," %d, ",percPoS);
     }
     if ( m+n < 100 )
-        percPoS = ((percPoS * n) + (goalperc * (100-n))) / 100;
+        percPoS = (percPoS * n + goalperc * (100-n)) / 100;
     if ( dispflag != 0 && ASSETCHAINS_STAKED < 100 )
         fprintf(stderr," -> %d%% percPoS vs goalperc.%d ht.%d\n",percPoS,goalperc,height);
     *percPoSp = percPoS;
     if ( m > 0 )
     {
-        ave = (sum / arith_uint256(m));
-        if ( ave > target )
-            ave = target;
+        ave = std::min<arith_uint256>(sum / arith_uint256(m), target);
     } else ave = target; //easydiff; //else return(target);
     if ( percPoS == 0 )
         percPoS = 1;
     if ( percPoS < goalperc ) // increase PoW diff -> lower bnTarget
     {
-        if ( oldflag != 0 )
-            bnTarget = (ave / arith_uint256(goalperc * goalperc * goalperc)) * arith_uint256(percPoS * percPoS);
-        else bnTarget = (ave / arith_uint256(goalperc * goalperc * goalperc * goalperc)) * arith_uint256(percPoS * percPoS);
+        bnTarget = ave / arith_uint256(pow(goalperc, oldflag != 0 ? 3 : 4)) * arith_uint256(pow(percPoS, 2));
         if ( dispflag != 0 && ASSETCHAINS_STAKED < 100 )
         {
             for (i=31; i>=24; i--)
@@ -1376,15 +1318,16 @@ arith_uint256 safecoin_PoWtarget(int32_t *percPoSp,arith_uint256 target,int32_t 
     {
         if ( oldflag != 0 )
         {
-            bnTarget = ((ave * arith_uint256(goalperc)) + (easydiff * arith_uint256(percPoS))) / arith_uint256(percPoS + goalperc);
-            bnTarget = (bnTarget / arith_uint256(goalperc * goalperc)) * arith_uint256(percPoS * percPoS * percPoS);
+            bnTarget = (ave * arith_uint256(goalperc) + easydiff * arith_uint256(percPoS)) / arith_uint256(percPoS + goalperc);
+            bnTarget = bnTarget / arith_uint256(pow(goalperc, 2)) * arith_uint256(pow(percPoS, 3));
         }
-        else bnTarget = (ave / arith_uint256(goalperc * goalperc)) * arith_uint256(percPoS * percPoS * percPoS);
+        else
+            bnTarget = ave / arith_uint256(pow(goalperc, 2)) * arith_uint256(pow(percPoS, 3));
         if ( bnTarget > easydiff )
             bnTarget = easydiff;
         else if ( bnTarget < ave ) // overflow
         {
-            bnTarget = ((ave * arith_uint256(goalperc)) + (easydiff * arith_uint256(percPoS))) / arith_uint256(percPoS + goalperc);
+            bnTarget = (ave * arith_uint256(goalperc) + easydiff * arith_uint256(percPoS)) / arith_uint256(percPoS + goalperc);
             if ( bnTarget < ave )
                 bnTarget = ave;
         }
@@ -1402,42 +1345,36 @@ arith_uint256 safecoin_PoWtarget(int32_t *percPoSp,arith_uint256 target,int32_t 
         }
     }
     else bnTarget = ave; // recent ave is perfect
-    return(bnTarget);
+    return bnTarget;
 }
 
-int32_t safecoin_is_PoSblock(int32_t slowflag,int32_t height,CBlock *pblock,arith_uint256 bnTarget,arith_uint256 bhash)
+bool safecoin_is_PoSblock(int32_t slowflag,int32_t height,CBlock *pblock,arith_uint256 bnTarget,arith_uint256 bhash)
 {
     CBlockIndex *previndex,*pindex; char voutaddr[64],destaddr[64]; uint256 txid; uint32_t txtime,prevtime=0; int32_t vout,PoSperc,txn_count,eligible=0,isPoS = 0,segid; uint64_t value; CTxDestination voutaddress;
     if ( ASSETCHAINS_STAKED == 100 && height <= 10 )
-        return(1);
+        return true;
     BlockMap::const_iterator it = mapBlockIndex.find(pblock->GetHash());
-    pindex = it != mapBlockIndex.end() ? it->second : NULL;
-    if ( pindex != 0 && pindex->segid >= -1 )
-    {
-        if ( pindex->segid == -1 )
-            return(0);
-        else return(1);
-    }
+    pindex = it != mapBlockIndex.end() ? it->second : nullptr;
+    if ( pindex != nullptr && pindex->segid >= -1 )
+        return pindex->segid != -1;
     txn_count = pblock->vtx.size();
     if ( txn_count > 1 && pblock->vtx[txn_count-1].vin.size() == 1 && pblock->vtx[txn_count-1].vout.size() == 1 )
     {
         it = mapBlockIndex.find(pblock->hashPrevBlock);
-        if ( it != mapBlockIndex.end() && (previndex = it->second) != NULL )
+        if ( it != mapBlockIndex.end() && (previndex = it->second) != nullptr )
             prevtime = (uint32_t)previndex->nTime;
 
         txid = pblock->vtx[txn_count-1].vin[0].prevout.hash;
         vout = pblock->vtx[txn_count-1].vin[0].prevout.n;
         if ( prevtime != 0 )
         {
-            if ( safecoin_isPoS(pblock) != 0 )
-            {
+            if ( safecoin_isPoS(pblock) )
                 eligible = safecoin_stake(1,bnTarget,height,txid,vout,pblock->nTime,prevtime+27,(char *)"");
-            }
             if ( eligible == 0 || eligible > pblock->nTime )
             {
                 if ( 0 && ASSETCHAINS_STAKED < 100 )
                     fprintf(stderr,"safecoin_is_PoSblock PoS failure ht.%d eligible.%u vs blocktime.%u, lag.%d -> check to see if it is PoW block\n",height,eligible,(uint32_t)pblock->nTime,(int32_t)(eligible - pblock->nTime));
-                if ( slowflag != 0 && pindex != 0 )
+                if ( slowflag != 0 && pindex != nullptr )
                 {
                     pindex->segid = -1;
                     fprintf(stderr,"PoW block detected set segid.%d <- %d\n",height,pindex->segid);
@@ -1449,7 +1386,7 @@ int32_t safecoin_is_PoSblock(int32_t slowflag,int32_t height,CBlock *pblock,arit
                 if ( slowflag != 0 && height > 100 )
                 {
                     segid = -3;
-                    if ( pindex != 0 && pindex->segid == -2 && (segid= safecoin_segid(1,height)) >= 0 )
+                    if ( pindex != nullptr && pindex->segid == -2 && (segid= safecoin_segid(1,height)) >= 0 )
                     {
                         pindex->segid = segid;
                         fprintf(stderr,"B set segid.%d <- %d\n",height,pindex->segid);
@@ -1458,10 +1395,8 @@ int32_t safecoin_is_PoSblock(int32_t slowflag,int32_t height,CBlock *pblock,arit
             }
         }
         if ( slowflag == 0 && isPoS == 0 ) // maybe previous block is not seen yet, do the best approx
-        {
-            if ( safecoin_isPoS(pblock) != 0 )
+            if ( safecoin_isPoS(pblock) )
                 isPoS = 1;
-        }
         if ( slowflag != 0 && isPoS != 0 )
         {
             if ( isPoS != 2 )
@@ -1482,7 +1417,7 @@ int32_t safecoin_is_PoSblock(int32_t slowflag,int32_t height,CBlock *pblock,arit
         //else return(-1);
     }
     //fprintf(stderr,"slow.%d ht.%d isPoS.%d\n",slowflag,height,isPoS);
-    return(isPoS != 0);
+    return isPoS != 0;
 }
 
 bool GetStakeParams(const CTransaction &stakeTx, CStakeParams &stakeParams);
@@ -1521,30 +1456,30 @@ int64_t safecoin_checkcommission(CBlock *pblock,int32_t height)
                 //for (i=0; i<25; i++)
                 //    fprintf(stderr,"%02x",script[i]);
                 //fprintf(stderr," payment to wrong pubkey scriptlen.%d, scriptpub[%d]\n",scriptlen,(int32_t)ASSETCHAINS_SCRIPTPUB.size()/2);
-                return(-1);
+                return -1;
 
             }
             if ( pblock->vtx[0].vout[1].nValue != checktoshis )
             {
                 fprintf(stderr,"ht.%d checktoshis %.8f vs actual vout[1] %.8f\n",height,dstr(checktoshis),dstr(pblock->vtx[0].vout[1].nValue));
-                return(-1);
+                return -1;
             }
         }
     }
-    return(checktoshis);
+    return checktoshis;
 }
 
-bool SAFECOIN_TEST_ASSETCHAIN_SKIP_POW = 0;
+bool SAFECOIN_TEST_ASSETCHAIN_SKIP_POW = false;
 
-int32_t safecoin_checkPOW(int32_t slowflag,CBlock *pblock,int32_t height)
+int8_t safecoin_checkPOW(int32_t slowflag,CBlock *pblock,int32_t height)
 {
-    uint256 hash; arith_uint256 bnTarget,bhash; bool fNegative,fOverflow; uint8_t *script,pubkey33[33],pubkeys[64][33]; int32_t i,possible,PoSperc,is_PoSblock=0,n,failed = 0,notaryid = -1; int64_t checktoshis,value; CBlockIndex *pprev;
-    if ( SAFECOIN_TEST_ASSETCHAIN_SKIP_POW == 0 && Params().NetworkIDString() == "regtest" )
-        SAFECOIN_TEST_ASSETCHAIN_SKIP_POW = 1;
+    uint256 hash; arith_uint256 bnTarget,bhash; bool fNegative,fOverflow,possible,is_PoSblock=false,failed=false; uint8_t *script,pubkey33[33],pubkeys[64][33]; int32_t i,PoSperc,n,notaryid = -1; int64_t checktoshis,value; CBlockIndex *pprev;
+    if ( !SAFECOIN_TEST_ASSETCHAIN_SKIP_POW && Params().NetworkIDString() == "regtest" )
+        SAFECOIN_TEST_ASSETCHAIN_SKIP_POW = true;
     if ( !CheckEquihashSolution(pblock, Params()) )
     {
         fprintf(stderr,"safecoin_checkPOW slowflag.%d ht.%d CheckEquihashSolution failed\n",slowflag,height);
-        return(-1);
+        return -1;
     }
     hash = pblock->GetHash();
     bnTarget.SetCompact(pblock->nBits,&fNegative,&fOverflow);
@@ -1555,23 +1490,23 @@ int32_t safecoin_checkPOW(int32_t slowflag,CBlock *pblock,int32_t height)
         if ( slowflag != 0 )
         {
             fprintf(stderr,"height.%d slowflag.%d possible.%d cmp.%d\n",height,slowflag,possible,bhash > bnTarget);
-            return(0);
+            return 0;
         }
         BlockMap::const_iterator it = mapBlockIndex.find(pblock->hashPrevBlock);
         if ( it != mapBlockIndex.end() && (pprev= it->second) != 0 )
             height = pprev->GetHeight() + 1;
         if ( height == 0 )
-            return(0);
+            return 0;
     }
 
-    if ( ASSETCHAINS_LWMAPOS != 0 && bhash > bnTarget )
-    {
+    // if ( ASSETCHAINS_LWMAPOS != 0 && bhash > bnTarget )
+    // {
 
-    }
-    if ( (ASSETCHAINS_SYMBOL[0] != 0 || height > 108800) && bhash > bnTarget )
+    // }
+    if ( (ASSETCHAINS_SYMBOL[0] != '\0' || height > 108800) && bhash > bnTarget )
     {
-        failed = 1;
-        if ( height > 0 && ASSETCHAINS_SYMBOL[0] == 0 ) // for the fast case
+        failed = true;
+        if ( height > 0 && ASSETCHAINS_SYMBOL[0] == '\0' ) // for the fast case
         {
             if ( (n= safecoin_notaries(pubkeys,height,pblock->nTime)) > 0 )
             {
@@ -1583,47 +1518,45 @@ int32_t safecoin_checkPOW(int32_t slowflag,CBlock *pblock,int32_t height)
                     }
             }
         }
-        else if ( possible == 0 || ASSETCHAINS_SYMBOL[0] != 0 )
+        else if ( !possible || ASSETCHAINS_SYMBOL[0] != '\0' )
         {
             if ( SAFECOIN_TEST_ASSETCHAIN_SKIP_POW )
-                return(0);
+                return 0;
             if ( ASSETCHAINS_STAKED == 0 ) // safecoin_is_PoSblock will check bnTarget for staked chains
-                return(-1);
+                return -1;
         }
     }
     if ( ASSETCHAINS_STAKED != 0 && height >= 2 ) // must PoS or have at least 16x better PoW
     {
-        if ( (is_PoSblock= safecoin_is_PoSblock(slowflag,height,pblock,bnTarget,bhash)) == 0 )
+        if (!(is_PoSblock= safecoin_is_PoSblock(slowflag,height,pblock,bnTarget,bhash)))
         {
             if ( slowflag == 0 ) // need all past 100 blocks to calculate PoW target
-                return(0);
+                return 0;
             if ( ASSETCHAINS_STAKED == 100 && height > 100 )  // only PoS allowed! POSTEST64
-                return(-1);
-            else
+                return -1;
+            if ( slowflag != 0 )
+                bnTarget = safecoin_PoWtarget(&PoSperc,bnTarget,height,ASSETCHAINS_STAKED);
+            if ( bhash > bnTarget )
             {
-                if ( slowflag != 0 )
-                    bnTarget = safecoin_PoWtarget(&PoSperc,bnTarget,height,ASSETCHAINS_STAKED);
-                if ( bhash > bnTarget )
-                {
-                    for (i=31; i>=16; i--)
-                        fprintf(stderr,"%02x",((uint8_t *)&bhash)[i]);
-                    fprintf(stderr," > ");
-                    for (i=31; i>=16; i--)
-                        fprintf(stderr,"%02x",((uint8_t *)&bnTarget)[i]);
-                    fprintf(stderr," ht.%d PoW diff violation PoSperc.%d vs goalperc.%d\n",height,PoSperc,(int32_t)ASSETCHAINS_STAKED);
-                    return(-1);
-                } else failed = 0;
+                for (i=31; i>=16; i--)
+                    fprintf(stderr,"%02x",((uint8_t *)&bhash)[i]);
+                fprintf(stderr," > ");
+                for (i=31; i>=16; i--)
+                    fprintf(stderr,"%02x",((uint8_t *)&bnTarget)[i]);
+                fprintf(stderr," ht.%d PoW diff violation PoSperc.%d vs goalperc.%d\n",height,PoSperc,(int32_t)ASSETCHAINS_STAKED);
+                return -1;
             }
+            failed = false;
         }
-        else if ( is_PoSblock < 0 )
-        {
-            fprintf(stderr,"unexpected negative is_PoSblock.%d\n",is_PoSblock);
-            return(-1);
-        }
+        // else if ( is_PoSblock < 0 )
+        // {
+        //     fprintf(stderr,"unexpected negative is_PoSblock.%d\n",is_PoSblock);
+        //     return -1;
+        // }
         else if ( ASSETCHAINS_STAKED != 0 )
-            failed = 0;
+            failed = false;
     }
-    if ( failed == 0 && ASSETCHAINS_COMMISSION != 0 ) //ASSETCHAINS_OVERRIDE_PUBKEY33[0] != 0 )
+    if ( !failed && ASSETCHAINS_COMMISSION != 0 ) //ASSETCHAINS_OVERRIDE_PUBKEY33[0] != 0 )
     {
         if ( height == 1 )
         {
@@ -1636,42 +1569,36 @@ int32_t safecoin_checkPOW(int32_t slowflag,CBlock *pblock,int32_t height)
                 {
                     decode_hex(scripthex,scriptlen,(char *)ASSETCHAINS_SCRIPTPUB.c_str());
                     if ( memcmp(scripthex,script,scriptlen) != 0 )
-                        return(-1);
-                } else return(-1);
+                        return -1;
+                } else return -1;
             }
             else
             {
                 script = (uint8_t *)&pblock->vtx[0].vout[0].scriptPubKey[0];
                 if ( script[0] != 33 || script[34] != OP_CHECKSIG || memcmp(script+1,ASSETCHAINS_OVERRIDE_PUBKEY33,33) != 0 )
-                    return(-1);
+                    return -1;
             }
         }
-        else
-        {
-            if ( safecoin_checkcommission(pblock,height) < 0 )
-                return(-1);
-        }
+        else if ( safecoin_checkcommission(pblock,height) < 0 )
+            return -1;
     }
 //fprintf(stderr,"safecoin_checkPOW possible.%d slowflag.%d ht.%d notaryid.%d failed.%d\n",possible,slowflag,height,notaryid,failed);
-    if ( failed != 0 && possible == 0 && notaryid < 0 )
-        return(-1);
-    else return(0);
+    if ( failed && !possible && notaryid < 0 )
+        return -1;
+    return 0;
 }
 
-int32_t safecoin_acpublic(uint32_t tiptime)
+bool safecoin_acpublic(uint32_t tiptime)
 {
-    int32_t acpublic = ASSETCHAINS_PUBLIC; CBlockIndex *pindex;
-    if ( acpublic == 0 )
+    bool acpublic = ASSETCHAINS_PUBLIC; CBlockIndex *pindex;
+    if ( !acpublic )
     {
-        if ( tiptime == 0 )
-        {
-            if ( (pindex= chainActive.LastTip()) != 0 )
-                tiptime = pindex->nTime;
-        }
-        if ( (ASSETCHAINS_SYMBOL[0] == 0 || strcmp(ASSETCHAINS_SYMBOL,"ZEX") == 0) && tiptime >= SAFECOIN_SAPLING_DEADLINE )
-            acpublic = 1;
+        if ( tiptime == 0 && (pindex= chainActive.LastTip()) != nullptr )
+            tiptime = pindex->nTime;
+        if ( (ASSETCHAINS_SYMBOL[0] == '\0' || strcmp(ASSETCHAINS_SYMBOL,"ZEX") == 0) && tiptime >= SAFECOIN_SAPLING_DEADLINE )
+            acpublic = true;
     }
-    return(acpublic);
+    return acpublic;
 }
 
 int64_t safecoin_newcoins(int64_t *zfundsp,int64_t *sproutfundsp,int32_t nHeight,CBlock *pblock)
@@ -1692,7 +1619,7 @@ int64_t safecoin_newcoins(int64_t *zfundsp,int64_t *sproutfundsp,int32_t nHeight
                 if ( !GetTransaction(txid,vintx,hashBlock, false) || vout >= vintx.vout.size() )
                 {
                     fprintf(stderr,"ERROR: %s/v%d cant find\n",txid.ToString().c_str(),vout);
-                    return(0);
+                    return 0;
                 }
                 vinsum += vintx.vout[vout].nValue;
             }
@@ -1706,13 +1633,10 @@ int64_t safecoin_newcoins(int64_t *zfundsp,int64_t *sproutfundsp,int32_t nHeight
                 else printf("skip %.8f -> %s\n",dstr(tx.vout[j].nValue),CBitcoinAddress(address).ToString().c_str());
             }
             script = (uint8_t *)&tx.vout[j].scriptPubKey[0];
-            if ( script == 0 || script[0] != 0x6a )
-            {
-                if ( ExtractDestination(tx.vout[j].scriptPubKey,address) != 0 && strcmp("RD6GgnrMpPaTSMn8vai6yiGA7mN4QGPVMY",CBitcoinAddress(address).ToString().c_str()) != 0 )
-                    voutsum += tx.vout[j].nValue;
-            }
+            if ( script == 0 || script[0] != 0x6a && ExtractDestination(tx.vout[j].scriptPubKey,address) != 0 && strcmp("RD6GgnrMpPaTSMn8vai6yiGA7mN4QGPVMY",CBitcoinAddress(address).ToString().c_str()) != 0 )
+                voutsum += tx.vout[j].nValue;
         }
-        BOOST_FOREACH(const JSDescription& joinsplit, tx.vjoinsplit)
+        for (const JSDescription& joinsplit : tx.vjoinsplit)
         {
             zfunds -= joinsplit.vpub_new;
             zfunds += joinsplit.vpub_old;
@@ -1723,11 +1647,11 @@ int64_t safecoin_newcoins(int64_t *zfundsp,int64_t *sproutfundsp,int32_t nHeight
     }
     *zfundsp = zfunds;
     *sproutfundsp = sproutfunds;
-    if ( ASSETCHAINS_SYMBOL[0] == 0 && (voutsum-vinsum) == 100003*SATOSHIDEN ) // 15 times
-        return(3 * SATOSHIDEN);
+    if ( ASSETCHAINS_SYMBOL[0] == '\0' && voutsum-vinsum == 100003*SATOSHIDEN ) // 15 times
+        return 3*SATOSHIDEN;
     //if ( voutsum-vinsum+zfunds > 100000*SATOSHIDEN || voutsum-vinsum+zfunds < 0 )
     //.    fprintf(stderr,"ht.%d vins %.8f, vouts %.8f -> %.8f zfunds %.8f\n",nHeight,dstr(vinsum),dstr(voutsum),dstr(voutsum)-dstr(vinsum),dstr(zfunds));
-    return(voutsum - vinsum);
+    return voutsum-vinsum;
 }
 
 int64_t safecoin_coinsupply(int64_t *zfundsp,int64_t *sproutfundsp,int32_t height)
@@ -1735,28 +1659,25 @@ int64_t safecoin_coinsupply(int64_t *zfundsp,int64_t *sproutfundsp,int32_t heigh
     CBlockIndex *pindex; CBlock block; int64_t zfunds=0,sproutfunds=0,supply = 0;
     //fprintf(stderr,"coinsupply %d\n",height);
     *zfundsp = *sproutfundsp = 0;
-    if ( (pindex= safecoin_chainactive(height)) != 0 )
+    pindex= safecoin_chainactive(height);
+    while ( pindex != nullptr && pindex->GetHeight() > 0 )
     {
-        while ( pindex != 0 && pindex->GetHeight() > 0 )
+        if ( pindex->newcoins == 0 && pindex->zfunds == 0 )
         {
-            if ( pindex->newcoins == 0 && pindex->zfunds == 0 )
+            if ( safecoin_blockload(block,pindex) ==  -1 )
             {
-                if ( safecoin_blockload(block,pindex) == 0 )
-                    pindex->newcoins = safecoin_newcoins(&pindex->zfunds,&pindex->sproutfunds,pindex->GetHeight(),&block);
-                else
-                {
-                    fprintf(stderr,"error loading block.%d\n",pindex->GetHeight());
-                    return(0);
-                }
+                fprintf(stderr,"error loading block.%d\n",pindex->GetHeight());
+                return 0;
             }
-            supply += pindex->newcoins;
-            zfunds += pindex->zfunds;
-            sproutfunds += pindex->sproutfunds;
-            //printf("start ht.%d new %.8f -> supply %.8f zfunds %.8f -> %.8f\n",pindex->GetHeight(),dstr(pindex->newcoins),dstr(supply),dstr(pindex->zfunds),dstr(zfunds));
-            pindex = pindex->pprev;
+            pindex->newcoins = safecoin_newcoins(&pindex->zfunds,&pindex->sproutfunds,pindex->GetHeight(),&block);
         }
+        supply += pindex->newcoins;
+        zfunds += pindex->zfunds;
+        sproutfunds += pindex->sproutfunds;
+        //printf("start ht.%d new %.8f -> supply %.8f zfunds %.8f -> %.8f\n",pindex->GetHeight(),dstr(pindex->newcoins),dstr(supply),dstr(pindex->zfunds),dstr(zfunds));
+        pindex = pindex->pprev;
     }
     *zfundsp = zfunds;
     *sproutfundsp = sproutfunds;
-    return(supply);
+    return supply;
 }

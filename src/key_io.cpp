@@ -198,9 +198,8 @@ std::string EncodeSecret(const CKey& key)
     assert(key.IsValid());
     std::vector<unsigned char> data = Params().Base58Prefix(CChainParams::SECRET_KEY);
     data.insert(data.end(), key.begin(), key.end());
-    if (key.IsCompressed()) {
+    if (key.IsCompressed())
         data.push_back(1);
-    }
     std::string ret = EncodeBase58Check(data);
     memory_cleanse(data.data(), data.size());
     return ret;
@@ -212,9 +211,8 @@ CExtPubKey DecodeExtPubKey(const std::string& str)
     std::vector<unsigned char> data;
     if (DecodeBase58Check(str, data)) {
         const std::vector<unsigned char>& prefix = Params().Base58Prefix(CChainParams::EXT_PUBLIC_KEY);
-        if (data.size() == BIP32_EXTKEY_SIZE + prefix.size() && std::equal(prefix.begin(), prefix.end(), data.begin())) {
+        if (data.size() == BIP32_EXTKEY_SIZE + prefix.size() && std::equal(prefix.begin(), prefix.end(), data.begin()))
             key.Decode(data.data() + prefix.size());
-        }
     }
     return key;
 }
@@ -235,9 +233,8 @@ CExtKey DecodeExtKey(const std::string& str)
     std::vector<unsigned char> data;
     if (DecodeBase58Check(str, data)) {
         const std::vector<unsigned char>& prefix = Params().Base58Prefix(CChainParams::EXT_SECRET_KEY);
-        if (data.size() == BIP32_EXTKEY_SIZE + prefix.size() && std::equal(prefix.begin(), prefix.end(), data.begin())) {
+        if (data.size() == BIP32_EXTKEY_SIZE + prefix.size() && std::equal(prefix.begin(), prefix.end(), data.begin()))
             key.Decode(data.data() + prefix.size());
-        }
     }
     return key;
 }

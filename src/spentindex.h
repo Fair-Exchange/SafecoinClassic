@@ -87,11 +87,9 @@ struct CSpentIndexValue {
 struct CSpentIndexKeyCompare
 {
     bool operator()(const CSpentIndexKey& a, const CSpentIndexKey& b) const {
-        if (a.txid == b.txid) {
+        if (a.txid == b.txid)
             return a.outputIndex < b.outputIndex;
-        } else {
-            return a.txid < b.txid;
-        }
+        return a.txid < b.txid;
     }
 };
 

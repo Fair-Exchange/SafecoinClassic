@@ -374,7 +374,6 @@ bool ExtractDestination(const CScript& _scriptPubKey, CTxDestination& addressRet
             //fprintf(stderr,"TX_PUBKEY invalid pubkey\n");
             return false;
         }
-
         if (returnPubKey)
             addressRet = pubKey;
         else
@@ -392,8 +391,7 @@ bool ExtractDestination(const CScript& _scriptPubKey, CTxDestination& addressRet
         addressRet = CScriptID(uint160(vSolutions[0]));
         return true;
     }
-    
-    else if (IsCryptoConditionsEnabled() != 0 && whichType == TX_CRYPTOCONDITION)
+    else if (IsCryptoConditionsEnabled() && whichType == TX_CRYPTOCONDITION)
     {
         if (vSolutions.size() > 1)
         {
@@ -432,10 +430,8 @@ bool ExtractDestinations(const CScript& scriptPubKey, txnouttype& typeRet, vecto
 
     if (!Solver(scriptPubKey, typeRet, vSolutions))
         return false;
-    if (typeRet == TX_NULL_DATA){
-        // This is data, not addresses
-        return false;
-    }
+    if (typeRet == TX_NULL_DATA)
+        return false; // This is data, not addresses
 
     if (typeRet == TX_MULTISIG)
     {
@@ -453,20 +449,16 @@ bool ExtractDestinations(const CScript& scriptPubKey, txnouttype& typeRet, vecto
         if (addressRet.empty())
             return false;
     }
-    else if (IsCryptoConditionsEnabled() != 0 && typeRet == TX_CRYPTOCONDITION)
+    else if (IsCryptoConditionsEnabled() && typeRet == TX_CRYPTOCONDITION)
     {
         nRequiredRet = vSolutions.front()[0];
         for (unsigned int i = 1; i < vSolutions.size()-1; i++)
         {
             CTxDestination address;
             if (vSolutions[i].size() == 20)
-            {
                 address = CKeyID(uint160(vSolutions[i]));
-            }
             else
-            {
                 address = CPubKey(vSolutions[i]);
-            }
             addressRet.push_back(address);
         }
 
@@ -478,9 +470,7 @@ bool ExtractDestinations(const CScript& scriptPubKey, txnouttype& typeRet, vecto
         nRequiredRet = 1;
         CTxDestination address;
         if (!ExtractDestination(scriptPubKey, address))
-        {
            return false;
-        }
         addressRet.push_back(address);
     }
 

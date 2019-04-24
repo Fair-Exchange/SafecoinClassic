@@ -355,10 +355,8 @@ bool AsyncRPCOperation_sendmany::main_impl() {
             }
             // for Safecoin, set lock time to accure interest, for other chains, set
             // locktime to spend time locked coinbases
-            if (ASSETCHAINS_SYMBOL[0] == 0)
-            {
+            if (ASSETCHAINS_SYMBOL[0] == '\0')
                 builder_.SetLockTime((uint32_t)time(NULL) - 60); // set lock time for Safecoin interest
-            }
         } else {
             CMutableTransaction rawTx(tx_);
             for (SendManyInputUTXO & t : t_inputs_) {
@@ -368,10 +366,8 @@ bool AsyncRPCOperation_sendmany::main_impl() {
                 CTxIn in(COutPoint(txid, vout));
                 rawTx.vin.push_back(in);
             }
-            if (ASSETCHAINS_SYMBOL[0] == 0)
-            {
+            if (ASSETCHAINS_SYMBOL[0] == '\0')
                 rawTx.nLockTime = (uint32_t)time(NULL) - 60; // jl777
-            }
             tx_ = CTransaction(rawTx);
         }
     }

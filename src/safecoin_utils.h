@@ -37,7 +37,8 @@ typedef struct queue
 {
 	struct queueitem *list;
 	pthread_mutex_t mutex;
-    char name[64],initflag;
+    char name[64];
+    bool initflag;
 } queue_t;
 
 #include "mini-gmp.c"
@@ -191,8 +192,8 @@ h  = t0 + t1;
     RND(S[1],S[2],S[3],S[4],S[5],S[6],S[7],S[0],63,0xc67178f2);
 #undef RND
     for (i=0; i<8; i++) // feedback
-        md->state[i] = md->state[i] + S[i];
-    return(0);
+        md->state[i] += S[i];
+    return 0;
 }
 
 #undef RORc
@@ -223,13 +224,13 @@ static inline int32_t sha256_vprocess(struct sha256_vstate *md,const uint8_t *in
 {
     uint64_t n; int32_t err;
     if ( md->curlen > sizeof(md->buf) )
-        return(-1);
+        return -1;
     while ( inlen > 0 )
     {
         if ( md->curlen == 0 && inlen >= 64 )
         {
             if ( (err= sha256_vcompress(md,(uint8_t *)in)) != 0 )
-                return(err);
+                return err;
             md->length += 64 * 8, in += 64, inlen -= 64;
         }
         else
@@ -240,37 +241,37 @@ static inline int32_t sha256_vprocess(struct sha256_vstate *md,const uint8_t *in
             if ( md->curlen == 64 )
             {
                 if ( (err= sha256_vcompress(md,md->buf)) != 0 )
-                    return(err);
+                    return err;
                 md->length += 8*64;
                 md->curlen = 0;
             }
         }
     }
-    return(0);
+    return 0;
 }
 
 static inline int32_t sha256_vdone(struct sha256_vstate *md,uint8_t *out)
 {
     int32_t i;
     if ( md->curlen >= sizeof(md->buf) )
-        return(-1);
+        return -1;
     md->length += md->curlen * 8; // increase the length of the message
-    md->buf[md->curlen++] = (uint8_t)0x80; // append the '1' bit
+    md->buf[md->curlen++] = 0x80; // append the '1' bit
     // if len > 56 bytes we append zeros then compress.  Then we can fall back to padding zeros and length encoding like normal.
     if ( md->curlen > 56 )
     {
         while ( md->curlen < 64 )
-            md->buf[md->curlen++] = (uint8_t)0;
+            md->buf[md->curlen++] = 0;
         sha256_vcompress(md,md->buf);
         md->curlen = 0;
     }
     while ( md->curlen < 56 ) // pad upto 56 bytes of zeroes
-        md->buf[md->curlen++] = (uint8_t)0;
+        md->buf[md->curlen++] = 0;
     STORE64H(md->length,md->buf+56); // store length
     sha256_vcompress(md,md->buf);
     for (i=0; i<8; i++) // copy output
         STORE32H(md->state[i],out+(4*i));
-    return(0);
+    return 0;
 }
 
 void vcalc_sha256(char deprecated[(256 >> 3) * 2 + 1],uint8_t hash[256 >> 3],uint8_t *src,int32_t len)
@@ -288,7 +289,7 @@ bits256 bits256_doublesha256(char *deprecated,uint8_t *data,int32_t datalen)
     vcalc_sha256(0,hash2.bytes,hash.bytes,sizeof(hash));
     for (i=0; i<sizeof(hash); i++)
         hash.bytes[i] = hash2.bytes[sizeof(hash) - 1 - i];
-    return(hash);
+    return hash;
 }
 
 
@@ -357,9 +358,8 @@ static int32_t rmd160_vcompress(struct rmd160_vstate *md,uint8_t *buf)
     int i;
 
     /* load words X */
-    for (i = 0; i < 16; i++){
+    for (i = 0; i < 16; i++)
         LOAD32L(X[i], buf + (4 * i));
-    }
 
     /* load state */
     aa = aaa = md->state[0];
@@ -627,37 +627,33 @@ HASH_PROCESS(rmd160_vprocess, rmd160_vcompress, rmd160, 64)
 int rmd160_vdone(struct rmd160_vstate * md, unsigned char *out)
 {
     int i;
-    if (md->curlen >= sizeof(md->buf)) {
+    if (md->curlen >= sizeof(md->buf))
         return -1;
-    }
     /* increase the length of the message */
     md->length += md->curlen * 8;
 
     /* append the '1' bit */
-    md->buf[md->curlen++] = (unsigned char)0x80;
+    md->buf[md->curlen++] = 0x80;
 
     /* if the length is currently above 56 bytes we append zeros
      * then compress.  Then we can fall back to padding zeros and length
      * encoding like normal.
      */
     if (md->curlen > 56) {
-        while (md->curlen < 64) {
-            md->buf[md->curlen++] = (unsigned char)0;
-        }
+        while (md->curlen < 64)
+            md->buf[md->curlen++] = 0;
         rmd160_vcompress(md, md->buf);
         md->curlen = 0;
     }
     /* pad upto 56 bytes of zeroes */
-    while (md->curlen < 56) {
-        md->buf[md->curlen++] = (unsigned char)0;
-    }
+    while (md->curlen < 56)
+        md->buf[md->curlen++] = 0;
     /* store length */
     STORE64L(md->length, md->buf+56);
     rmd160_vcompress(md, md->buf);
     /* copy output */
-    for (i = 0; i < 5; i++) {
+    for (i = 0; i < 5; i++)
         STORE32L(md->state[i], out+(4*i));
-    }
     return 0;
 }
 
@@ -738,7 +734,7 @@ uint32_t calc_crc32(uint32_t crc,const void *buf,size_t size)
 	p = (const uint8_t *)buf;
 	crc = crc ^ ~0U;
 
-	while (size--)
+	while (size-- != 0)
 		crc = crc32_tab[(crc ^ *p++) & 0xFF] ^ (crc >> 8);
 
 	return crc ^ ~0U;
@@ -766,21 +762,16 @@ int32_t bitcoin_addr2rmd160(uint8_t *addrtypep,uint8_t rmd160[20],char *coinaddr
         if ( (buf[21]&0xff) == hash.bytes[31] && (buf[22]&0xff) == hash.bytes[30] &&(buf[23]&0xff) == hash.bytes[29] && (buf[24]&0xff) == hash.bytes[28] )
         {
             //printf("coinaddr.(%s) valid checksum addrtype.%02x\n",coinaddr,*addrtypep);
-            return(20);
+            return 20;
         }
-        else
-        {
-            int32_t i;
-            if ( len > 20 )
-            {
-                hash = bits256_doublesha256(0,buf,len);
-            }
-            for (i=0; i<len; i++)
-                printf("%02x ",buf[i]);
-            printf("\nhex checkhash.(%s) len.%d mismatch %02x %02x %02x %02x vs %02x %02x %02x %02x\n",coinaddr,len,buf[len-1]&0xff,buf[len-2]&0xff,buf[len-3]&0xff,buf[len-4]&0xff,hash.bytes[31],hash.bytes[30],hash.bytes[29],hash.bytes[28]);
-        }
+        int32_t i;
+        if ( len > 20 )
+            hash = bits256_doublesha256(0,buf,len);
+        for (i=0; i<len; i++)
+            printf("%02x ",buf[i]);
+        printf("\nhex checkhash.(%s) len.%d mismatch %02x %02x %02x %02x vs %02x %02x %02x %02x\n",coinaddr,len,buf[len-1]&0xff,buf[len-2]&0xff,buf[len-3]&0xff,buf[len-4]&0xff,hash.bytes[31],hash.bytes[30],hash.bytes[29],hash.bytes[28]);
     }
-	return(0);
+	return 0;
 }
 
 char *bitcoin_address(char *coinaddr,uint8_t addrtype,uint8_t *pubkey_or_rmd160,int32_t len)
@@ -788,27 +779,26 @@ char *bitcoin_address(char *coinaddr,uint8_t addrtype,uint8_t *pubkey_or_rmd160,
     int32_t i; uint8_t data[25]; bits256 hash;// char checkaddr[65];
     if ( len != 20 )
         calc_rmd160_sha256(data+1,pubkey_or_rmd160,len);
-    else memcpy(data+1,pubkey_or_rmd160,20);
+    else
+        memcpy(data+1,pubkey_or_rmd160,20);
     //btc_convrmd160(checkaddr,addrtype,data+1);
     data[0] = addrtype;
     hash = bits256_doublesha256(0,data,21);
     for (i=0; i<4; i++)
         data[21+i] = hash.bytes[31-i];
-    if ( (coinaddr= bitcoin_base58encode(coinaddr,data,25)) != 0 )
-    {
+    // if ( (coinaddr= bitcoin_base58encode(coinaddr,data,25)) != nullptr )
+    // {
         //uint8_t checktype,rmd160[20];
         //bitcoin_addr2rmd160(&checktype,rmd160,coinaddr);
         //if ( strcmp(checkaddr,coinaddr) != 0 )
         //    printf("checkaddr.(%s) vs coinaddr.(%s) %02x vs [%02x] memcmp.%d\n",checkaddr,coinaddr,addrtype,checktype,memcmp(rmd160,data+1,20));
-    }
-    return(coinaddr);
+    // }
+    return coinaddr;
 }
 
-int32_t safecoin_is_issuer()
+bool safecoin_is_issuer()
 {
-    if ( ASSETCHAINS_SYMBOL[0] != 0 && safecoin_baseid(ASSETCHAINS_SYMBOL) >= 0 )
-        return(1);
-    else return(0);
+    return ASSETCHAINS_SYMBOL[0] != '\0' && safecoin_baseid(ASSETCHAINS_SYMBOL) >= 0;
 }
 
 int32_t bitweight(uint64_t x)
@@ -816,27 +806,27 @@ int32_t bitweight(uint64_t x)
     int i,wt = 0;
     for (i=0; i<64; i++)
         if ( (1LL << i) & x )
-            wt++;
-    return(wt);
+            ++wt;
+    return wt;
 }
 
 int32_t _unhex(char c)
 {
     if ( c >= '0' && c <= '9' )
-        return(c - '0');
+        return c - '0';
     else if ( c >= 'a' && c <= 'f' )
-        return(c - 'a' + 10);
+        return c - 'a' + 10;
     else if ( c >= 'A' && c <= 'F' )
-        return(c - 'A' + 10);
-    return(-1);
+        return c - 'A' + 10;
+    return -1;
 }
 
 int32_t is_hexstr(char *str,int32_t n)
 {
     int32_t i;
-    if ( str == 0 || str[0] == 0 )
-        return(0);
-    for (i=0; str[i]!=0; i++)
+    if ( str == nullptr || str[0] == '\0' )
+        return 0;
+    for (i=0; str[i]!='\0'; i++)
     {
         if ( n > 0 && i >= n )
             break;
@@ -844,21 +834,23 @@ int32_t is_hexstr(char *str,int32_t n)
             break;
     }
     if ( n == 0 )
-        return(i);
-    return(i == n);
+        return i;
+    return i == n;
 }
 
 int32_t unhex(char c)
 {
-    int32_t hex;
-    if ( (hex= _unhex(c)) < 0 )
-    {
+    // int32_t hex = _unhex(c);
+    // if ( hex < 0 )
+    // {
         //printf("unhex: illegal hexchar.(%c)\n",c);
-    }
-    return(hex);
+    // }
+    return _unhex(c);
 }
 
-unsigned char _decode_hex(char *hex) { return((unhex(hex[0])<<4) | unhex(hex[1])); }
+unsigned char _decode_hex(char *hex) {
+    return (unhex(hex[0])<<4) | unhex(hex[1]);
+}
 
 int32_t decode_hex(uint8_t *bytes,int32_t n,char *hex)
 {
@@ -867,11 +859,11 @@ int32_t decode_hex(uint8_t *bytes,int32_t n,char *hex)
     if ( is_hexstr(hex,n) <= 0 )
     {
         memset(bytes,0,n);
-        return(n);
+        return n;
     }
     if ( hex[n-1] == '\n' || hex[n-1] == '\r' )
-        hex[--n] = 0;
-    if ( n == 0 || (hex[n*2+1] == 0 && hex[n*2] != 0) )
+        hex[--n] = '\0';
+    if ( n == 0 || (hex[n*2+1] == '\0' && hex[n*2] != '\0') )
     {
         if ( n > 0 )
         {
@@ -882,23 +874,20 @@ int32_t decode_hex(uint8_t *bytes,int32_t n,char *hex)
         hex++;
         adjust = 1;
     } else adjust = 0;
-    if ( n > 0 )
-    {
-        for (i=0; i<n; i++)
-            bytes[i] = _decode_hex(&hex[i*2]);
-    }
+    for (i=0; i<n; i++)
+        bytes[i] = _decode_hex(&hex[i*2]);
     //bytes[i] = 0;
-    return(n + adjust);
+    return n + adjust;
 }
 
 char hexbyte(int32_t c)
 {
     c &= 0xf;
     if ( c < 10 )
-        return('0'+c);
+        return '0'+c;
     else if ( c < 16 )
-        return('a'+c-10);
-    else return(0);
+        return 'a'+c-10;
+    return 0;
 }
 
 int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len)
@@ -906,8 +895,8 @@ int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len)
     int32_t i;
     if ( len <= 0 )
     {
-        hexbytes[0] = 0;
-        return(1);
+        hexbytes[0] = '\0';
+        return 1;
     }
     for (i=0; i<len; i++)
     {
@@ -915,15 +904,15 @@ int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len)
         hexbytes[i*2 + 1] = hexbyte(message[i] & 0xf);
         //printf("i.%d (%02x) [%c%c]\n",i,message[i],hexbytes[i*2],hexbytes[i*2+1]);
     }
-    hexbytes[len*2] = 0;
+    hexbytes[len*2] = '\0';
     //printf("len.%ld\n",len*2+1);
-    return((int32_t)len*2+1);
+    return len*2+1;
 }
 
 char *bits256_str(char hexstr[65],bits256 x)
 {
     init_hexbytes_noT(hexstr,x.bytes,sizeof(x));
-    return(hexstr);
+    return hexstr;
 }
 
 int32_t iguana_rwnum(int32_t rwflag,uint8_t *serialized,int32_t len,void *endianedp)
@@ -958,23 +947,19 @@ int32_t iguana_rwnum(int32_t rwflag,uint8_t *serialized,int32_t len,void *endian
         for (i=0; i<len; i++,x >>= 8)
             serialized[i] = (uint8_t)(x & 0xff);
     }
-    return(len);
+    return len;
 }
 
 int32_t iguana_rwbignum(int32_t rwflag,uint8_t *serialized,int32_t len,uint8_t *endianedp)
 {
     int32_t i;
     if ( rwflag == 0 )
-    {
         for (i=0; i<len; i++)
             endianedp[i] = serialized[i];
-    }
     else
-    {
         for (i=0; i<len; i++)
             serialized[i] = endianedp[i];
-    }
-    return(len);
+    return len;
 }
 
 int32_t safecoin_scriptitemlen(int32_t *opretlenp,uint8_t *script)
@@ -993,15 +978,14 @@ int32_t safecoin_scriptitemlen(int32_t *opretlenp,uint8_t *script)
         }
     }
     *opretlenp = opretlen;
-    return(len);
+    return len;
 }
 
 int32_t safecoin_opreturnscript(uint8_t *script,uint8_t type,uint8_t *opret,int32_t opretlen)
 {
     int32_t offset = 0;
     script[offset++] = 0x6a;
-    opretlen++;
-    if ( opretlen >= 0x4c )
+    if ( ++opretlen >= 0x4c )
     {
         if ( opretlen > 0xff )
         {
@@ -1017,7 +1001,7 @@ int32_t safecoin_opreturnscript(uint8_t *script,uint8_t type,uint8_t *opret,int3
     } else script[offset++] = opretlen;
     script[offset++] = type; // covered by opretlen
     memcpy(&script[offset],opret,opretlen-1);
-    return(offset + opretlen - 1);
+    return offset + opretlen - 1;
 }
 
 // get a pseudo random number that is the same for each block individually at all times and different
@@ -1039,11 +1023,8 @@ uint64_t safecoin_block_prg(uint32_t nHeight)
 
         vcalc_sha256(0, hashResult.bytes, hashSrc, sizeof(hashSrc));
         for ( i = 0; i < 8; i++ )
-        {
             result = (result << 8) + hashResult.bytes[i];
-        }
         return result;
-   
 }
 
 // given a block height, this returns the unlock time for that block height, derived from
@@ -1068,51 +1049,49 @@ int64_t safecoin_block_unlocktime(uint32_t nHeight)
             // boundary and power of 2 can make it exceed to time by 1
             unlocktime = unlocktime + ASSETCHAINS_TIMEUNLOCKFROM;
             if (unlocktime > ASSETCHAINS_TIMEUNLOCKTO)
-                unlocktime--;
+                --unlocktime;
         }
     }
-    return ((int64_t)unlocktime);
+    return unlocktime;
 }
 
 long _stripwhite(char *buf,int accept)
 {
     int32_t i,j,c;
-    if ( buf == 0 || buf[0] == 0 )
-        return(0);
-    for (i=j=0; buf[i]!=0; i++)
+    if ( buf == nullptr || buf[0] == '\0' )
+        return 0;
+    for (i=j=0; buf[i]!='\0'; i++)
     {
         buf[j] = c = buf[i];
         if ( c == accept || (c != ' ' && c != '\n' && c != '\r' && c != '\t' && c != '\b') )
-            j++;
+            ++j;
     }
-    buf[j] = 0;
-    return(j);
+    buf[j] = '\0';
+    return j;
 }
 
 char *clonestr(char *str)
 {
     char *clone;
-    if ( str == 0 || str[0] == 0 )
+    if ( str == nullptr || str[0] == '\0' )
     {
         printf("warning cloning nullstr.%p\n",str);
 #ifdef __APPLE__
-        while ( 1 ) sleep(1);
+        while ( true ) sleep(1); //FIXME: WTF?
 #endif
         str = (char *)"<nullstr>";
     }
-    clone = (char *)malloc(strlen(str)+16);
+    clone = (char *)malloc(strlen(str)+16); //TODO: Why +16?
     strcpy(clone,str);
-    return(clone);
+    return clone;
 }
 
 int32_t safecopy(char *dest,char *src,long len)
 {
     int32_t i = -1;
-    if ( src != 0 && dest != 0 && src != dest )
+    if ( src != nullptr && dest != nullptr && src != dest )
     {
-        if ( dest != 0 )
-            memset(dest,0,len);
-        for (i=0; i<len&&src[i]!=0; i++)
+        for (i=0; i<len&&src[i]!='\0'; i++)
             dest[i] = src[i];
         if ( i == len )
         {
@@ -1120,63 +1099,54 @@ int32_t safecopy(char *dest,char *src,long len)
 #ifdef __APPLE__
             //getchar();
 #endif
-            return(-1);
+            return -1;
         }
-        dest[i] = 0;
+        dest[i] = '\0';
     }
-    return(i);
+    return i;
 }
 
 char *parse_conf_line(char *line,char *field)
 {
     line += strlen(field);
-    for (; *line!='='&&*line!=0; line++)
+    for (; *line!='='&&*line!='\0'; line++)
         break;
     if ( *line == 0 )
-        return(0);
+        return nullptr;
     if ( *line == '=' )
         line++;
     while ( line[strlen(line)-1] == '\r' || line[strlen(line)-1] == '\n' || line[strlen(line)-1] == ' ' )
-        line[strlen(line)-1] = 0;
+        line[strlen(line)-1] = '\0';
     //printf("LINE.(%s)\n",line);
     _stripwhite(line,0);
-    return(clonestr(line));
+    return clonestr(line);
 }
 
 double OS_milliseconds()
 {
     struct timeval tv; double millis;
     gettimeofday(&tv,NULL);
-    millis = ((double)tv.tv_sec * 1000. + (double)tv.tv_usec / 1000.);
+    millis = (double)tv.tv_sec * 1000. + (double)tv.tv_usec / 1000.;
     //printf("tv_sec.%ld usec.%d %f\n",tv.tv_sec,tv.tv_usec,millis);
-    return(millis);
+    return millis;
 }
 
 #ifndef _WIN32
 void OS_randombytes(unsigned char *x,long xlen)
 {
-    static int fd = -1;
+    static int fd;
     int32_t i;
-    if (fd == -1) {
-        for (;;) {
-            fd = open("/dev/urandom",O_RDONLY);
-            if (fd != -1) break;
-            sleep(1);
-        }
+    while (true) {
+        fd = open("/dev/urandom",O_RDONLY);
+        if (fd != -1) break;
+        sleep(1);
     }
     while (xlen > 0) {
-        if (xlen < 1048576) i = (int32_t)xlen; else i = 1048576;
+        i = xlen < 1048576 ? (int32_t)xlen : 1048576;
         i = (int32_t)read(fd,x,i);
         if (i < 1) {
             sleep(1);
             continue;
-        }
-        if ( 0 )
-        {
-            int32_t j;
-            for (j=0; j<i; j++)
-                printf("%02x ",x[j]);
-            printf("-> %p\n",x);
         }
         x += i;
         xlen -= i;
@@ -1186,19 +1156,19 @@ void OS_randombytes(unsigned char *x,long xlen)
 
 void lock_queue(queue_t *queue)
 {
-    if ( queue->initflag == 0 )
+    if ( !queue->initflag )
     {
         portable_mutex_init(&queue->mutex);
-        queue->initflag = 1;
+        queue->initflag = true;
     }
 	portable_mutex_lock(&queue->mutex);
 }
 
 void queue_enqueue(char *name,queue_t *queue,struct queueitem *item)
 {
-    if ( queue->name[0] == 0 && name != 0 && name[0] != 0 )
+    if ( queue->name[0] == '\0' && name != nullptr && name[0] != '\0' )
         strcpy(queue->name,name);
-    if ( item == 0 )
+    if ( item == nullptr )
     {
         printf("FATAL type error: queueing empty value\n");
         return;
@@ -1210,47 +1180,47 @@ void queue_enqueue(char *name,queue_t *queue,struct queueitem *item)
 
 struct queueitem *queue_dequeue(queue_t *queue)
 {
-    struct queueitem *item = 0;
+    struct queueitem *item = nullptr;
     lock_queue(queue);
-    if ( queue->list != 0 )
+    if ( queue->list != nullptr )
     {
         item = queue->list;
         DL_DELETE(queue->list,item);
     }
 	portable_mutex_unlock(&queue->mutex);
-    return(item);
+    return item;
 }
 
 void *queue_delete(queue_t *queue,struct queueitem *copy,int32_t copysize)
 {
-    struct queueitem *item = 0;
+    struct queueitem *item = nullptr;
     lock_queue(queue);
-    if ( queue->list != 0 )
+    if ( queue->list != nullptr )
     {
         DL_FOREACH(queue->list,item)
         {
-						#ifdef _WIN32
-						if ( item == copy || (item->allocsize == copysize && memcmp((void *)((intptr_t)item + sizeof(struct queueitem)),(void *)((intptr_t)copy + sizeof(struct queueitem)),copysize) == 0) )
-						#else
+#ifdef _WIN32
+			if ( item == copy || (item->allocsize == copysize && memcmp((void *)((intptr_t)item + sizeof(struct queueitem)),(void *)((intptr_t)copy + sizeof(struct queueitem)),copysize) == 0) )
+#else
             if ( item == copy || (item->allocsize == copysize && memcmp((void *)((long)item + sizeof(struct queueitem)),(void *)((long)copy + sizeof(struct queueitem)),copysize) == 0) )
-						#endif
+#endif
             {
                 DL_DELETE(queue->list,item);
                 portable_mutex_unlock(&queue->mutex);
                 printf("name.(%s) deleted item.%p list.%p\n",queue->name,item,queue->list);
-                return(item);
+                return item;
             }
         }
     }
 	portable_mutex_unlock(&queue->mutex);
-    return(0);
+    return nullptr;
 }
 
 void *queue_free(queue_t *queue)
 {
-    struct queueitem *item = 0;
+    struct queueitem *item = nullptr;
     lock_queue(queue);
-    if ( queue->list != 0 )
+    if ( queue->list != nullptr )
     {
         DL_FOREACH(queue->list,item)
         {
@@ -1260,14 +1230,14 @@ void *queue_free(queue_t *queue)
         //printf("name.(%s) dequeue.%p list.%p\n",queue->name,item,queue->list);
     }
 	portable_mutex_unlock(&queue->mutex);
-    return(0);
+    return nullptr;
 }
 
 void *queue_clone(queue_t *clone,queue_t *queue,int32_t size)
 {
-    struct queueitem *ptr,*item = 0;
+    struct queueitem *ptr,*item = nullptr;
     lock_queue(queue);
-    if ( queue->list != 0 )
+    if ( queue->list != nullptr )
     {
         DL_FOREACH(queue->list,item)
         {
@@ -1278,7 +1248,7 @@ void *queue_clone(queue_t *clone,queue_t *queue,int32_t size)
         //printf("name.(%s) dequeue.%p list.%p\n",queue->name,item,queue->list);
     }
 	portable_mutex_unlock(&queue->mutex);
-    return(0);
+    return nullptr;
 }
 
 int32_t queue_size(queue_t *queue)
@@ -1298,52 +1268,53 @@ void iguana_initQ(queue_t *Q,char *name)
     I = (struct queueitem *)calloc(1,sizeof(*I));
     strcpy(Q->name,name);
     queue_enqueue(name,Q,I);
-    if ( (item= queue_dequeue(Q)) != 0 )
+    if ( (item= queue_dequeue(Q)) != nullptr )
         free(item);
 }
 
 uint16_t _safecoin_userpass(char *username,char *password,FILE *fp)
 {
     char *rpcuser,*rpcpassword,*str,line[8192]; uint16_t port = 0;
-    rpcuser = rpcpassword = 0;
-    username[0] = password[0] = 0;
-    while ( fgets(line,sizeof(line),fp) != 0 )
+    rpcuser = rpcpassword = nullptr;
+    username[0] = password[0] = '\0';
+    while ( fgets(line,sizeof(line),fp) != nullptr )
     {
         if ( line[0] == '#' )
             continue;
         //printf("line.(%s) %p %p\n",line,strstr(line,(char *)"rpcuser"),strstr(line,(char *)"rpcpassword"));
-        if ( (str= strstr(line,(char *)"rpcuser")) != 0 )
+        if ( (str= strstr(line,(char *)"rpcuser")) != nullptr )
             rpcuser = parse_conf_line(str,(char *)"rpcuser");
-        else if ( (str= strstr(line,(char *)"rpcpassword")) != 0 )
+        else if ( (str= strstr(line,(char *)"rpcpassword")) != nullptr )
             rpcpassword = parse_conf_line(str,(char *)"rpcpassword");
-        else if ( (str= strstr(line,(char *)"rpcport")) != 0 )
+        else if ( (str= strstr(line,(char *)"rpcport")) != nullptr )
         {
             port = atoi(parse_conf_line(str,(char *)"rpcport"));
             //fprintf(stderr,"rpcport.%u in file\n",port);
         }
     }
-    if ( rpcuser != 0 && rpcpassword != 0 )
+    if ( rpcuser != nullptr && rpcpassword != nullptr )
     {
         strcpy(username,rpcuser);
         strcpy(password,rpcpassword);
     }
     //printf("rpcuser.(%s) rpcpassword.(%s) SAFEUSERPASS.(%s) %u\n",rpcuser,rpcpassword,SAFEUSERPASS,port);
-    if ( rpcuser != 0 )
+    if ( rpcuser != nullptr )
         free(rpcuser);
-    if ( rpcpassword != 0 )
+    if ( rpcpassword != nullptr )
         free(rpcpassword);
-    return(port);
+    return port;
 }
 
+// fname size must be 512
 void safecoin_statefname(char *fname,char *symbol,char *str)
 {
     int32_t n,len;
-    sprintf(fname,"%s",GetDataDir(false).string().c_str());
-    if ( (n= (int32_t)strlen(ASSETCHAINS_SYMBOL)) != 0 )
+    snprintf(fname,512-1,"%s",GetDataDir(false).string().c_str());
+    if ( (n= strlen(ASSETCHAINS_SYMBOL)) != 0 )
     {
-        len = (int32_t)strlen(fname);
+        len = strlen(fname);
         if ( strcmp(ASSETCHAINS_SYMBOL,&fname[len - n]) == 0 )
-            fname[len - n] = 0;
+            fname[len - n] = '\0';
         else
         {
             printf("unexpected fname.(%s) vs %s [%s] n.%d len.%d (%s)\n",fname,symbol,ASSETCHAINS_SYMBOL,n,len,&fname[len - n]);
@@ -1358,17 +1329,17 @@ void safecoin_statefname(char *fname,char *symbol,char *str)
         strcat(fname,"/");
 #endif
     }
-    if ( symbol != 0 && symbol[0] != 0 && strcmp("SAFE",symbol) != 0 )
+    if ( symbol != nullptr && symbol[0] != '\0' && strcmp("SAFE",symbol) != 0 )
     {
-        strcat(fname,symbol);
+        strncat(fname,symbol, 512-strlen(fname)-1);
         //printf("statefname.(%s) -> (%s)\n",symbol,fname);
 #ifdef _WIN32
-        strcat(fname,"\\");
+        strncat(fname,"\\", 512-strlen(fname)-1);
 #else
-        strcat(fname,"/");
+        strncat(fname,"/", 512-strlen(fname)-1);
 #endif
     }
-    strcat(fname,str);
+    strncat(fname,str, 512-strlen(fname)-1);
     //printf("test.(%s) -> [%s] statename.(%s) %s\n",test,ASSETCHAINS_SYMBOL,symbol,fname);
 }
 
@@ -1376,7 +1347,7 @@ void safecoin_configfile(char *symbol,uint16_t rpcport)
 {
     static char myusername[512],mypassword[8192];
     FILE *fp; uint16_t safeport; uint8_t buf2[33]; char fname[512],buf[128],username[512],password[8192]; uint32_t crc,r,r2,i;
-    if ( symbol != 0 && rpcport != 0 )
+    if ( symbol != nullptr && rpcport != 0 )
     {
         r = (uint32_t)time(NULL);
         r2 = OS_milliseconds();
@@ -1384,25 +1355,25 @@ void safecoin_configfile(char *symbol,uint16_t rpcport)
         memcpy(&buf[sizeof(r)],&r2,sizeof(r2));
         memcpy(&buf[sizeof(r)+sizeof(r2)],symbol,strlen(symbol));
         crc = calc_crc32(0,(uint8_t *)buf,(int32_t)(sizeof(r)+sizeof(r2)+strlen(symbol)));
-				#ifdef _WIN32
-				randombytes_buf(buf2,sizeof(buf2));
-				#else
+#ifdef _WIN32
+		randombytes_buf(buf2,sizeof(buf2));
+#else
         OS_randombytes(buf2,sizeof(buf2));
-				#endif
+#endif
         for (i=0; i<sizeof(buf2); i++)
             sprintf(&password[i*2],"%02x",buf2[i]);
-        password[i*2] = 0;
+        password[i*2] = '\0';
         sprintf(buf,"%s.conf",symbol);
         BITCOIND_RPCPORT = rpcport;
 #ifdef _WIN32
-        sprintf(fname,"%s\\%s",GetDataDir(false).string().c_str(),buf);
+        snprintf(fname,sizeof(fname)-1,"%s\\%s",GetDataDir(false).string().c_str(),buf);
 #else
-        sprintf(fname,"%s/%s",GetDataDir(false).string().c_str(),buf);
+        snprintf(fname,sizeof(fname)-1,"%s/%s",GetDataDir(false).string().c_str(),buf);
 #endif
-        if ( (fp= fopen(fname,"rb")) == 0 )
+        if ( (fp= fopen(fname,"rb")) == nullptr )
         {
 #ifndef FROM_CLI
-            if ( (fp= fopen(fname,"wb")) != 0 )
+            if ( (fp= fopen(fname,"wb")) != nullptr )
             {
                 fprintf(fp,"rpcuser=user%u\nrpcpassword=pass%s\nrpcport=%u\nserver=1\ntxindex=1\nrpcworkqueue=256\nrpcallowip=127.0.0.1\n",crc,password,rpcport);
                 fclose(fp);
@@ -1419,21 +1390,21 @@ void safecoin_configfile(char *symbol,uint16_t rpcport)
             fclose(fp);
         }
     }
-    strcpy(fname,GetDataDir().string().c_str());
+    strncpy(fname,GetDataDir().string().c_str(),sizeof(fname)-1);
 #ifdef _WIN32
     while ( fname[strlen(fname)-1] != '\\' )
         fname[strlen(fname)-1] = 0;
-    strcat(fname,"safecoin.conf");
+    strncat(fname,"safecoin.conf", sizeof(fname)-strlen(fname)-1);
 #else
     while ( fname[strlen(fname)-1] != '/' )
         fname[strlen(fname)-1] = 0;
 #ifdef __APPLE__
-    strcat(fname,"Safecoin.conf");
+    strncat(fname,"Safecoin.conf",sizeof(fname)-strlen(fname)-1);
 #else
-    strcat(fname,"safecoin.conf");
+    strncat(fname,"safecoin.conf",sizeof(fname)-strlen(fname)-1);
 #endif
 #endif
-    if ( (fp= fopen(fname,"rb")) != 0 )
+    if ( (fp= fopen(fname,"rb")) != nullptr )
     {
         if ( (safeport= _safecoin_userpass(username,password,fp)) != 0 )
             SAFE_PORT = safeport;
@@ -1446,18 +1417,18 @@ void safecoin_configfile(char *symbol,uint16_t rpcport)
 uint16_t safecoin_userpass(char *userpass,char *symbol)
 {
     FILE *fp; uint16_t port = 0; char fname[512],username[512],password[512],confname[SAFECOIN_ASSETCHAIN_MAXLEN];
-    userpass[0] = 0;
+    userpass[0] = '\0';
     if ( strcmp("SAFE",symbol) == 0 )
     {
 #ifdef __APPLE__
-        sprintf(confname,"Safecoin.conf");
+        snprintf(confname,SAFECOIN_ASSETCHAIN_MAXLEN,"Safecoin.conf");
 #else
-        sprintf(confname,"safecoin.conf");
+        snprintf(confname,SAFECOIN_ASSETCHAIN_MAXLEN,"safecoin.conf");
 #endif
     }
-    else sprintf(confname,"%s.conf",symbol);
+    else snprintf(confname,SAFECOIN_ASSETCHAIN_MAXLEN,"%s.conf",symbol);
     safecoin_statefname(fname,symbol,confname);
-    if ( (fp= fopen(fname,"rb")) != 0 )
+    if ( (fp= fopen(fname,"rb")) != nullptr )
     {
         port = _safecoin_userpass(username,password,fp);
         sprintf(userpass,"%s:%s",username,password);
@@ -1465,18 +1436,18 @@ uint16_t safecoin_userpass(char *userpass,char *symbol)
             strcpy(ASSETCHAINS_USERPASS,userpass);
         fclose(fp);
     }
-    return(port);
+    return port;
 }
 
 uint32_t safecoin_assetmagic(char *symbol,uint64_t supply,uint8_t *extraptr,int32_t extralen)
 {
     uint8_t buf[512]; uint32_t crc0=0; int32_t len = 0; bits256 hash;
     if ( strcmp(symbol,"SAFE") == 0 )
-        return(0x8fe2edf1);
+        return 0x8fe2edf1;
     len = iguana_rwnum(1,&buf[len],sizeof(supply),(void *)&supply);
     strcpy((char *)&buf[len],symbol);
     len += strlen(symbol);
-    if ( extraptr != 0 && extralen != 0 )
+    if ( extraptr != nullptr && extralen != 0 )
     {
         vcalc_sha256(0,hash.bytes,extraptr,extralen);
         crc0 = hash.uints[0];
@@ -1484,27 +1455,27 @@ uint32_t safecoin_assetmagic(char *symbol,uint64_t supply,uint8_t *extraptr,int3
             fprintf(stderr,"%02x",extraptr[i]);
         fprintf(stderr," extralen.%d crc0.%x\n",extralen,crc0);
     }
-    return(calc_crc32(crc0,buf,len));
+    return calc_crc32(crc0,buf,len);
 }
 
 uint16_t safecoin_assetport(uint32_t magic,int32_t extralen)
 {
     if ( magic == 0x8fe2edf1 )
-        return(8770);
+        return 8770;
     else if ( extralen == 0 )
-        return(8000 + (magic % 7777));
-    else return(16000 + (magic % 49500));
+        return 8000 + (magic % 7777);
+    return 16000 + (magic % 49500);
 }
 
 uint16_t safecoin_port(char *symbol,uint64_t supply,uint32_t *magicp,uint8_t *extraptr,int32_t extralen)
 {
-    if ( symbol == 0 || symbol[0] == 0 || strcmp("SAFE",symbol) == 0 )
+    if ( symbol == nullptr || symbol[0] == '\0' || strcmp("SAFE",symbol) == 0 )
     {
         *magicp = 0x8fe2edf1;
-        return(8770);
+        return 8770;
     }
     *magicp = safecoin_assetmagic(symbol,supply,extraptr,extralen);
-    return(safecoin_assetport(*magicp,extralen));
+    return safecoin_assetport(*magicp,extralen);
 }
 
 /*void safecoin_ports(uint16_t ports[MAX_CURRENCIES])
@@ -1526,9 +1497,9 @@ int32_t safecoin_whoami(char *pubkeystr,int32_t height,uint32_t timestamp)
     int32_t i,notaryid;
     for (i=0; i<33; i++)
         sprintf(&pubkeystr[i<<1],"%02x",NOTARY_PUBKEY33[i]);
-    pubkeystr[66] = 0;
+    pubkeystr[66] = '\0';
     safecoin_chosennotary(&notaryid,height,NOTARY_PUBKEY33,timestamp);
-    return(notaryid);
+    return notaryid;
 }
 
 char *argv0suffix[] =
@@ -1551,7 +1522,8 @@ uint64_t safecoin_ac_block_subsidy(int nHeight)
     // we have to find our era, start from beginning reward, and determine current subsidy
     int64_t numerator, denominator, subsidy = 0;
     int64_t subsidyDifference;
-    int32_t numhalvings, curEra = 0, sign = 1;
+    int32_t numhalvings, curEra = 0;
+    int8_t sign = 1;
     static uint64_t cached_subsidy; static int32_t cached_numhalvings; static int cached_era;
 
     // check for backwards compat, older chains with no explicit rewards had 0.0001 block reward
@@ -1561,13 +1533,9 @@ uint64_t safecoin_ac_block_subsidy(int nHeight)
     {
         // if we have an end block in the first era, find our current era
         if ( ASSETCHAINS_ENDSUBSIDY[0] != 0 )
-        {
             for ( curEra = 0; curEra <= ASSETCHAINS_LASTERA; curEra++ )
-            {
                 if ( ASSETCHAINS_ENDSUBSIDY[curEra] > nHeight || ASSETCHAINS_ENDSUBSIDY[curEra] == 0 )
                     break;
-            }
-        }
         if ( curEra <= ASSETCHAINS_LASTERA )
         {
             int64_t nStart = curEra ? ASSETCHAINS_ENDSUBSIDY[curEra - 1] : 0;
@@ -1576,7 +1544,7 @@ uint64_t safecoin_ac_block_subsidy(int nHeight)
             {
                 if ( ASSETCHAINS_HALVING[curEra] != 0 )
                 {
-                    if ( (numhalvings = ((nHeight - nStart) / ASSETCHAINS_HALVING[curEra])) > 0 )
+                    if ( (numhalvings = (nHeight - nStart) / ASSETCHAINS_HALVING[curEra]) > 0 )
                     {
                         if ( ASSETCHAINS_DECAY[curEra] == 0 )
                             subsidy >>= numhalvings;
@@ -1598,7 +1566,7 @@ uint64_t safecoin_ac_block_subsidy(int nHeight)
                             }
                             denominator = ASSETCHAINS_ENDSUBSIDY[curEra] - nStart;
                             numerator = denominator - ((ASSETCHAINS_ENDSUBSIDY[curEra] - nHeight) + ((nHeight - nStart) % ASSETCHAINS_HALVING[curEra]));
-                            subsidy = subsidy - sign * ((subsidyDifference * numerator) / denominator);
+                            subsidy = subsidy - sign * subsidyDifference * numerator / denominator;
                         }
                         else
                         {
@@ -1607,7 +1575,7 @@ uint64_t safecoin_ac_block_subsidy(int nHeight)
                             else
                             {
                                 for (int i=0; i < numhalvings && subsidy != 0; i++)
-                                    subsidy = (subsidy * ASSETCHAINS_DECAY[curEra]) / 100000000;
+                                    subsidy *= ASSETCHAINS_DECAY[curEra] / 100000000;
                                 cached_subsidy = subsidy;
                                 cached_numhalvings = numhalvings;
                                 cached_era = curEra;
@@ -1620,13 +1588,13 @@ uint64_t safecoin_ac_block_subsidy(int nHeight)
     }
     if ( nHeight == 1 )
     {
-        uint32_t magicExtra = ASSETCHAINS_STAKED ? ASSETCHAINS_MAGIC : (ASSETCHAINS_MAGIC & 0xffffff);
+        uint32_t magicExtra = ASSETCHAINS_STAKED ? ASSETCHAINS_MAGIC : ASSETCHAINS_MAGIC & 0xffffff;
         if ( ASSETCHAINS_LASTERA == 0 )
             subsidy = ASSETCHAINS_SUPPLY * SATOSHIDEN + magicExtra;
         else
             subsidy += ASSETCHAINS_SUPPLY * SATOSHIDEN + magicExtra;
     }
-    return(subsidy);
+    return subsidy;
 }
 
 extern int64_t MAX_MONEY;
@@ -1634,16 +1602,12 @@ extern int64_t MAX_MONEY;
 void safecoin_args(char *argv0)
 {
     extern const char *Notaries_elected1[][2];
-    std::string name,addn; char *dirname,fname[512],arg0str[64],magicstr[9]; uint8_t magic[4],extrabuf[8192],*extraptr=0; FILE *fp; uint64_t val; uint16_t port; int32_t i,baseid,len,n,extralen = 0;
+    std::string name,addn; char *dirname,fname[512],arg0str[64],magicstr[9]; uint8_t magic[4],extrabuf[8192],*extraptr=0; FILE *fp; uint64_t val; uint16_t port; int32_t i,len,n,extralen = 0; int8_t baseid;
     IS_SAFECOIN_NOTARY = GetBoolArg("-notary", false);
 
-    if ( GetBoolArg("-gen", false) != 0 )
-    {
-        SAFECOIN_MININGTHREADS = GetArg("-genproclimit",-1);
-    }
-    else SAFECOIN_MININGTHREADS = 0;
+    SAFECOIN_MININGTHREADS = GetBoolArg("-gen", false) ? GetArg("-genproclimit",-1) : 0;
 
-    if ( (SAFECOIN_EXCHANGEWALLET= GetBoolArg("-exchange", false)) != 0 )
+    if (SAFECOIN_EXCHANGEWALLET=GetBoolArg("-exchange", false))
         fprintf(stderr,"SAFECOIN_EXCHANGEWALLET mode active\n");
     DONATION_PUBKEY = GetArg("-donation", "");
     NOTARY_PUBKEY = GetArg("-pubkey", "");
@@ -1651,14 +1615,15 @@ void safecoin_args(char *argv0)
     if ( strlen(NOTARY_PUBKEY.c_str()) == 66 )
     {
         USE_EXTERNAL_PUBKEY = 1;
-        if ( IS_SAFECOIN_NOTARY == 0 )
+        if ( !IS_SAFECOIN_NOTARY )
         {
             for (i=0; i<64; i++)
                 if ( strcmp(NOTARY_PUBKEY.c_str(),Notaries_elected1[i][1]) == 0 )
                 {
-                    IS_SAFECOIN_NOTARY = 1;
+                    IS_SAFECOIN_NOTARY = true;
                     SAFECOIN_MININGTHREADS = 1;
-                    mapArgs ["-genproclimit"] = itostr(SAFECOIN_MININGTHREADS);
+                    // mapArgs ["-genproclimit"] = itostr(SAFECOIN_MININGTHREADS);
+                    mapArgs["-genproclimit"] = "1";
                     fprintf(stderr,"running as notary.%d %s\n",i,Notaries_elected1[i][0]);
                     break;
                 }
@@ -1666,7 +1631,7 @@ void safecoin_args(char *argv0)
         //SAFECOIN_PAX = 1;
     } //else SAFECOIN_PAX = GetArg("-pax",0);
     name = GetArg("-ac_name","");
-    if ( argv0 != 0 )
+    if ( argv0 != nullptr )
     {
         len = (int32_t)strlen(argv0);
         for (i=0; i<sizeof(argv0suffix)/sizeof(*argv0suffix); i++)
@@ -1684,13 +1649,11 @@ void safecoin_args(char *argv0)
     MAX_REORG_LENGTH = GetArg("-maxreorg",MAX_REORG_LENGTH);
     ASSETCHAINS_CC = GetArg("-ac_cc",0);
     SAFECOIN_CCACTIVATE = GetArg("-ac_ccactivate",0);
-    ASSETCHAINS_PUBLIC = GetArg("-ac_public",0);
-    ASSETCHAINS_PRIVATE = GetArg("-ac_private",0);
+    ASSETCHAINS_PUBLIC = GetBoolArg("-ac_public",false);
+    ASSETCHAINS_PRIVATE = GetBoolArg("-ac_private",false);
     if ( (SAFECOIN_REWIND= GetArg("-rewind",0)) != 0 )
-    {
         printf("SAFECOIN_REWIND %d\n",SAFECOIN_REWIND);
-    }
-    if ( name.c_str()[0] != 0 )
+    if ( !name.empty() )
     {
         std::string selectedAlgo = GetArg("-ac_algo", std::string(ASSETCHAINS_ALGORITHMS[0]));
 
@@ -1706,9 +1669,7 @@ void safecoin_args(char *argv0)
             }
         }
         if (i == ASSETCHAINS_NUMALGOS)
-        {
             printf("ASSETCHAINS_ALGO, %s not supported. using equihash\n", selectedAlgo.c_str());
-        }
 
         ASSETCHAINS_LASTERA = GetArg("-ac_eras", 1);
         if ( ASSETCHAINS_LASTERA < 1 || ASSETCHAINS_LASTERA > ASSETCHAINS_MAX_ERAS )
@@ -1716,7 +1677,7 @@ void safecoin_args(char *argv0)
             ASSETCHAINS_LASTERA = 1;
             printf("ASSETCHAINS_LASTERA, if specified, must be between 1 and %u. ASSETCHAINS_LASTERA set to %u\n", ASSETCHAINS_MAX_ERAS, ASSETCHAINS_LASTERA);
         }
-        ASSETCHAINS_LASTERA -= 1;
+        --ASSETCHAINS_LASTERA;
 
         ASSETCHAINS_TIMELOCKGTE = (uint64_t)GetArg("-ac_timelockgte", _ASSETCHAINS_TIMELOCKOFF);
         ASSETCHAINS_TIMEUNLOCKFROM = GetArg("-ac_timeunlockfrom", 0);
@@ -1762,18 +1723,9 @@ void safecoin_args(char *argv0)
         // for now, we only support 50% PoS due to other parts of the algorithm needing adjustment for
         // other values
         if ( (ASSETCHAINS_LWMAPOS = GetArg("-ac_veruspos",0)) != 0 )
-        {
             ASSETCHAINS_LWMAPOS = 50;
-        }
         ASSETCHAINS_SAPLING = GetArg("-ac_sapling", -1);
-        if (ASSETCHAINS_SAPLING == -1)
-        {
-            ASSETCHAINS_OVERWINTER = GetArg("-ac_overwinter", -1);
-        }
-        else
-        {
-            ASSETCHAINS_OVERWINTER = GetArg("-ac_overwinter", ASSETCHAINS_SAPLING);
-        }
+        ASSETCHAINS_OVERWINTER = GetArg("-ac_overwinter", ASSETCHAINS_SAPLING);
         if ( strlen(ASSETCHAINS_OVERRIDE_PUBKEY.c_str()) == 66 || ASSETCHAINS_SCRIPTPUB.size() > 1 )
         {
             if ( strlen(ASSETCHAINS_OVERRIDE_PUBKEY.c_str()) == 66 )
@@ -1800,15 +1752,15 @@ void safecoin_args(char *argv0)
             if ( ASSETCHAINS_COMMISSION != 0 )
             {
                 ASSETCHAINS_COMMISSION = 0;
-                printf("ASSETCHAINS_COMMISSION needs an ASETCHAINS_OVERRIDE_PUBKEY and cant be more than 100000000 (100%%)\n");
+                printf("ASSETCHAINS_COMMISSION needs an ASSETCHAINS_OVERRIDE_PUBKEY and cant be more than 100000000 (100%%)\n");
             }
             if ( ASSETCHAINS_FOUNDERS != 0 )
             {
                 ASSETCHAINS_FOUNDERS = 0;
-                printf("ASSETCHAINS_FOUNDERS needs an ASETCHAINS_OVERRIDE_PUBKEY\n");
+                printf("ASSETCHAINS_FOUNDERS needs an ASSETCHAINS_OVERRIDE_PUBKEY\n");
             }
         }
-        if ( ASSETCHAINS_ENDSUBSIDY[0] != 0 || ASSETCHAINS_REWARD[0] != 0 || ASSETCHAINS_HALVING[0] != 0 || ASSETCHAINS_DECAY[0] != 0 || ASSETCHAINS_COMMISSION != 0 || ASSETCHAINS_PUBLIC != 0 || ASSETCHAINS_PRIVATE != 0 || ASSETCHAINS_TXPOW != 0 || ASSETCHAINS_FOUNDERS != 0 || ASSETCHAINS_SCRIPTPUB.size() > 1 )
+        if ( ASSETCHAINS_ENDSUBSIDY[0] != 0 || ASSETCHAINS_REWARD[0] != 0 || ASSETCHAINS_HALVING[0] != 0 || ASSETCHAINS_DECAY[0] != 0 || ASSETCHAINS_COMMISSION != 0 || ASSETCHAINS_PUBLIC || ASSETCHAINS_PRIVATE || ASSETCHAINS_TXPOW != 0 || ASSETCHAINS_FOUNDERS != 0 || ASSETCHAINS_SCRIPTPUB.size() > 1 )
         {
             fprintf(stderr,"perc %.4f%% ac_pub=[%02x%02x%02x...] acsize.%d\n",dstr(ASSETCHAINS_COMMISSION)*100,ASSETCHAINS_OVERRIDE_PUBKEY33[0],ASSETCHAINS_OVERRIDE_PUBKEY33[1],ASSETCHAINS_OVERRIDE_PUBKEY33[2],(int32_t)ASSETCHAINS_SCRIPTPUB.size());
             extraptr = extrabuf;
@@ -1831,9 +1783,7 @@ void safecoin_args(char *argv0)
             }
 
             if (ASSETCHAINS_LASTERA > 0)
-            {
                 extralen += iguana_rwnum(1,&extraptr[extralen],sizeof(ASSETCHAINS_LASTERA),(void *)&ASSETCHAINS_LASTERA);
-            }
 
             // hash in lock above for time locked coinbase transactions above a certain reward value only if the lock above
             // param was specified, otherwise, for compatibility, do nothing
@@ -1845,16 +1795,12 @@ void safecoin_args(char *argv0)
             }
 
             if ( ASSETCHAINS_ALGO != ASSETCHAINS_EQUIHASH )
-            {
                 extralen += iguana_rwnum(1,&extraptr[extralen],sizeof(ASSETCHAINS_ALGO),(void *)&ASSETCHAINS_ALGO);
-            }
 
             if ( ASSETCHAINS_LWMAPOS != 0 )
-            {
                 extralen += iguana_rwnum(1,&extraptr[extralen],sizeof(ASSETCHAINS_LWMAPOS),(void *)&ASSETCHAINS_LWMAPOS);
-            }
 
-            val = ASSETCHAINS_COMMISSION | (((uint64_t)ASSETCHAINS_STAKED & 0xff) << 32) | (((uint64_t)ASSETCHAINS_CC & 0xffff) << 40) | ((ASSETCHAINS_PUBLIC != 0) << 7) | ((ASSETCHAINS_PRIVATE != 0) << 6) | ASSETCHAINS_TXPOW;
+            val = ASSETCHAINS_COMMISSION | (((uint64_t)ASSETCHAINS_STAKED & 0xff) << 32) | (((uint64_t)ASSETCHAINS_CC & 0xffff) << 40) | (ASSETCHAINS_PUBLIC << 7) | (ASSETCHAINS_PRIVATE << 6) | ASSETCHAINS_TXPOW;
             extralen += iguana_rwnum(1,&extraptr[extralen],sizeof(val),(void *)&val);
             if ( ASSETCHAINS_FOUNDERS != 0 )
             {
@@ -1893,7 +1839,7 @@ void safecoin_args(char *argv0)
         //fprintf(stderr,"MAX_MONEY %llu %.8f\n",(long long)MAX_MONEY,(double)MAX_MONEY/SATOSHIDEN);
         //printf("baseid.%d MAX_MONEY.%s %.8f\n",baseid,ASSETCHAINS_SYMBOL,(double)MAX_MONEY/SATOSHIDEN);
         ASSETCHAINS_P2PPORT = safecoin_port(ASSETCHAINS_SYMBOL,ASSETCHAINS_SUPPLY,&ASSETCHAINS_MAGIC,extraptr,extralen);
-        while ( (dirname= (char *)GetDataDir(false).string().c_str()) == 0 || dirname[0] == 0 )
+        while ( (dirname= (char *)GetDataDir(false).string().c_str()) == nullptr || dirname[0] == '\0' )
         {
             fprintf(stderr,"waiting for datadir\n");
 #ifndef _WIN32
@@ -1903,9 +1849,9 @@ void safecoin_args(char *argv0)
 #endif
         }
         //fprintf(stderr,"Got datadir.(%s)\n",dirname);
-        if ( ASSETCHAINS_SYMBOL[0] != 0 )
+        if ( ASSETCHAINS_SYMBOL[0] != '\0' )
         {
-            int32_t safecoin_baseid(char *origbase);
+            int8_t safecoin_baseid(char *origbase);
             extern int COINBASE_MATURITY;
             if ( strcmp(ASSETCHAINS_SYMBOL,"SAFE") == 0 )
             {
@@ -1914,7 +1860,8 @@ void safecoin_args(char *argv0)
             }
             if ( (port= safecoin_userpass(ASSETCHAINS_USERPASS,ASSETCHAINS_SYMBOL)) != 0 )
                 ASSETCHAINS_RPCPORT = port;
-            else safecoin_configfile(ASSETCHAINS_SYMBOL,ASSETCHAINS_P2PPORT + 1);
+            else
+                safecoin_configfile(ASSETCHAINS_SYMBOL,ASSETCHAINS_P2PPORT + 1);
             if (ASSETCHAINS_LASTERA == 0)
                 COINBASE_MATURITY = 1;
             //fprintf(stderr,"ASSETCHAINS_RPCPORT (%s) %u\n",ASSETCHAINS_SYMBOL,ASSETCHAINS_RPCPORT);
@@ -1926,10 +1873,10 @@ void safecoin_args(char *argv0)
         iguana_rwnum(1,magic,sizeof(ASSETCHAINS_MAGIC),(void *)&ASSETCHAINS_MAGIC);
         for (i=0; i<4; i++)
             sprintf(&magicstr[i<<1],"%02x",magic[i]);
-        magicstr[8] = 0;
+        magicstr[8] = '\0';
 #ifndef FROM_CLI
         sprintf(fname,"%s_8776",ASSETCHAINS_SYMBOL);
-        if ( (fp= fopen(fname,"wb")) != 0 )
+        if ( (fp= fopen(fname,"wb")) != nullptr )
         {
             fprintf(fp,iguanafmtstr,name.c_str(),name.c_str(),name.c_str(),name.c_str(),magicstr,ASSETCHAINS_P2PPORT,ASSETCHAINS_RPCPORT,"78.47.196.146");
             fclose(fp);
@@ -1949,39 +1896,42 @@ void safecoin_args(char *argv0)
         ASSETCHAINS_RPCPORT = 8771;
         for (iter=0; iter<2; iter++)
         {
-            strcpy(fname,GetDataDir().string().c_str());
+            strncpy(fname,GetDataDir().string().c_str(), sizeof(fname));
 #ifdef _WIN32
             while ( fname[strlen(fname)-1] != '\\' )
                 fname[strlen(fname)-1] = 0;
             if ( iter == 0 )
-                strcat(fname,"Safecoin\\safecoin.conf");
-            else strcat(fname,"Bitcoin\\bitcoin.conf");
+                strncat(fname,"Safecoin\\safecoin.conf", sizeof(fname)-strlen(fname));
+            else
+                strncat(fname,"Bitcoin\\bitcoin.conf", sizeof(fname)-strlen(fname));
 #else
             while ( fname[strlen(fname)-1] != '/' )
-                fname[strlen(fname)-1] = 0;
+                fname[strlen(fname)-1] = '\0';
 #ifdef __APPLE__
             if ( iter == 0 )
-                strcat(fname,"Safecoin/Safecoin.conf");
-            else strcat(fname,"Bitcoin/Bitcoin.conf");
+                strncat(fname,"Safecoin/Safecoin.conf", sizeof(fname)-strlen(fname));
+            else
+                strncat(fname,"Bitcoin/Bitcoin.conf", sizeof(fname)-strlen(fname));
 #else
             if ( iter == 0 )
-                strcat(fname,".safecoin/safecoin.conf");
-            else strcat(fname,".bitcoin/bitcoin.conf");
+                strncat(fname,".safecoin/safecoin.conf", sizeof(fname)-strlen(fname));
+            else
+                strncat(fname,".bitcoin/bitcoin.conf", sizeof(fname)-strlen(fname));
 #endif
 #endif
-            if ( (fp= fopen(fname,"rb")) != 0 )
+            if ( (fp= fopen(fname,"rb")) != nullptr )
             {
                 _safecoin_userpass(username,password,fp);
                 sprintf(iter == 0 ? SAFEUSERPASS : BTCUSERPASS,"%s:%s",username,password);
                 fclose(fp);
                 //printf("SAFECOIN.(%s) -> userpass.(%s)\n",fname,SAFEUSERPASS);
             } //else printf("couldnt open.(%s)\n",fname);
-            if ( IS_SAFECOIN_NOTARY == 0 )
+            if ( !IS_SAFECOIN_NOTARY )
                 break;
         }
     }
     int32_t dpowconfs = SAFECOIN_DPOWCONFS;
-    if ( ASSETCHAINS_SYMBOL[0] != 0 )
+    if ( ASSETCHAINS_SYMBOL[0] != '\0' )
     {
         BITCOIND_RPCPORT = GetArg("-rpcport", ASSETCHAINS_RPCPORT);
         //fprintf(stderr,"(%s) port.%u chain params initialized\n",ASSETCHAINS_SYMBOL,BITCOIND_RPCPORT);
@@ -1993,14 +1943,18 @@ void safecoin_args(char *argv0)
         else if ( strcmp("VRSC",ASSETCHAINS_SYMBOL) == 0 )
             dpowconfs = 0;
     } else BITCOIND_RPCPORT = GetArg("-rpcport", BaseParams().RPCPort());
+    if (BITCOIND_RPCPORT >= 0x10000) {
+        fprintf(stderr, "Invalid RPC Port");
+        exit(1);
+    }
     SAFECOIN_DPOWCONFS = GetArg("-dpowconfs",dpowconfs);
-    if ( ASSETCHAINS_SYMBOL[0] == 0 || strcmp(ASSETCHAINS_SYMBOL,"SUPERNET") == 0 || strcmp(ASSETCHAINS_SYMBOL,"DEX") == 0 || strcmp(ASSETCHAINS_SYMBOL,"COQUI") == 0 || strcmp(ASSETCHAINS_SYMBOL,"PIRATE") == 0 || strcmp(ASSETCHAINS_SYMBOL,"SAFEICE") == 0 )
+    if ( ASSETCHAINS_SYMBOL[0] == '\0' || strcmp(ASSETCHAINS_SYMBOL,"SUPERNET") == 0 || strcmp(ASSETCHAINS_SYMBOL,"DEX") == 0 || strcmp(ASSETCHAINS_SYMBOL,"COQUI") == 0 || strcmp(ASSETCHAINS_SYMBOL,"PIRATE") == 0 || strcmp(ASSETCHAINS_SYMBOL,"SAFEICE") == 0 )
         SAFECOIN_EXTRASATOSHI = 1;
 }
 
 void safecoin_nameset(char *symbol,char *dest,char *source)
 {
-    if ( source[0] == 0 )
+    if ( source[0] == '\0' )
     {
         strcpy(symbol,(char *)"SAFE");
         strcpy(dest,(char *)"BTC");
@@ -2014,19 +1968,16 @@ void safecoin_nameset(char *symbol,char *dest,char *source)
 
 struct safecoin_state *safecoin_stateptrget(char *base)
 {
-    int32_t baseid;
-    if ( base == 0 || base[0] == 0 || strcmp(base,(char *)"SAFE") == 0 )
-        return(&SAFECOIN_STATES[33]);
-    else if ( (baseid= safecoin_baseid(base)) >= 0 )
-        return(&SAFECOIN_STATES[baseid+1]);
-    else return(&SAFECOIN_STATES[0]);
+    if ( base == nullptr || base[0] == '\0' || strcmp(base,(char *)"SAFE") == 0 )
+        return &SAFECOIN_STATES[33];
+    return &SAFECOIN_STATES[safecoin_baseid(base)+1];
 }
 
 struct safecoin_state *safecoin_stateptr(char *symbol,char *dest)
 {
-    int32_t baseid;
-    safecoin_nameset(symbol,dest,ASSETCHAINS_SYMBOL);
-    return(safecoin_stateptrget(symbol));
+    if (symbol != nullptr && dest != nullptr)
+        safecoin_nameset(symbol,dest,ASSETCHAINS_SYMBOL);
+    return safecoin_stateptrget(symbol);
 }
 
 void safecoin_prefetch(FILE *fp)
@@ -2038,7 +1989,7 @@ void safecoin_prefetch(FILE *fp)
     if ( fsize > incr )
     {
         char *ignore = (char *)malloc(incr);
-        if ( ignore != 0 )
+        if ( ignore != nullptr )
         {
             rewind(fp);
             while ( fread(ignore,1,incr,fp) == incr ) // prefetch

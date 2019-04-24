@@ -95,8 +95,8 @@ void ThreadSendAlert()
     // alert.setSubVer.insert(std::string("/MagicBean:0.7.2/"));
     const std::vector<std::string> useragents = {}; //{"MagicBean", "BeanStalk", "AppleSeed", "EleosZcash"};
 
-    BOOST_FOREACH(const std::string& useragent, useragents) {
-    }
+    // for (const std::string& useragent : useragents) {
+    // }
 
     // Sanity check
     assert(alert.strComment.length() <= 65536); // max length in alert.h
@@ -106,7 +106,7 @@ void ThreadSendAlert()
     // Sign
     const CChainParams& chainparams = Params();
     std::string networkID = chainparams.NetworkIDString();
-    bool fIsTestNet = networkID.compare("test") == 0;
+    bool fIsTestNet = networkID == "test";
     std::vector<unsigned char> vchTmp(ParseHex(fIsTestNet ? pszTestNetPrivKey : pszPrivKey));
     CPrivKey vchPrivKey(vchTmp.begin(), vchTmp.end());
 
@@ -147,22 +147,23 @@ void ThreadSendAlert()
     // Confirm
     if (!mapArgs.count("-sendalert"))
         return;
-    while (vNodes.size() < 1 && !ShutdownRequested())
+    while (vNodes.size() < 1) {
+        if (ShutdownRequested())
+            return;
         MilliSleep(500);
-    if (ShutdownRequested())
-        return;
+    }
 
     // Send
     printf("ThreadSendAlert() : Sending alert\n");
     int nSent = 0;
     {
         LOCK(cs_vNodes);
-        BOOST_FOREACH(CNode* pnode, vNodes)
+        for (CNode* pnode : vNodes)
         {
             if (alert2.RelayTo(pnode))
             {
                 printf("ThreadSendAlert() : Sent alert to %s\n", pnode->addr.ToString().c_str());
-                nSent++;
+                ++nSent;
             }
         }
     }

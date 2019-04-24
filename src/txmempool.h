@@ -108,8 +108,8 @@ public:
 
     CInPoint() { SetNull(); }
     CInPoint(const CTransaction* ptxIn, uint32_t nIn) { ptx = ptxIn; n = nIn; }
-    void SetNull() { ptx = NULL; n = (uint32_t) -1; }
-    bool IsNull() const { return (ptx == NULL && n == (uint32_t) -1); }
+    void SetNull() { ptx = nullptr; n = -1; }
+    bool IsNull() const { return ptx == nullptr && n == -1; }
     size_t DynamicMemoryUsage() const { return 0; }
 };
 
@@ -137,7 +137,7 @@ private:
     std::map<uint256, const CTransaction*> mapSaplingNullifiers;
 
     void checkNullifiers(ShieldedType type) const;
-    
+
 public:
     typedef boost::multi_index_container<
         CTxMemPoolEntry,
@@ -234,7 +234,7 @@ public:
     bool exists(uint256 hash) const
     {
         LOCK(cs);
-        return (mapTx.count(hash) != 0);
+        return mapTx.count(hash) != 0;
     }
 
     bool lookup(uint256 hash, CTransaction& result) const;
@@ -244,7 +244,7 @@ public:
 
     /** Estimate priority needed to get into the next nBlocks */
     double estimatePriority(int nBlocks) const;
-    
+
     /** Write/Read estimates to disk */
     bool WriteFeeEstimates(CAutoFile& fileout) const;
     bool ReadFeeEstimates(CAutoFile& filein);
@@ -257,7 +257,7 @@ public:
     }
 };
 
-/** 
+/**
  * CCoinsView that brings transactions from a memorypool into view.
  * It does not check for spendings by memory pool transactions.
  */

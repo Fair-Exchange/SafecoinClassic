@@ -320,11 +320,11 @@ CAmount CTransaction::GetShieldedValueIn() const
     {
         // NB: vpub_new "gives" money to the transparent value pool just as inputs do
         nValue += it->vpub_new;
-        
+
         if (!MoneyRange(it->vpub_new) || !MoneyRange(nValue))
             throw std::runtime_error("CTransaction::GetShieldedValueIn(): value out of range");
     }
-    
+
     return nValue;
 }
 

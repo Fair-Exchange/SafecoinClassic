@@ -87,13 +87,13 @@ static inline int32_t sha256_vcompress(struct sha256_vstate * md,uint8_t *buf)
         LOAD32H(W[i],buf + (4*i));
     for (i=16; i<64; i++) // fill W[16..63]
         W[i] = Gamma1(W[i - 2]) + W[i - 7] + Gamma0(W[i - 15]) + W[i - 16];
-    
+
 #define RND(a,b,c,d,e,f,g,h,i,ki)                    \
 t0 = h + Sigma1(e) + Ch(e, f, g) + ki + W[i];   \
 t1 = Sigma0(a) + Maj(a, b, c);                  \
 d += t0;                                        \
 h  = t0 + t1;
-    
+
     RND(S[0],S[1],S[2],S[3],S[4],S[5],S[6],S[7],0,0x428a2f98);
     RND(S[7],S[0],S[1],S[2],S[3],S[4],S[5],S[6],1,0x71374491);
     RND(S[6],S[7],S[0],S[1],S[2],S[3],S[4],S[5],2,0xb5c0fbcf);
@@ -160,8 +160,8 @@ h  = t0 + t1;
     RND(S[1],S[2],S[3],S[4],S[5],S[6],S[7],S[0],63,0xc67178f2);
 #undef RND
     for (i=0; i<8; i++) // feedback
-        md->state[i] = md->state[i] + S[i];
-    return(0);
+        md->state[i] += S[i];
+    return 0;
 }
 
 #undef RORc
@@ -192,13 +192,13 @@ static inline int32_t sha256_vprocess(struct sha256_vstate *md,const uint8_t *in
 {
     uint64_t n; int32_t err;
     if ( md->curlen > sizeof(md->buf) )
-        return(-1);
+        return -1;
     while ( inlen > 0 )
     {
         if ( md->curlen == 0 && inlen >= 64 )
         {
-            if ( (err= sha256_vcompress(md,(uint8_t *)in)) != 0 )
-                return(err);
+            if ( (err= sha256_vcompress(md,(uint8_t *)in)) != 0 ) //TODO: sha256_vcompress always return 0
+                return err;
             md->length += 64 * 8, in += 64, inlen -= 64;
         }
         else
@@ -209,37 +209,37 @@ static inline int32_t sha256_vprocess(struct sha256_vstate *md,const uint8_t *in
             if ( md->curlen == 64 )
             {
                 if ( (err= sha256_vcompress(md,md->buf)) != 0 )
-                    return(err);
+                    return err;
                 md->length += 8*64;
                 md->curlen = 0;
             }
         }
     }
-    return(0);
+    return 0;
 }
 
 static inline int32_t sha256_vdone(struct sha256_vstate *md,uint8_t *out)
 {
     int32_t i;
     if ( md->curlen >= sizeof(md->buf) )
-        return(-1);
+        return -1;
     md->length += md->curlen * 8; // increase the length of the message
-    md->buf[md->curlen++] = (uint8_t)0x80; // append the '1' bit
+    md->buf[md->curlen++] = 0x80; // append the '1' bit
     // if len > 56 bytes we append zeros then compress.  Then we can fall back to padding zeros and length encoding like normal.
     if ( md->curlen > 56 )
     {
         while ( md->curlen < 64 )
-            md->buf[md->curlen++] = (uint8_t)0;
+            md->buf[md->curlen++] = 0;
         sha256_vcompress(md,md->buf);
         md->curlen = 0;
     }
     while ( md->curlen < 56 ) // pad upto 56 bytes of zeroes
-        md->buf[md->curlen++] = (uint8_t)0;
+        md->buf[md->curlen++] = 0;
     STORE64H(md->length,md->buf+56); // store length
     sha256_vcompress(md,md->buf);
     for (i=0; i<8; i++) // copy output
         STORE32H(md->state[i],out+(4*i));
-    return(0);
+    return 0;
 }
 
 void vcalc_sha256(char deprecated[(256 >> 3) * 2 + 1],uint8_t hash[256 >> 3],uint8_t *src,int32_t len)
@@ -257,7 +257,7 @@ bits256 bits256_doublesha256(char *deprecated,uint8_t *data,int32_t datalen)
     vcalc_sha256(0,hash2.bytes,hash.bytes,sizeof(hash));
     for (i=0; i<sizeof(hash); i++)
         hash.bytes[i] = hash2.bytes[sizeof(hash) - 1 - i];
-    return(hash);
+    return hash;
 }
 
 
@@ -324,19 +324,18 @@ static int32_t rmd160_vcompress(struct rmd160_vstate *md,uint8_t *buf)
 {
     uint32_t aa,bb,cc,dd,ee,aaa,bbb,ccc,ddd,eee,X[16];
     int i;
-    
+
     /* load words X */
-    for (i = 0; i < 16; i++){
-        LOAD32L(X[i], buf + (4 * i));
-    }
-    
+    for (i = 0; i < 16; i++)
+        LOAD32L(X[i], buf + 4 * i);
+
     /* load state */
     aa = aaa = md->state[0];
     bb = bbb = md->state[1];
     cc = ccc = md->state[2];
     dd = ddd = md->state[3];
     ee = eee = md->state[4];
-    
+
     /* round 1 */
     FF(aa, bb, cc, dd, ee, X[ 0], 11);
     FF(ee, aa, bb, cc, dd, X[ 1], 14);
@@ -354,7 +353,7 @@ static int32_t rmd160_vcompress(struct rmd160_vstate *md,uint8_t *buf)
     FF(cc, dd, ee, aa, bb, X[13],  7);
     FF(bb, cc, dd, ee, aa, X[14],  9);
     FF(aa, bb, cc, dd, ee, X[15],  8);
-    
+
     /* round 2 */
     GG(ee, aa, bb, cc, dd, X[ 7],  7);
     GG(dd, ee, aa, bb, cc, X[ 4],  6);
@@ -372,7 +371,7 @@ static int32_t rmd160_vcompress(struct rmd160_vstate *md,uint8_t *buf)
     GG(bb, cc, dd, ee, aa, X[14],  7);
     GG(aa, bb, cc, dd, ee, X[11], 13);
     GG(ee, aa, bb, cc, dd, X[ 8], 12);
-    
+
     /* round 3 */
     HH(dd, ee, aa, bb, cc, X[ 3], 11);
     HH(cc, dd, ee, aa, bb, X[10], 13);
@@ -390,7 +389,7 @@ static int32_t rmd160_vcompress(struct rmd160_vstate *md,uint8_t *buf)
     HH(aa, bb, cc, dd, ee, X[11], 12);
     HH(ee, aa, bb, cc, dd, X[ 5],  7);
     HH(dd, ee, aa, bb, cc, X[12],  5);
-    
+
     /* round 4 */
     II(cc, dd, ee, aa, bb, X[ 1], 11);
     II(bb, cc, dd, ee, aa, X[ 9], 12);
@@ -408,7 +407,7 @@ static int32_t rmd160_vcompress(struct rmd160_vstate *md,uint8_t *buf)
     II(ee, aa, bb, cc, dd, X[ 5],  6);
     II(dd, ee, aa, bb, cc, X[ 6],  5);
     II(cc, dd, ee, aa, bb, X[ 2], 12);
-    
+
     /* round 5 */
     JJ(bb, cc, dd, ee, aa, X[ 4],  9);
     JJ(aa, bb, cc, dd, ee, X[ 0], 15);
@@ -426,7 +425,7 @@ static int32_t rmd160_vcompress(struct rmd160_vstate *md,uint8_t *buf)
     JJ(dd, ee, aa, bb, cc, X[ 6],  8);
     JJ(cc, dd, ee, aa, bb, X[15],  5);
     JJ(bb, cc, dd, ee, aa, X[13],  6);
-    
+
     /* parallel round 1 */
     JJJ(aaa, bbb, ccc, ddd, eee, X[ 5],  8);
     JJJ(eee, aaa, bbb, ccc, ddd, X[14],  9);
@@ -444,7 +443,7 @@ static int32_t rmd160_vcompress(struct rmd160_vstate *md,uint8_t *buf)
     JJJ(ccc, ddd, eee, aaa, bbb, X[10], 14);
     JJJ(bbb, ccc, ddd, eee, aaa, X[ 3], 12);
     JJJ(aaa, bbb, ccc, ddd, eee, X[12],  6);
-    
+
     /* parallel round 2 */
     III(eee, aaa, bbb, ccc, ddd, X[ 6],  9);
     III(ddd, eee, aaa, bbb, ccc, X[11], 13);
@@ -462,7 +461,7 @@ static int32_t rmd160_vcompress(struct rmd160_vstate *md,uint8_t *buf)
     III(bbb, ccc, ddd, eee, aaa, X[ 9], 15);
     III(aaa, bbb, ccc, ddd, eee, X[ 1], 13);
     III(eee, aaa, bbb, ccc, ddd, X[ 2], 11);
-    
+
     /* parallel round 3 */
     HHH(ddd, eee, aaa, bbb, ccc, X[15],  9);
     HHH(ccc, ddd, eee, aaa, bbb, X[ 5],  7);
@@ -480,7 +479,7 @@ static int32_t rmd160_vcompress(struct rmd160_vstate *md,uint8_t *buf)
     HHH(aaa, bbb, ccc, ddd, eee, X[ 0], 13);
     HHH(eee, aaa, bbb, ccc, ddd, X[ 4],  7);
     HHH(ddd, eee, aaa, bbb, ccc, X[13],  5);
-    
+
     /* parallel round 4 */
     GGG(ccc, ddd, eee, aaa, bbb, X[ 8], 15);
     GGG(bbb, ccc, ddd, eee, aaa, X[ 6],  5);
@@ -498,7 +497,7 @@ static int32_t rmd160_vcompress(struct rmd160_vstate *md,uint8_t *buf)
     GGG(eee, aaa, bbb, ccc, ddd, X[ 7],  5);
     GGG(ddd, eee, aaa, bbb, ccc, X[10], 15);
     GGG(ccc, ddd, eee, aaa, bbb, X[14],  8);
-    
+
     /* parallel round 5 */
     FFF(bbb, ccc, ddd, eee, aaa, X[12] ,  8);
     FFF(aaa, bbb, ccc, ddd, eee, X[15] ,  5);
@@ -516,7 +515,7 @@ static int32_t rmd160_vcompress(struct rmd160_vstate *md,uint8_t *buf)
     FFF(ddd, eee, aaa, bbb, ccc, X[ 3] , 13);
     FFF(ccc, ddd, eee, aaa, bbb, X[ 9] , 11);
     FFF(bbb, ccc, ddd, eee, aaa, X[11] , 11);
-    
+
     /* combine results */
     ddd += cc + md->state[1];               /* final result for md->state[0] */
     md->state[1] = md->state[2] + dd + eee;
@@ -524,7 +523,7 @@ static int32_t rmd160_vcompress(struct rmd160_vstate *md,uint8_t *buf)
     md->state[3] = md->state[4] + aa + bbb;
     md->state[4] = md->state[0] + bb + ccc;
     md->state[0] = ddd;
-    
+
     return 0;
 }
 
@@ -596,37 +595,33 @@ HASH_PROCESS(rmd160_vprocess, rmd160_vcompress, rmd160, 64)
 int rmd160_vdone(struct rmd160_vstate * md, unsigned char *out)
 {
     int i;
-    if (md->curlen >= sizeof(md->buf)) {
+    if (md->curlen >= sizeof(md->buf))
         return -1;
-    }
     /* increase the length of the message */
     md->length += md->curlen * 8;
-    
+
     /* append the '1' bit */
-    md->buf[md->curlen++] = (unsigned char)0x80;
-    
+    md->buf[md->curlen++] = 0x80;
+
     /* if the length is currently above 56 bytes we append zeros
      * then compress.  Then we can fall back to padding zeros and length
      * encoding like normal.
      */
     if (md->curlen > 56) {
-        while (md->curlen < 64) {
-            md->buf[md->curlen++] = (unsigned char)0;
-        }
+        while (md->curlen < 64)
+            md->buf[md->curlen++] = 0;
         rmd160_vcompress(md, md->buf);
         md->curlen = 0;
     }
     /* pad upto 56 bytes of zeroes */
-    while (md->curlen < 56) {
-        md->buf[md->curlen++] = (unsigned char)0;
-    }
+    while (md->curlen < 56)
+        md->buf[md->curlen++] = 0;
     /* store length */
     STORE64L(md->length, md->buf+56);
     rmd160_vcompress(md, md->buf);
     /* copy output */
-    for (i = 0; i < 5; i++) {
+    for (i = 0; i < 5; i++)
         STORE32L(md->state[i], out+(4*i));
-    }
     return 0;
 }
 
@@ -703,13 +698,13 @@ static const uint32_t crc32_tab[] = {
 uint32_t calc_crc32(uint32_t crc,const void *buf,size_t size)
 {
     const uint8_t *p;
-    
+
     p = (const uint8_t *)buf;
     crc = crc ^ ~0U;
-    
-    while (size--)
+
+    while (size-- != 0)
         crc = crc32_tab[(crc ^ *p++) & 0xFF] ^ (crc >> 8);
-    
+
     return crc ^ ~0U;
 }
 
@@ -752,7 +747,7 @@ int32_t iguana_rwnum(int32_t rwflag,uint8_t *serialized,int32_t len,void *endian
         for (i=0; i<len; i++,x >>= 8)
             serialized[i] = (uint8_t)(x & 0xff);
     }
-    return(len);
+    return len;
 }
 
 uint32_t safecoin_assetmagic(char *symbol,uint64_t supply,uint8_t *extraptr,int32_t extralen)
@@ -763,32 +758,32 @@ uint32_t safecoin_assetmagic(char *symbol,uint64_t supply,uint8_t *extraptr,int3
     len = iguana_rwnum(1,&buf[len],sizeof(supply),(void *)&supply);
     strcpy((char *)&buf[len],symbol);
     len += strlen(symbol);
-    if ( extraptr != 0 && extralen != 0 )
+    if ( extraptr != NULL && extralen != 0 )
     {
         vcalc_sha256(0,hash.bytes,extraptr,extralen);
         crc0 = hash.uints[0];
     }
-    return(calc_crc32(crc0,buf,len));
+    return calc_crc32(crc0,buf,len);
 }
 
 uint16_t safecoin_assetport(uint32_t magic,int32_t extralen)
 {
     if ( magic == 0x8fe2edf1 )
-        return(8770);
+        return 8770;
     else if ( extralen == 0 )
-        return(8000 + (magic % 7777));
-    else return(16000 + (magic % 49500));
+        return 8000 + (magic % 7777);
+    return 16000 + (magic % 49500);
 }
 
 uint16_t safecoin_port(char *symbol,uint64_t supply,uint32_t *magicp,uint8_t *extraptr,int32_t extralen)
 {
-    if ( symbol == 0 || symbol[0] == 0 || strcmp("SAFE",symbol) == 0 )
+    if ( symbol == NULL || symbol[0] == '\0' || strcmp("SAFE",symbol) == 0 )
     {
         *magicp = 0x8fe2edf1;
-        return(8770);
+        return 8770;
     }
     *magicp = safecoin_assetmagic(symbol,supply,extraptr,extralen);
-    return(safecoin_assetport(*magicp,extralen));
+    return safecoin_assetport(*magicp,extralen);
 }
 
 uint16_t safecoin_calcport(char *name,uint64_t supply,uint64_t endsubsidy,uint64_t reward,uint64_t halving,uint64_t decay,uint64_t commission,uint8_t staked,int32_t cc)
@@ -821,7 +816,7 @@ uint16_t safecoin_calcport(char *name,uint64_t supply,uint64_t endsubsidy,uint64
         val = commission | (((uint64_t)staked & 0xff) << 32) | (((uint64_t)cc & 0xffffff) << 40);
         extralen += iguana_rwnum(1,&extraptr[extralen],sizeof(val),(void *)&val);
     }
-    return(safecoin_port(name,supply,&ASSETCHAINS_MAGIC,extraptr,extralen));
+    return safecoin_port(name,supply,&ASSETCHAINS_MAGIC,extraptr,extralen);
 }
 
 int main(int argc, char * argv[])
@@ -833,7 +828,7 @@ int main(int argc, char * argv[])
         // staked, commission and cc hardcoded
         printf("%s name supply endsubsidy reward halving decay\n",argv[0]);
         printf("%s -gen num name supply endsubsidy reward halving decay\n",argv[0]);
-        return(-1);
+        return -1;
     }
     if ( strncmp(argv[1],"-gen",3) == 0 )
     {
@@ -855,7 +850,7 @@ int main(int argc, char * argv[])
         decay = (long long)atof(argv[offset + 6]);
     rpcport = 1 + safecoin_calcport(argv[offset + 1],supply,endsubsidy,reward,halving,decay,commission,staked,cc);
     printf("./safecoind -ac_name=%s -ac_cc=%u -ac_supply=%llu -ac_end=%llu -ac_reward=%llu -ac_halving=%llu -ac_decay=%llu & # rpcport %u\n[",argv[offset + 1],cc,(long long)supply,(long long)endsubsidy,(long long)reward,(long long)halving,(long long)decay,rpcport);
-    if ( allocated != 0 )
+    if ( allocated != NULL )
     {
         char name[64],newname[64];
         strcpy(name,argv[offset + 1]);
@@ -871,22 +866,18 @@ int main(int argc, char * argv[])
                 if ( allocated[rpcport] == 0 && allocated[rpcport-1] == 0 )
                 {
                     if ( jsonflag == 0 )
-                    {
                         printf("./safecoind -ac_name=%s -ac_cc=%u -ac_supply=%llu -ac_end=%llu -ac_reward=%llu -ac_halving=%llu -ac_decay=%llu & # rpcport %u\n",newname,cc,(long long)supply+j,(long long)endsubsidy,(long long)reward,(long long)halving,(long long)decay,rpcport);
-                    }
                     else
-                    {
                         printf("{ \"assetname\": \"%s\", \"p2p\": %u, \"rpc\": %u, \"supply\": %llu, \"ac_cc\": %u, \"ac_reward\": %llu, \"notarize\": %s }%s ",newname,rpcport-1,rpcport,(long long)supply+j,cc,(long long)reward,i<64?"true":"false",i<num-1?",":"");
-                    }
                     allocated[rpcport] = 1;
                     allocated[rpcport-1] = 1;
                     break;
                 }
-                j++;
+                ++j;
             }
         }
         free(allocated);
     }
     printf("]\n");
-    return(0);
+    return 0;
 }
