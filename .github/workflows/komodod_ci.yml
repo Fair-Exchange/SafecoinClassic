@@ -24,7 +24,26 @@ jobs:
                  python3-setuptools \
                  python3-pip \
                  libcurl4-openssl-dev \
-                 libssl-dev -y
+                 libssl-dev 
+                 build-essential \
+                 pkg-config \
+                 libc6-dev \
+                 m4 \
+                 g++-multilib \
+                 autoconf \
+                 libtool \
+                 ncurses-dev \
+                 unzip \
+                 git \
+                 python \
+                 python-zmq \
+                 zlib1g-dev \
+                 wget \
+                 libcurl4-gnutls-dev \
+                 bsdmainutils \
+                 automake \
+                 curl \
+                 libsodium-dev -y
           python3 -m pip install setuptools wheel
           python3 -m pip install slick-bitcoinrpc pytest wget jsonschema
           ./zcutil/fetch-params.sh
