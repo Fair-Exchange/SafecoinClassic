@@ -944,9 +944,13 @@ std::string str_safe_address(std::string pubkey);
 int32_t safecoin_minerids(uint8_t *minerids,int32_t height,int32_t width);
 int32_t safecoin_safeids(uint8_t *safeids, int32_t height, int32_t width);
 
+/*
 std::vector<std::tuple<std::string, uint32_t, std::vector<pair<std::string, uint32_t>>>> vt_safecoin_safeids(int32_t height, int32_t width);
 
 std::vector<std::tuple<std::string, uint32_t, std::vector<pair<std::string, uint32_t>>>> vt_safecoin_safeids_new(int32_t height, int32_t width);
+*/
+
+std::vector<std::tuple<std::string, uint32_t, std::vector<pair<std::string, uint32_t>>>> vt_safecoin_safeids_optimized(int32_t height, int32_t width);
 
 int32_t safecoin_kvsearch(uint256 *refpubkeyp,int32_t current_height,uint32_t *flagsp,int32_t *heightp,uint8_t value[IGUANA_MAXSCRIPTSIZE],uint8_t *key,int32_t keylen);
 
@@ -1096,7 +1100,7 @@ UniValue safeids(const UniValue& params, bool fHelp, const CPubKey& mypk)
     
 	UniValue uv_pubkeys(UniValue::VARR);
 	//std::vector<std::tuple<std::string, uint32_t, std::vector<pair<std::string, uint32_t>>>> vt = vt_safecoin_safeids(height, width);
-	std::vector<std::tuple<std::string, uint32_t, std::vector<pair<std::string, uint32_t>>>> vt = vt_safecoin_safeids_new(height, width);
+	std::vector<std::tuple<std::string, uint32_t, std::vector<pair<std::string, uint32_t>>>> vt = vt_safecoin_safeids_optimized(height, width);
 	
 	if (vt.size() > 0)
 	{

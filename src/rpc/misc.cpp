@@ -2244,6 +2244,7 @@ UniValue getregistrationinfo(const UniValue& params, bool fHelp, const CPubKey& 
     UniValue errors(UniValue::VARR);
 
 	int32_t current_height = chainActive.LastTip()->GetHeight(); 
+    std::vector<std::string> vs_notaries = vs_safecoin_notaries(current_height, 0);
 
 	std::string safe_key, safe_address;
 	bool is_valid = true; 
@@ -2277,7 +2278,9 @@ UniValue getregistrationinfo(const UniValue& params, bool fHelp, const CPubKey& 
 	
 	int32_t last_reg_height = 0;
 	int32_t last_reg_duration = 0;
-	
+	std::string last_parentkey = "";
+    
+    
 	if (is_valid)
 	{
         obj.push_back(Pair("safekey", safe_key));
@@ -2291,26 +2294,49 @@ UniValue getregistrationinfo(const UniValue& params, bool fHelp, const CPubKey& 
 		
 		for(s = SAFECOIN_KV; s != NULL; s = (safecoin_kv*)s->hh.next)
 		{
-			uint8_t *value_ptr = s->value;
+			uint8_t *key_ptr = s->key;
+			uint16_t key_size = s->keylen;            
+            uint8_t *value_ptr = s->value;
 			uint16_t value_size = s->valuesize;
 			
-			// skip checking against records with invalid safeid size
+			// check only records with valid safeid size
 			if (value_size == 66)
 			{
-				std::string str_saved_safeid = std::string((char*)value_ptr, (int)value_size);
-				if (s->height > last_reg_height && str_saved_safeid == safe_key)
-				{
-					last_reg_height = s->height;
-					last_reg_duration = ((s->flags >> 2) + 1) * SAFECOIN_KVDURATION;
-				}
-			} 
+				// check only records with valid key size
+                if (key_size == 74 || key_size == 75)
+                {
+                    std::string str_keyname((char*)key_ptr, (int)key_size);
+                    std::string parentkey = str_keyname.substr(0, 66);
+                    std::string safe_height = str_keyname.substr(66, (key_size == 74) ? 7 : 8);
+                    std::string one = str_keyname.substr((key_size == 74) ? 73 : 74, 1);                   
+                    std::string str_saved_safeid = std::string((char*)value_ptr, (int)value_size);
+                    
+                    // more validations
+                    if (one == "1")
+                    {
+                        // check only records with valid parentkey
+                        std::vector<std::string>::iterator it;
+                        it = find (vs_notaries.begin(), vs_notaries.end(), parentkey);
+                        if (it != vs_notaries.end())
+                        {
+                            if (s->height > last_reg_height && str_saved_safeid == safe_key)
+                            {
+                                last_reg_height = s->height;
+                                last_reg_duration = ((s->flags >> 2) + 1) * SAFECOIN_KVDURATION;
+                                last_parentkey = parentkey;
+                            }
+                        }                        
+                    }
+                }
+            } 
 		}
 		
 		pthread_mutex_unlock(&SAFECOIN_KV_mutex);
 
 		if (last_reg_height > 0)
 		{
-			obj.push_back(Pair("current_height", current_height));
+			obj.push_back(Pair("parentkey", last_parentkey));
+            obj.push_back(Pair("current_height", current_height));
 			obj.push_back(Pair("last_reg_height", last_reg_height));
 			obj.push_back(Pair("valid_thru_height", last_reg_height + last_reg_duration));
 		}

@@ -1184,6 +1184,114 @@ std::vector<std::tuple<std::string, uint32_t, std::vector<pair<std::string, uint
 }
 
 
+// optimized safecoin_safeids()
+std::vector<std::tuple<std::string, uint32_t, std::vector<pair<std::string, uint32_t>>>> vt_safecoin_safeids_optimized(int32_t height, int32_t width)
+{
+    std::vector<std::string> vs_safekeys;
+	std::vector<std::string>::iterator it;
+	
+	struct safecoin_kv *s;
+	extern struct safecoin_kv *SAFECOIN_KV;
+	extern pthread_mutex_t SAFECOIN_KV_mutex;
+	
+	pthread_mutex_lock(&SAFECOIN_KV_mutex);
+	
+	for(s = SAFECOIN_KV; s != NULL; s = (safecoin_kv*)s->hh.next)
+	{
+		uint8_t *value_ptr = s->value;
+		uint16_t value_size = s->valuesize;
+		
+		// skip checking against records with invalid safeid size
+		if (value_size == 66)
+		{
+			std::string str_saved_safeid = std::string((char*)value_ptr, 66);
+			it = std::find(vs_safekeys.begin(), vs_safekeys.end(), str_saved_safeid);
+			if (it == vs_safekeys.end())
+			{
+				vs_safekeys.push_back(str_saved_safeid);
+			}
+		} 
+	}
+	
+	pthread_mutex_unlock(&SAFECOIN_KV_mutex);
+  
+    std::vector<std::tuple<std::string, uint32_t, std::vector<pair<std::string, uint32_t>>>> vt;
+    std::vector<std::string> vs_pubkeys;
+    std::vector<uint32_t> vu_pubkey_blocks_count;
+    std::vector<std::vector<pair<std::string, uint32_t>>> vvp_pubkey_safeids;
+        
+    for (int i = 0; i < vs_safekeys.size(); i++)
+    {
+        UniValue uv_one_node(UniValue::VOBJ), params(UniValue::VARR);
+		params.push_back(vs_safekeys.at(i));
+        UniValue uv_registration_info = getregistrationinfo(params, false, CPubKey());
+        UniValue uv_parentkey = find_value(uv_registration_info, "parentkey");
+        
+        UniValue uv_valid_thru_height = find_value(uv_registration_info, "valid_thru_height");
+        
+        if (uv_valid_thru_height.get_int() >= height)
+        {
+            it = std::find(vs_pubkeys.begin(), vs_pubkeys.end(), uv_parentkey.get_str());
+            
+            if (it != vs_pubkeys.end())
+            {
+                // found !
+                // get the element index
+                uint32_t index = std::distance(vs_pubkeys.begin(), it);
+                
+                // increase the block count
+                vu_pubkey_blocks_count.at(index) = vu_pubkey_blocks_count.at(index) + 1;
+                
+                // get this pubkey safeids
+                std::vector<pair<std::string, uint32_t>> vp_safeids = vvp_pubkey_safeids.at(index);
+                
+                // check if extracted safeid is already in the current pubkey safeids list
+                std::string s_safeid = vs_safekeys.at(i);
+                auto p = find_if(vp_safeids.begin(), vp_safeids.end(), [&s_safeid](const pair<string, uint32_t>& r){return r.first == s_safeid;});
+
+                if (p != vp_safeids.end())
+                {
+                    // found safeid entry within current pubkey 
+                    
+                    // get the element index
+                    uint32_t p_index = std::distance(vp_safeids.begin(), p);
+                    
+                    // // increase the safeid block count 
+                    (vvp_pubkey_safeids.at(index)).at(p_index).second = vp_safeids.at(p_index).second + 1;
+                }
+                else
+                {
+                    // not found, add safeid and block count of 1 to the current pubkey	
+                    (vvp_pubkey_safeids.at(index)).push_back(std::make_pair(s_safeid, 1));
+                }
+            }
+            else
+            {
+                // not found
+                // insert both pubkey and safeid, block counts of 1
+                vs_pubkeys.push_back(uv_parentkey.get_str());
+                vu_pubkey_blocks_count.push_back(1);
+                std::vector<pair<std::string, uint32_t>> vp_init_safeid;
+                vp_init_safeid.push_back(std::make_pair(vs_safekeys.at(i), 1));
+                vvp_pubkey_safeids.push_back(vp_init_safeid);
+            }
+        }
+    }
+    
+    // join pubkeys and safeids in result tuple
+    for (unsigned k = 0; k < vs_pubkeys.size(); k++)
+    {
+		std::tuple<std::string, uint32_t, std::vector<pair<std::string, uint32_t>>> tup;
+		std::get<0>(tup) = vs_pubkeys.at(k);
+		std::get<1>(tup) = vu_pubkey_blocks_count.at(k);
+		std::get<2>(tup) = vvp_pubkey_safeids.at(k);
+		vt.push_back(tup);
+	}
+    return vt;
+}
+
+
+
 int32_t safecoin_is_special(uint8_t pubkeys[66][33],int32_t mids[66],uint32_t blocktimes[66],int32_t height,uint8_t pubkey33[33],uint32_t blocktime)
 {
     int32_t i,j,notaryid=0,minerid,limit,nid; uint8_t destpubkey33[33];
