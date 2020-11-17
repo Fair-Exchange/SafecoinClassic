@@ -158,7 +158,10 @@ bool static LookupIntern(const char *pszName, std::vector<CNetAddr>& vIP, unsign
     gcb.ar_request = &aiHint;
     int nErr = getaddrinfo_a(GAI_NOWAIT, &query, 1, NULL);
     if (nErr)
+    {
+        LogPrint("net", "%s():%d - getaddrinfo_a() query failed at [%s], err=%s\n", __func__, __LINE__, pszName, gai_strerror(nErr));
         return false;
+    }
 
     do {
         // Should set the timeout limit to a reasonable value to avoid
@@ -177,7 +180,10 @@ bool static LookupIntern(const char *pszName, std::vector<CNetAddr>& vIP, unsign
     int nErr = getaddrinfo(pszName, NULL, &aiHint, &aiRes);
 #endif
     if (nErr)
+    {
+        LogPrint("net", "%s():%d - getaddrinfo_a() response failed from [%s], err=%s\n", __func__, __LINE__, pszName, gai_strerror(nErr));
         return false;
+    }
 
     struct addrinfo *aiTrav = aiRes;
     while (aiTrav != NULL && (nMaxSolutions == 0 || vIP.size() < nMaxSolutions))

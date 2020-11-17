@@ -77,6 +77,7 @@ testScripts=(
     'p2p_node_bloom.py'
     'regtest_signrawtransaction.py'
     'finalsaplingroot.py'
+    'tlsprotocols.py'
 );
 testScriptsExt=(
     'getblocktemplate_longpoll.py'
