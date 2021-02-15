@@ -101,7 +101,7 @@ bool CDBEnv::Open(const boost::filesystem::path& pathIn)
     //fprintf(stderr,"strPath.(%s)\n",strPath.c_str());
 
     unsigned int nEnvFlags = 0;
-    if (GetBoolArg("-privdb", true))
+    if (GetBoolArg("-privdb", DEFAULT_WALLET_PRIVDB))
         nEnvFlags |= DB_PRIVATE;
 
     dbenv->set_lg_dir(pathLogDir.string().c_str());
@@ -309,7 +309,7 @@ void CDB::Flush()
     if (fReadOnly)
         nMinutes = 1;
 
-    bitdb.dbenv->txn_checkpoint(nMinutes ? GetArg("-dblogsize", 100) * 1024 : 0, nMinutes, 0);
+    bitdb.dbenv->txn_checkpoint(nMinutes ? GetArg("-dblogsize", DEFAULT_WALLET_DBLOGSIZE) * 1024 : 0, nMinutes, 0);
 }
 
 void CDB::Close()

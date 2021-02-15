@@ -1,7 +1,9 @@
 #!/usr/bin/env python2
 # Copyright (c) 2014 The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+# file COPYING or https://www.opensource.org/licenses/mit-license.php .
+
+import sys; assert sys.version_info < (3,), ur"This script does not run under Python 3. Please use Python 2.7.x."
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.authproxy import JSONRPCException
@@ -16,15 +18,16 @@ class RawTransactionsTest(BitcoinTestFramework):
 
     def setup_chain(self):
         print("Initializing test directory "+self.options.tmpdir)
-        initialize_chain_clean(self.options.tmpdir, 3)
+        initialize_chain_clean(self.options.tmpdir, 4)
 
     def setup_network(self, split=False):
-        self.nodes = start_nodes(3, self.options.tmpdir,
+        self.nodes = start_nodes(4, self.options.tmpdir,
                            extra_args=[['-experimentalfeatures', '-developerencryptwallet']] * 4)
 
         connect_nodes_bi(self.nodes,0,1)
         connect_nodes_bi(self.nodes,1,2)
         connect_nodes_bi(self.nodes,0,2)
+        connect_nodes_bi(self.nodes,0,3)
 
         self.is_network_split=False
         self.sync_all()
@@ -35,11 +38,20 @@ class RawTransactionsTest(BitcoinTestFramework):
 
         self.nodes[2].generate(1)
         self.sync_all()
-        self.nodes[0].generate(101)
+        self.nodes[0].generate(201)
         self.sync_all()
+
+        watchonly_address = self.nodes[0].getnewaddress()
+        watchonly_pubkey = self.nodes[0].validateaddress(watchonly_address)["pubkey"]
+        watchonly_amount = 200
+        self.nodes[3].importpubkey(watchonly_pubkey, "", True)
+        watchonly_txid = self.nodes[0].sendtoaddress(watchonly_address, watchonly_amount)
+        self.nodes[0].sendtoaddress(self.nodes[3].getnewaddress(), watchonly_amount / 10);
+
         self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(),1.5);
         self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(),1.0);
         self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(),5.0);
+
         self.sync_all()
         self.nodes[0].generate(1)
         self.sync_all()
@@ -178,8 +190,8 @@ class RawTransactionsTest(BitcoinTestFramework):
         outputs = { self.nodes[0].getnewaddress() : 1.0 }
         rawtx   = self.nodes[2].createrawtransaction(inputs, outputs)
 
-        # 4-byte version + 1-byte vin count + 36-byte prevout then script_len
-        rawtx = rawtx[:82] + "0100" + rawtx[84:]
+        # 4-byte version + 4-byte versionGroupId + 1-byte vin count + 36-byte prevout then script_len
+        rawtx = rawtx[:90] + "0100" + rawtx[92:]
 
         dec_tx  = self.nodes[2].decoderawtransaction(rawtx)
         assert_equal(utx['txid'], dec_tx['vin'][0]['txid'])
@@ -432,11 +444,12 @@ class RawTransactionsTest(BitcoinTestFramework):
         stop_nodes(self.nodes)
         wait_bitcoinds()
 
-        self.nodes = start_nodes(3, self.options.tmpdir)
+        self.nodes = start_nodes(4, self.options.tmpdir)
 
         connect_nodes_bi(self.nodes,0,1)
         connect_nodes_bi(self.nodes,1,2)
         connect_nodes_bi(self.nodes,0,2)
+        connect_nodes_bi(self.nodes,0,3)
         self.is_network_split=False
         self.sync_all()
 
@@ -543,6 +556,46 @@ class RawTransactionsTest(BitcoinTestFramework):
 
         assert_greater_than(len(dec_tx['vin']), 0) # at least one vin
         assert_equal(len(dec_tx['vout']), 2) # one change output added
+
+
+        ##################################################
+        # test a fundrawtransaction using only watchonly #
+        ##################################################
+
+        inputs = []
+        outputs = {self.nodes[2].getnewaddress() : watchonly_amount / 2}
+        rawtx = self.nodes[3].createrawtransaction(inputs, outputs)
+
+        result = self.nodes[3].fundrawtransaction(rawtx, True)
+        res_dec = self.nodes[0].decoderawtransaction(result["hex"])
+        assert_equal(len(res_dec["vin"]), 1)
+        assert_equal(res_dec["vin"][0]["txid"], watchonly_txid)
+
+        assert_equal("fee" in result.keys(), True)
+        assert_greater_than(result["changepos"], -1)
+
+        ###############################################################
+        # test fundrawtransaction using the entirety of watched funds #
+        ###############################################################
+
+        inputs = []
+        outputs = {self.nodes[2].getnewaddress() : watchonly_amount}
+        rawtx = self.nodes[3].createrawtransaction(inputs, outputs)
+
+        result = self.nodes[3].fundrawtransaction(rawtx, True)
+        res_dec = self.nodes[0].decoderawtransaction(result["hex"])
+        assert_equal(len(res_dec["vin"]), 2)
+        assert(res_dec["vin"][0]["txid"] == watchonly_txid or res_dec["vin"][1]["txid"] == watchonly_txid)
+
+        assert_greater_than(result["fee"], 0)
+        assert_greater_than(result["changepos"], -1)
+        assert_equal(result["fee"] + res_dec["vout"][result["changepos"]]["value"], watchonly_amount / 10)
+
+        signedtx = self.nodes[3].signrawtransaction(result["hex"])
+        assert(not signedtx["complete"])
+        signedtx = self.nodes[0].signrawtransaction(signedtx["hex"])
+        assert(signedtx["complete"])
+        self.nodes[0].sendrawtransaction(signedtx["hex"])
 
 
 if __name__ == '__main__':

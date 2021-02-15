@@ -232,6 +232,7 @@ BITCOIN_CORE_H = \
   script/serverchecker.h \
   script/sign.h \
   script/standard.h \
+  script/ismine.h \
   serialize.h \
   streams.h \
   support/allocators/secure.h \
@@ -265,7 +266,6 @@ BITCOIN_CORE_H = \
   wallet/db.h \
   wallet/rpcwallet.h \
   wallet/wallet.h \
-  wallet/wallet_ismine.h \
   wallet/walletdb.h \
   zmq/zmqabstractnotifier.h \
   zmq/zmqconfig.h\
@@ -351,6 +351,7 @@ libbitcoin_server_a_SOURCES = \
   rpc/server.cpp \
   script/serverchecker.cpp \
   script/sigcache.cpp \
+  script/ismine.cpp \
   timedata.cpp \
   torcontrol.cpp \
   txdb.cpp \
@@ -403,7 +404,6 @@ libbitcoin_wallet_a_SOURCES = \
   cc/CCtx.cpp \
   wallet/rpcwallet.cpp \
   wallet/wallet.cpp \
-  wallet/wallet_ismine.cpp \
   wallet/walletdb.cpp \
   zcash/zip32.cpp \
   $(BITCOIN_CORE_H) \

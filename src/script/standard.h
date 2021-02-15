@@ -36,7 +36,7 @@ class CScriptID : public uint160
 {
 public:
     CScriptID() : uint160() {}
-    CScriptID(const CScript& in);
+    explicit CScriptID(const CScript& in);
     CScriptID(const uint160& in) : uint160(in) {}
 };
 
@@ -172,6 +172,7 @@ bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet,
 bool ExtractDestinations(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<CTxDestination>& addressRet, int& nRequiredRet);
 
 CScript GetScriptForDestination(const CTxDestination& dest);
+CScript GetScriptForRawPubKey(const CPubKey& pubkey);
 CScript GetScriptForMultisig(int nRequired, const std::vector<CPubKey>& keys);
 
 #endif // BITCOIN_SCRIPT_STANDARD_H

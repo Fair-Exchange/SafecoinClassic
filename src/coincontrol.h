@@ -29,7 +29,9 @@ public:
     CTxDestination destChange;
     //! If false, allows unselected inputs, but requires all selected inputs be used
     bool fAllowOtherInputs;
-
+    //! Includes watch only addresses which match the ISMINE_WATCH_SOLVABLE criteria
+    bool fAllowWatchOnly;
+	
     CCoinControl()
     {
         SetNull();
@@ -39,6 +41,7 @@ public:
     {
         destChange = CNoDestination();
         fAllowOtherInputs = false;
+        fAllowWatchOnly = false;
         setSelected.clear();
     }
 

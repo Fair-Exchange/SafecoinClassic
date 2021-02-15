@@ -34,7 +34,7 @@
 #include "utilstrencodings.h"
 #include "validationinterface.h"
 #include "wallet/crypter.h"
-#include "wallet/wallet_ismine.h"
+#include "script/ismine.h"
 #include "wallet/walletdb.h"
 #include "wallet/rpcwallet.h"
 #include "zcash/Address.hpp"
@@ -50,29 +50,33 @@
 #include <utility>
 #include <vector>
 
+extern CWallet* pwalletMain;
+
 /**
  * Settings
  */
 extern CFeeRate payTxFee;
-extern CAmount maxTxFee;
 extern unsigned int nTxConfirmTarget;
 extern bool bSpendZeroConfChange;
 extern bool fSendFreeTransactions;
 extern bool fPayAtLeastCustomFee;
 
-
+static const unsigned int DEFAULT_KEYPOOL_SIZE = 100;
 //! -paytxfee default
 static const CAmount DEFAULT_TRANSACTION_FEE = 0;
-//! -paytxfee will warn if called with a higher fee than this amount (in satoshis) per KB
-static const CAmount nHighTransactionFeeWarning = 0.01 * COIN;
-//! -maxtxfee default
-static const CAmount DEFAULT_TRANSACTION_MAXFEE = 0.1 * COIN;
+//! -mintxfee default
+static const CAmount DEFAULT_TRANSACTION_MINFEE = 1000;
+//! Default for -spendzeroconfchange
+static const bool DEFAULT_SPEND_ZEROCONF_CHANGE = true;
+//! Default for -sendfreetransactions
+static const bool DEFAULT_SEND_FREE_TRANSACTIONS = false;
+
 //! -txconfirmtarget default
 static const unsigned int DEFAULT_TX_CONFIRM_TARGET = 2;
-//! -maxtxfee will warn if called with a higher fee than this amount (in satoshis)
-static const CAmount nHighTransactionMaxFeeWarning = 100 * nHighTransactionFeeWarning;
+
 //! Largest (in bytes) free transaction we're willing to create
 static const unsigned int MAX_FREE_TRANSACTION_CREATE_SIZE = 1000;
+static const bool DEFAULT_WALLETBROADCAST = true;
 //! Size of witness cache
 //  Should be large enough that we can expect not to reorg beyond our cache
 //  unless there is some exceptional network disruption.
@@ -80,6 +84,8 @@ extern unsigned int WITNESS_CACHE_SIZE;
 
 //! Size of HD seed in bytes
 static const size_t HD_WALLET_SEED_LENGTH = 32;
+
+extern const char * DEFAULT_WALLET_DAT;
 
 class CBlockIndex;
 class CCoinControl;
@@ -399,6 +405,7 @@ public:
     int GetDepthInMainChain() const { const CBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet); }
     bool IsInMainChain() const { const CBlockIndex *pindexRet; return GetDepthInMainChainINTERNAL(pindexRet) > 0; }
     int GetBlocksToMaturity() const;
+    /** Pass this transaction to the mempool. Fails if absolute fee exceeds maxTxFee. */
     bool AcceptToMemoryPool(bool fLimitFree=true, bool fRejectAbsurdFee=true);
 };
 
@@ -760,6 +767,7 @@ private:
 
     int64_t nNextResend;
     int64_t nLastResend;
+    int64_t nLastSetChain;
     bool fBroadcastTransactions;
 
     template <class T>
@@ -916,6 +924,7 @@ public:
         nOrderPosNext = 0;
         nNextResend = 0;
         nLastResend = 0;
+        nLastSetChain = 0;
         nTimeFirstKey = 0;
         fBroadcastTransactions = false;
         nWitnessCacheSize = 0;
@@ -1154,7 +1163,7 @@ public:
     CAmount GetWatchOnlyBalance() const;
     CAmount GetUnconfirmedWatchOnlyBalance() const;
     CAmount GetImmatureWatchOnlyBalance() const;
-    bool FundTransaction(CMutableTransaction& tx, CAmount& nFeeRet, int& nChangePosRet, std::string& strFailReason);
+    bool FundTransaction(CMutableTransaction& tx, CAmount& nFeeRet, int& nChangePosRet, std::string& strFailReason, bool includeWatching);
     bool CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosRet,
                            std::string& strFailReason, const CCoinControl *coinControl = NULL, bool sign = true);
     bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey);
@@ -1260,7 +1269,7 @@ public:
     void Flush(bool shutdown=false);
 
     //! Verify the wallet database and perform salvage if required
-    static bool Verify(const std::string& walletFile, std::string& warningString, std::string& errorString);
+    static bool Verify();
 
     /**
      * Address book entry changed.
@@ -1333,6 +1342,15 @@ public:
     // staking functions
     bool VerusSelectStakeOutput(CBlock *pBlock, arith_uint256 &hashResult, CTransaction &stakeSource, int32_t &voutNum, int32_t nHeight, uint32_t &bnTarget) const;
     int32_t VerusStakeTransaction(CBlock *pBlock, CMutableTransaction &txNew, uint32_t &bnTarget, arith_uint256 &hashResult, uint8_t *utxosig, CPubKey pk) const;
+
+    /* Returns the wallets help message */
+    static std::string GetWalletHelpString(bool showDebug);
+	
+    /* Initializes the wallet, returns a new CWallet instance or a null pointer in case of an error */
+    static bool InitLoadWallet(bool clearWitnessCaches);
+
+    /* Wallets parameter interaction */
+    static bool ParameterInteraction();
 };
 
 /** A key allocated from the key pool. */

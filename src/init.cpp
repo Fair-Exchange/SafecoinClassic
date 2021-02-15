@@ -103,9 +103,6 @@ extern void safecoin_init(int32_t height);
 
 ZCJoinSplit* pzcashParams = NULL;
 
-#ifdef ENABLE_WALLET
-CWallet* pwalletMain = NULL;
-#endif
 bool fFeeEstimatesInitialized = false;
 
 #if ENABLE_ZMQ
@@ -260,6 +257,10 @@ void Shutdown()
         if (pcoinsTip != NULL) {
             FlushStateToDisk();
         }
+
+        // Flush the wallet witness cache to disk (no longer done by FlushStateToDisk())
+        GetMainSignals().SetBestChain(chainActive.GetLocator());
+
         delete pcoinsTip;
         pcoinsTip = NULL;
         delete pcoinscatcher;
@@ -448,29 +449,7 @@ std::string HelpMessage(HelpMessageMode mode)
         " " + _("Whitelisted peers cannot be DoS banned and their transactions are always relayed, even if they are already in the mempool, useful e.g. for a gateway"));
 
 #ifdef ENABLE_WALLET
-    strUsage += HelpMessageGroup(_("Wallet options:"));
-    strUsage += HelpMessageOpt("-disablewallet", _("Do not load the wallet and disable wallet RPC calls"));
-    strUsage += HelpMessageOpt("-keypool=<n>", strprintf(_("Set key pool size to <n> (default: %u)"), 100));
-    if (showDebug)
-        strUsage += HelpMessageOpt("-mintxfee=<amt>", strprintf("Fees (in %s/kB) smaller than this are considered zero fee for transaction creation (default: %s)",
-            CURRENCY_UNIT, FormatMoney(CWallet::minTxFee.GetFeePerK())));
-    strUsage += HelpMessageOpt("-paytxfee=<amt>", strprintf(_("Fee (in %s/kB) to add to transactions you send (default: %s)"),
-        CURRENCY_UNIT, FormatMoney(payTxFee.GetFeePerK())));
-    strUsage += HelpMessageOpt("-rescan", _("Rescan the block chain for missing wallet transactions") + " " + _("on startup"));
-    strUsage += HelpMessageOpt("-salvagewallet", _("Attempt to recover private keys from a corrupt wallet.dat") + " " + _("on startup"));
-    strUsage += HelpMessageOpt("-sendfreetransactions", strprintf(_("Send transactions as zero-fee transactions if possible (default: %u)"), 0));
-    strUsage += HelpMessageOpt("-spendzeroconfchange", strprintf(_("Spend unconfirmed change when sending transactions (default: %u)"), 1));
-    strUsage += HelpMessageOpt("-txconfirmtarget=<n>", strprintf(_("If paytxfee is not set, include enough fee so transactions begin confirmation on average within n blocks (default: %u)"), DEFAULT_TX_CONFIRM_TARGET));
-    strUsage += HelpMessageOpt("-txexpirydelta", strprintf(_("Set the number of blocks after which a transaction that has not been mined will become invalid (default: %u)"), DEFAULT_TX_EXPIRY_DELTA));
-    strUsage += HelpMessageOpt("-maxtxfee=<amt>", strprintf(_("Maximum total fees (in %s) to use in a single wallet transaction; setting this too low may abort large transactions (default: %s)"),
-        CURRENCY_UNIT, FormatMoney(maxTxFee)));
-    strUsage += HelpMessageOpt("-upgradewallet", _("Upgrade wallet to latest format") + " " + _("on startup"));
-    strUsage += HelpMessageOpt("-wallet=<file>", _("Specify wallet file (within data directory)") + " " + strprintf(_("(default: %s)"), "wallet.dat"));
-    strUsage += HelpMessageOpt("-walletbroadcast", _("Make the wallet broadcast transactions") + " " + strprintf(_("(default: %u)"), true));
-    strUsage += HelpMessageOpt("-walletnotify=<cmd>", _("Execute command when a wallet transaction changes (%s in cmd is replaced by TxID)"));
-    strUsage += HelpMessageOpt("-whitelistaddress=<Raddress>", _("Enable the wallet filter for notary nodes and add one Raddress to the whitelist of the wallet filter. If -whitelistaddress= is used, then the wallet filter is automatically activated. Several Raddresses can be defined using several -whitelistaddress= (similar to -addnode). The wallet filter will filter the utxo to only ones coming from my own Raddress (derived from pubkey) and each Raddress defined using -whitelistaddress= this option is mostly for Notary Nodes)."));
-    strUsage += HelpMessageOpt("-zapwallettxes=<mode>", _("Delete all wallet transactions and only recover those parts of the blockchain through -rescan on startup") +
-        " " + _("(1 = keep tx meta data e.g. account owner and payment request information, 2 = drop tx meta data)"));
+    strUsage += CWallet::GetWalletHelpString(showDebug);
 #endif
 
 #if ENABLE_ZMQ
@@ -493,12 +472,10 @@ std::string HelpMessage(HelpMessageMode mode)
     if (showDebug)
     {
         strUsage += HelpMessageOpt("-checkpoints", strprintf("Disable expensive verification for known chain history (default: %u)", 1));
-        strUsage += HelpMessageOpt("-dblogsize=<n>", strprintf("Flush database activity from memory pool to disk log every <n> megabytes (default: %u)", 100));
         strUsage += HelpMessageOpt("-disablesafemode", strprintf("Disable safemode, override a real safe mode event (default: %u)", 0));
         strUsage += HelpMessageOpt("-testsafemode", strprintf("Force safe mode (default: %u)", 0));
         strUsage += HelpMessageOpt("-dropmessagestest=<n>", "Randomly drop 1 of every <n> network messages");
         strUsage += HelpMessageOpt("-fuzzmessagestest=<n>", "Randomly fuzz 1 of every <n> network messages");
-        strUsage += HelpMessageOpt("-flushwallet", strprintf("Run a thread to flush wallet periodically (default: %u)", 1));
         strUsage += HelpMessageOpt("-stopafterblockimport", strprintf("Stop running after importing blocks from disk (default: %u)", 0));
         strUsage += HelpMessageOpt("-nuparams=hexBranchId:activationHeight", "Use given activation height for specified network upgrade (regtest-only)");
     }
@@ -517,13 +494,14 @@ std::string HelpMessage(HelpMessageMode mode)
         strUsage += HelpMessageOpt("-maxsigcachesize=<n>", strprintf("Limit size of signature cache to <n> entries (default: %u)", 50000));
         strUsage += HelpMessageOpt("-maxtipage=<n>", strprintf("Maximum tip age in seconds to consider node in initial block download (default: %u)", DEFAULT_MAX_TIP_AGE));
     }
-    strUsage += HelpMessageOpt("-minrelaytxfee=<amt>", strprintf(_("Fees (in %s/kB) smaller than this are considered zero fee for relaying (default: %s)"),
-        CURRENCY_UNIT, FormatMoney(::minRelayTxFee.GetFeePerK())));
+    strUsage += HelpMessageOpt("-minrelaytxfee=<amt>", strprintf(_("Fees (in %s/kB) smaller than this are considered zero fee for relaying, mining and transaction creation (default: %s)"),
+        CURRENCY_UNIT, FormatMoney(DEFAULT_MIN_RELAY_TX_FEE)));
+    strUsage += HelpMessageOpt("-maxtxfee=<amt>", strprintf(_("Maximum total fees (in %s) to use in a single wallet transaction or raw transaction; setting this too low may abort large transactions (default: %s)"),
+        CURRENCY_UNIT, FormatMoney(DEFAULT_TRANSACTION_MAXFEE)));
     strUsage += HelpMessageOpt("-printtoconsole", _("Send trace/debug info to console instead of debug.log file"));
     if (showDebug)
     {
         strUsage += HelpMessageOpt("-printpriority", strprintf("Log transaction priority and fee per kB when mining blocks (default: %u)", 0));
-        strUsage += HelpMessageOpt("-privdb", strprintf("Sets the DB_PRIVATE flag in the wallet db environment (default: %u)", 1));
         strUsage += HelpMessageOpt("-regtest", "Enter regression test mode, which uses a special chain in which blocks can be solved instantly. "
             "This is intended for regression testing tools and app development.");
     }
@@ -1094,11 +1072,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
         if (GetBoolArg("-txindex", true))
             return InitError(_("Prune mode is incompatible with -txindex."));
 #ifdef ENABLE_WALLET
-        if (!GetBoolArg("-disablewallet", false)) {
-            if (SoftSetBoolArg("-disablewallet", true))
-                LogPrintf("%s : parameter interaction: -prune -> setting -disablewallet=1\n", __func__);
-            else
-                return InitError(_("Can't run with a wallet in prune mode."));
+        if (GetBoolArg("-rescan", false)) {
+            return InitError(_("Rescans are not possible in pruned mode. You will need to use -reindex which will download the whole blockchain again."));
         }
 #endif
     }
@@ -1198,48 +1173,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     }
 
 #ifdef ENABLE_WALLET
-    if (mapArgs.count("-mintxfee"))
-    {
-        CAmount n = 0;
-        if (ParseMoney(mapArgs["-mintxfee"], n) && n > 0)
-            CWallet::minTxFee = CFeeRate(n);
-        else
-            return InitError(strprintf(_("Invalid amount for -mintxfee=<amount>: '%s'"), mapArgs["-mintxfee"]));
-    }
-    if (mapArgs.count("-paytxfee"))
-    {
-        CAmount nFeePerK = 0;
-        if (!ParseMoney(mapArgs["-paytxfee"], nFeePerK))
-            return InitError(strprintf(_("Invalid amount for -paytxfee=<amount>: '%s'"), mapArgs["-paytxfee"]));
-        if (nFeePerK > nHighTransactionFeeWarning)
-            InitWarning(_("Warning: -paytxfee is set very high! This is the transaction fee you will pay if you send a transaction."));
-        payTxFee = CFeeRate(nFeePerK, 1000);
-        if (payTxFee < ::minRelayTxFee)
-        {
-            return InitError(strprintf(_("Invalid amount for -paytxfee=<amount>: '%s' (must be at least %s)"),
-                                       mapArgs["-paytxfee"], ::minRelayTxFee.ToString()));
-        }
-    }
-    if (mapArgs.count("-maxtxfee"))
-    {
-        CAmount nMaxFee = 0;
-        if (!ParseMoney(mapArgs["-maxtxfee"], nMaxFee))
-            return InitError(strprintf(_("Invalid amount for -maxtxfee=<amount>: '%s'"), mapArgs["-maptxfee"]));
-        if (nMaxFee > nHighTransactionMaxFeeWarning)
-            InitWarning(_("Warning: -maxtxfee is set very high! Fees this large could be paid on a single transaction."));
-        maxTxFee = nMaxFee;
-        if (CFeeRate(maxTxFee, 1000) < ::minRelayTxFee)
-        {
-            return InitError(strprintf(_("Invalid amount for -maxtxfee=<amount>: '%s' (must be at least the minrelay fee of %s to prevent stuck transactions)"),
-                                       mapArgs["-maxtxfee"], ::minRelayTxFee.ToString()));
-        }
-    }
-    nTxConfirmTarget = GetArg("-txconfirmtarget", DEFAULT_TX_CONFIRM_TARGET);
-    expiryDelta = GetArg("-txexpirydelta", DEFAULT_TX_EXPIRY_DELTA);
-    bSpendZeroConfChange = GetBoolArg("-spendzeroconfchange", true);
-    fSendFreeTransactions = GetBoolArg("-sendfreetransactions", false);
-
-    std::string strWalletFile = GetArg("-wallet", "wallet.dat");
+    if (!CWallet::ParameterInteraction())
+        return false;
 #endif // ENABLE_WALLET
 
     fIsBareMultisigStd = GetBoolArg("-permitbaremultisig", true);
@@ -1345,11 +1280,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
         return InitError(_("Initialization sanity check failed. Safecoin is shutting down."));
 
     std::string strDataDir = GetDataDir().string();
-#ifdef ENABLE_WALLET
-    // Wallet file must be a plain filename without a directory
-    if (strWalletFile != boost::filesystem::basename(strWalletFile) + boost::filesystem::extension(strWalletFile))
-        return InitError(strprintf(_("Wallet %s resides outside data directory %s"), strWalletFile, strDataDir));
-#endif
+
     // Make sure only a single Bitcoin process is using the data directory.
     boost::filesystem::path pathLockFile = GetDataDir() / ".lock";
     FILE* file = fopen(pathLockFile.string().c_str(), "a"); // empty lock file; created if it doesn't exist.
@@ -1445,19 +1376,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     // ********************************************************* Step 5: verify wallet database integrity
 #ifdef ENABLE_WALLET
     if (!fDisableWallet) {
-        LogPrintf("Using wallet %s\n", strWalletFile);
-        uiInterface.InitMessage(_("Verifying wallet..."));
-
-        std::string warningString;
-        std::string errorString;
-
-        if (!CWallet::Verify(strWalletFile, warningString, errorString))
+        if (!CWallet::Verify())
             return false;
-
-        if (!warningString.empty())
-            InitWarning(warningString);
-        if (!errorString.empty())
-            return InitError(warningString);
 
     } // (!fDisableWallet)
 #endif // ENABLE_WALLET
@@ -1841,144 +1761,11 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
         pwalletMain = NULL;
         LogPrintf("Wallet disabled!\n");
     } else {
+        CWallet::InitLoadWallet(clearWitnessCaches);
+        if (!pwalletMain)
+            return false;
+    }
 
-        // needed to restore wallet transaction meta data after -zapwallettxes
-        std::vector<CWalletTx> vWtx;
-
-        if (GetBoolArg("-zapwallettxes", false)) {
-            uiInterface.InitMessage(_("Zapping all transactions from wallet..."));
-
-            pwalletMain = new CWallet(strWalletFile);
-            DBErrors nZapWalletRet = pwalletMain->ZapWalletTx(vWtx);
-            if (nZapWalletRet != DB_LOAD_OK) {
-                uiInterface.InitMessage(_("Error loading wallet.dat: Wallet corrupted"));
-                return false;
-            }
-
-            delete pwalletMain;
-            pwalletMain = NULL;
-        }
-
-        uiInterface.InitMessage(_("Loading wallet..."));
-
-        nStart = GetTimeMillis();
-        bool fFirstRun = true;
-        pwalletMain = new CWallet(strWalletFile);
-        DBErrors nLoadWalletRet = pwalletMain->LoadWallet(fFirstRun);
-        if (nLoadWalletRet != DB_LOAD_OK)
-        {
-            if (nLoadWalletRet == DB_CORRUPT)
-                strErrors << _("Error loading wallet.dat: Wallet corrupted") << "\n";
-            else if (nLoadWalletRet == DB_NONCRITICAL_ERROR)
-            {
-                string msg(_("Warning: error reading wallet.dat! All keys read correctly, but transaction data"
-                             " or address book entries might be missing or incorrect."));
-                InitWarning(msg);
-            }
-            else if (nLoadWalletRet == DB_TOO_NEW)
-                strErrors << _("Error loading wallet.dat: Wallet requires newer version of Safecoin") << "\n";
-            else if (nLoadWalletRet == DB_NEED_REWRITE)
-            {
-                strErrors << _("Wallet needed to be rewritten: restart Safecoin to complete") << "\n";
-                LogPrintf("%s", strErrors.str());
-                return InitError(strErrors.str());
-            }
-            else
-                strErrors << _("Error loading wallet.dat") << "\n";
-        }
-
-        if (GetBoolArg("-upgradewallet", fFirstRun))
-        {
-            int nMaxVersion = GetArg("-upgradewallet", 0);
-            if (nMaxVersion == 0) // the -upgradewallet without argument case
-            {
-                LogPrintf("Performing wallet upgrade to %i\n", FEATURE_LATEST);
-                nMaxVersion = CLIENT_VERSION;
-                pwalletMain->SetMinVersion(FEATURE_LATEST); // permanently upgrade the wallet immediately
-            }
-            else
-                LogPrintf("Allowing wallet upgrade up to %i\n", nMaxVersion);
-            if (nMaxVersion < pwalletMain->GetVersion())
-                strErrors << _("Cannot downgrade wallet") << "\n";
-            pwalletMain->SetMaxVersion(nMaxVersion);
-        }
-
-        if (!pwalletMain->HaveHDSeed())
-        {
-            // generate a new HD seed
-            pwalletMain->GenerateNewSeed();
-        }
-
-        if (fFirstRun)
-        {
-            // Create new keyUser and set as default key
-            CPubKey newDefaultKey;
-            if (pwalletMain->GetKeyFromPool(newDefaultKey)) {
-                pwalletMain->SetDefaultKey(newDefaultKey);
-                if (!pwalletMain->SetAddressBook(pwalletMain->vchDefaultKey.GetID(), "", "receive"))
-                    strErrors << _("Cannot write default address") << "\n";
-            }
-
-            pwalletMain->SetBestChain(chainActive.GetLocator());
-        }
-
-        LogPrintf("%s", strErrors.str());
-        LogPrintf(" wallet      %15dms\n", GetTimeMillis() - nStart);
-
-        RegisterValidationInterface(pwalletMain);
-
-        CBlockIndex *pindexRescan = chainActive.Tip();
-        if (clearWitnessCaches || GetBoolArg("-rescan", false))
-        {
-            pwalletMain->ClearNoteWitnessCache();
-            pindexRescan = chainActive.Genesis();
-        }
-        else
-        {
-            CWalletDB walletdb(strWalletFile);
-            CBlockLocator locator;
-            if (walletdb.ReadBestBlock(locator))
-                pindexRescan = FindForkInGlobalIndex(chainActive, locator);
-            else
-                pindexRescan = chainActive.Genesis();
-        }
-        if (chainActive.Tip() && chainActive.Tip() != pindexRescan)
-        {
-            uiInterface.InitMessage(_("Rescanning..."));
-            LogPrintf("Rescanning last %i blocks (from block %i)...\n", chainActive.Height() - pindexRescan->GetHeight(), pindexRescan->GetHeight());
-            nStart = GetTimeMillis();
-            pwalletMain->ScanForWalletTransactions(pindexRescan, true);
-            LogPrintf(" rescan      %15dms\n", GetTimeMillis() - nStart);
-            pwalletMain->SetBestChain(chainActive.GetLocator());
-            nWalletDBUpdated++;
-
-            // Restore wallet transaction metadata after -zapwallettxes=1
-            if (GetBoolArg("-zapwallettxes", false) && GetArg("-zapwallettxes", "1") != "2")
-            {
-                CWalletDB walletdb(strWalletFile);
-
-                BOOST_FOREACH(const CWalletTx& wtxOld, vWtx)
-                {
-                    uint256 hash = wtxOld.GetHash();
-                    std::map<uint256, CWalletTx>::iterator mi = pwalletMain->mapWallet.find(hash);
-                    if (mi != pwalletMain->mapWallet.end())
-                    {
-                        const CWalletTx* copyFrom = &wtxOld;
-                        CWalletTx* copyTo = &mi->second;
-                        copyTo->mapValue = copyFrom->mapValue;
-                        copyTo->vOrderForm = copyFrom->vOrderForm;
-                        copyTo->nTimeReceived = copyFrom->nTimeReceived;
-                        copyTo->nTimeSmart = copyFrom->nTimeSmart;
-                        copyTo->fFromMe = copyFrom->fFromMe;
-                        copyTo->strFromAccount = copyFrom->strFromAccount;
-                        copyTo->nOrderPos = copyFrom->nOrderPos;
-                        copyTo->WriteToDisk(&walletdb);
-                    }
-                }
-            }
-        }
-        pwalletMain->SetBroadcastTransactions(GetBoolArg("-walletbroadcast", true));
-    } // (!fDisableWallet)
 #else // ENABLE_WALLET
     LogPrintf("No wallet support compiled in!\n");
 #endif // !ENABLE_WALLET

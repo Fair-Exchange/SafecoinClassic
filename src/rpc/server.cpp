@@ -22,6 +22,7 @@
 #include "rpc/server.h"
 
 #include "init.h"
+#include "wallet/wallet.h"
 #include "key_io.h"
 #include "random.h"
 #include "sync.h"

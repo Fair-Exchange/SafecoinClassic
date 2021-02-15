@@ -38,6 +38,7 @@ char ASSETCHAINS_SYMBOL[65];
 
 using namespace std;
 
+static const char DEFAULT_RPCCONNECT[] = "127.0.0.1";
 static const int DEFAULT_HTTP_CLIENT_TIMEOUT=900;
 static const int CONTINUE_EXECUTION=-1;
 
@@ -51,7 +52,7 @@ std::string HelpMessageCli()
     strUsage += HelpMessageOpt("-testnet", _("Use the test network"));
     strUsage += HelpMessageOpt("-regtest", _("Enter regression test mode, which uses a special chain in which blocks can be "
                                              "solved instantly. This is intended for regression testing tools and app development."));
-    strUsage += HelpMessageOpt("-rpcconnect=<ip>", strprintf(_("Send commands to node running on <ip> (default: %s)"), "127.0.0.1"));
+    strUsage += HelpMessageOpt("-rpcconnect=<ip>", strprintf(_("Send commands to node running on <ip> (default: %s)"), DEFAULT_RPCCONNECT));
     strUsage += HelpMessageOpt("-rpcport=<port>", strprintf(_("Connect to JSON-RPC on <port> (default: %u or testnet: %u)"), 8771, 18771));
     strUsage += HelpMessageOpt("-rpcwait", _("Wait for RPC server to start"));
     strUsage += HelpMessageOpt("-rpcuser=<user>", _("Username for JSON-RPC connections"));
@@ -211,7 +212,7 @@ static void http_error_cb(enum evhttp_request_error err, void *ctx)
 
 UniValue CallRPC(const std::string& strMethod, const UniValue& params)
 {
-    std::string host = GetArg("-rpcconnect", "127.0.0.1");
+    std::string host = GetArg("-rpcconnect", DEFAULT_RPCCONNECT);
     int port = GetArg("-rpcport", BaseParams().RPCPort());
     BITCOIND_RPCPORT = port;
     // Obtain event base

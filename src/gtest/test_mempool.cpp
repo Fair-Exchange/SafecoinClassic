@@ -119,6 +119,7 @@ TEST(Mempool, TxInputLimit) {
     // Check it fails as expected
     CValidationState state1;
     CTransaction tx1(mtx);
+    LOCK(cs_main);
     EXPECT_FALSE(AcceptToMemoryPool(pool, state1, tx1, false, &missingInputs));
     EXPECT_EQ(state1.GetRejectReason(), "bad-txns-version-too-low");
 
@@ -182,6 +183,7 @@ TEST(Mempool, OverwinterNotActiveYet) {
     CValidationState state1;
 
     CTransaction tx1(mtx);
+    LOCK(cs_main);
     EXPECT_FALSE(AcceptToMemoryPool(pool, state1, tx1, false, &missingInputs));
     EXPECT_EQ(state1.GetRejectReason(), "tx-overwinter-not-active");
 
@@ -205,7 +207,7 @@ TEST(Mempool, SproutV3TxFailsAsExpected) {
     mtx.nVersion = 3;
     CValidationState state1;
     CTransaction tx1(mtx);
-
+    LOCK(cs_main);
     EXPECT_FALSE(AcceptToMemoryPool(pool, state1, tx1, false, &missingInputs));
     EXPECT_EQ(state1.GetRejectReason(), "version");
 }
@@ -226,7 +228,7 @@ TEST(Mempool, SproutV3TxWhenOverwinterActive) {
     mtx.nVersion = 3;
     CValidationState state1;
     CTransaction tx1(mtx);
-
+    LOCK(cs_main);
     EXPECT_FALSE(AcceptToMemoryPool(pool, state1, tx1, false, &missingInputs));
     EXPECT_EQ(state1.GetRejectReason(), "tx-overwinter-flag-not-set");
 
@@ -262,6 +264,7 @@ TEST(Mempool, SproutNegativeVersionTxWhenOverwinterActive) {
         EXPECT_EQ(tx1.nVersion, -3);
 
         CValidationState state1;
+		LOCK(cs_main);
         EXPECT_FALSE(AcceptToMemoryPool(pool, state1, tx1, false, &missingInputs));
         EXPECT_EQ(state1.GetRejectReason(), "bad-txns-version-too-low");
     }
@@ -278,6 +281,7 @@ TEST(Mempool, SproutNegativeVersionTxWhenOverwinterActive) {
         EXPECT_EQ(tx1.nVersion, -2147483645);
 
         CValidationState state1;
+		LOCK(cs_main);
         EXPECT_FALSE(AcceptToMemoryPool(pool, state1, tx1, false, &missingInputs));
         EXPECT_EQ(state1.GetRejectReason(), "bad-txns-version-too-low");
     }

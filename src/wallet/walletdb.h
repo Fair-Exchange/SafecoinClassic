@@ -34,6 +34,8 @@
 #include <utility>
 #include <vector>
 
+static const bool DEFAULT_FLUSHWALLET = true;
+
 class CAccount;
 class CAccountingEntry;
 struct CBlockLocator;
@@ -132,7 +134,7 @@ public:
     }
 };
 
-/** Access to the wallet database (wallet.dat) */
+/** Access to the wallet database */
 class CWalletDB : public CDB
 {
 public:
