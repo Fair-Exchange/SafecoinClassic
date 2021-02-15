@@ -33,7 +33,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           # flag for some CC tests transactions - so DO NOT USE THIS CI ARTIFACTS IN PRODUCTION!!!
-          CONFIGURE_FLAGS='CPPFLAGS=-DTESTMODE' ./zcutil/build.sh --disable-tests -j$(nproc)
+          CONFIGURE_FLAGS='CPPFLAGS=-DTESTMODE' ./zcutil/build.sh -j$(nproc)
           tar -czvf safecoin-linux.tar.gz src/safecoind src/safecoin-cli
 
       - name: Upload safecoin-linux.tar.gz as artifact
@@ -101,6 +101,7 @@ jobs:
           tar xzvf safecoin-linux.tar.gz
           ./zcutil/fetch-params.sh
           cd qa/pytest_safecoin
+          chmod +x ./ci_setup.sh
           ./ci_setup.sh "cc_modules/test_dice.py cc_modules/test_faucet.py cc_modules/test_token.py cc_modules/test_rewards.py"
 
   linux-test-oracles:
@@ -137,6 +138,7 @@ jobs:
           tar xzvf safecoin-linux.tar.gz
           ./zcutil/fetch-params.sh
           cd qa/pytest_safecoin
+          chmod +x ./ci_setup.sh
           ./ci_setup.sh cc_modules/test_oracles.py
 
   linux-test-baserpc:
@@ -173,6 +175,7 @@ jobs:
           tar xzvf safecoin-linux.tar.gz
           ./zcutil/fetch-params.sh
           cd qa/pytest_safecoin
+          chmod +x ./ci_setup.sh
           ./ci_setup.sh basic
 
   linux-test-channels:
@@ -209,6 +212,7 @@ jobs:
           tar xzvf safecoin-linux.tar.gz
           ./zcutil/fetch-params.sh
           cd qa/pytest_safecoin
+          chmod +x ./ci_setup.sh
           ./ci_setup.sh cc_modules/test_channels.py
 
   linux-test-heir:
@@ -245,6 +249,7 @@ jobs:
           tar xzvf safecoin-linux.tar.gz
           ./zcutil/fetch-params.sh
           cd qa/pytest_safecoin
+          chmod +x ./ci_setup.sh
           ./ci_setup.sh cc_modules/test_heir.py
 
   windows-build:
